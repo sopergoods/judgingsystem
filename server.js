@@ -342,10 +342,22 @@ app.post('/add-participant', (req, res) => {
 // Route to get all participants (Read) - Updated query
 app.get('/participants', (req, res) => {
     const sql = `
-        SELECT p.participant_id, p.participant_name, p.email, p.phone, p.age,
-               p.gender, p.school_organization, p.performance_title, 
-               p.performance_description, p.registration_fee, p.registration_date,
-               c.competition_name, c.competition_id, c.competition_date, c.category
+        SELECT p.participant_id, 
+               p.participant_name as name,
+               p.participant_name, 
+               p.email, 
+               p.phone, 
+               p.age,
+               p.gender, 
+               p.school_organization, 
+               p.performance_title, 
+               p.performance_description, 
+               p.registration_fee, 
+               p.registration_date,
+               c.competition_name, 
+               c.competition_id, 
+               c.competition_date, 
+               c.category
         FROM participants p
         JOIN competitions c ON p.competition_id = c.competition_id
         ORDER BY c.competition_date DESC, p.participant_name
@@ -355,11 +367,153 @@ app.get('/participants', (req, res) => {
             console.error('Error fetching participants:', err);
             return res.status(500).json({ error: 'Error fetching participants' });
         }
+        console.log('Participants data being sent:', result); // Debug log
         res.json(result);
+    });
+});
+app.get('/participant/:participantId', (req, res) => {
+    const { participantId } = req.params;
+    
+    if (isNaN(participantId)) {
+        return res.status(400).json({ error: 'Invalid participant ID' });
+    }
+    
+    const sql = `
+        SELECT p.participant_id, 
+               p.participant_name, 
+               p.email, 
+               p.phone, 
+               p.age,
+               p.gender, 
+               p.school_organization, 
+               p.performance_title, 
+               p.performance_description, 
+               p.registration_fee, 
+               p.registration_date,
+               c.competition_name, 
+               c.competition_id, 
+               c.competition_date, 
+               c.category
+        FROM participants p
+        JOIN competitions c ON p.competition_id = c.competition_id
+        WHERE p.participant_id = ?
+    `;
+    
+    db.query(sql, [participantId], (err, result) => {
+        if (err) {
+            console.error('Error fetching participant details:', err);
+            return res.status(500).json({ error: 'Error fetching participant details' });
+        }
+        
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Participant not found' });
+        }
+        
+        console.log('Participant details being sent:', result[0]); // Debug log
+        res.json(result[0]);
+    });
+});
+app.put('/update-participant/:id', (req, res) => {
+    const { id } = req.params;
+    const { 
+        participant_name, 
+        email, 
+        phone, 
+        age, 
+        gender, 
+        school_organization, 
+        performance_title, 
+        performance_description, 
+        competition_id,
+        registration_fee 
+    } = req.body;
+
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid participant ID' });
+    }
+
+    if (!participant_name || !email || !age || !gender || !performance_title || !competition_id) {
+        return res.status(400).json({ error: 'Required fields: participant_name, email, age, gender, performance_title, competition_id' });
+    }
+
+    if (isNaN(competition_id) || isNaN(age)) {
+        return res.status(400).json({ error: 'Invalid competition ID or age' });
+    }
+
+    // Validate gender
+    const validGenders = ['male', 'female', 'other'];
+    if (!validGenders.includes(gender)) {
+        return res.status(400).json({ error: 'Invalid gender. Must be one of: male, female, other' });
+    }
+
+    // Validate registration fee status
+    const validRegistrationFees = ['paid', 'pending', 'waived'];
+    if (registration_fee && !validRegistrationFees.includes(registration_fee)) {
+        return res.status(400).json({ error: 'Invalid registration fee status. Must be one of: paid, pending, waived' });
+    }
+
+    const sql = `UPDATE participants 
+                 SET participant_name = ?, email = ?, phone = ?, age = ?, gender = ?, 
+                     school_organization = ?, performance_title = ?, performance_description = ?, 
+                     competition_id = ?, registration_fee = ? 
+                 WHERE participant_id = ?`;
+    
+    db.query(sql, [
+        participant_name, email, phone, age, gender, school_organization,
+        performance_title, performance_description, competition_id, 
+        registration_fee || 'pending', id
+    ], (err, result) => {
+        if (err) {
+            console.error('Error updating participant:', err);
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ error: 'Participant with this email already exists' });
+            }
+            return res.status(500).json({ error: 'Error updating participant' });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Participant not found' });
+        }
+        
+        res.json({ success: true, message: 'Participant updated successfully!' });
+    });
+});
+
+// Route to delete a participant (Delete)
+app.delete('/delete-participant/:id', (req, res) => {
+    const { id } = req.params;
+
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid participant ID' });
+    }
+
+    // First delete any scores associated with this participant
+    const deleteScoresSql = 'DELETE FROM scores WHERE participant_id = ?';
+    db.query(deleteScoresSql, [id], (err, result) => {
+        if (err) {
+            console.error('Error deleting participant scores:', err);
+            return res.status(500).json({ error: 'Error deleting participant scores' });
+        }
+
+        // Then delete the participant
+        const deleteParticipantSql = 'DELETE FROM participants WHERE participant_id = ?';
+        db.query(deleteParticipantSql, [id], (err, result) => {
+            if (err) {
+                console.error('Error deleting participant:', err);
+                return res.status(500).json({ error: 'Error deleting participant' });
+            }
+            
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Participant not found' });
+            }
+            
+            res.json({ success: true, message: 'Participant deleted successfully!' });
+        });
     });
 });
 
 // Updated route to add a judge - Fixed to match your schema
+// Updated route to add a judge - Fixed to properly link user and judge
 app.post('/add-judge', (req, res) => {
     const { 
         judge_name, 
@@ -415,13 +569,13 @@ app.post('/add-judge', (req, res) => {
 
             const userId = userResult.insertId;
 
-            // Then, add judge with reference to user - Updated to match your schema
+            // Then, add judge with reference to user - FIXED: Added user_id to link properly
             const addJudgeSql = `INSERT INTO judges 
-                               (judge_name, email, phone, expertise, experience_years, credentials, competition_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?)`;
+                               (judge_name, email, phone, expertise, experience_years, credentials, competition_id, user_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
             
             db.query(addJudgeSql, [
-                judge_name, email, phone, expertise, experience_years, credentials, competition_id
+                judge_name, email, phone, expertise, experience_years, credentials, competition_id, userId
             ], (err, judgeResult) => {
                 if (err) {
                     // If judge creation fails, remove the user account
@@ -449,16 +603,26 @@ app.post('/add-judge', (req, res) => {
     });
 });
 
-// Route to get all judges (Read) - Updated query
+// Route to get all judges with consistent field names
 app.get('/judges', (req, res) => {
     const sql = `
-        SELECT j.judge_id, j.judge_name, j.email, j.phone, j.expertise, 
-               j.experience_years, j.credentials,
-               c.competition_name, c.category, c.competition_id, c.competition_date,
-               u.username, u.user_id
+        SELECT j.judge_id, 
+               j.judge_name as name,
+               j.judge_name, 
+               j.email, 
+               j.phone, 
+               j.expertise, 
+               j.experience_years, 
+               j.credentials, 
+               j.user_id,
+               c.competition_name, 
+               c.category, 
+               c.competition_id, 
+               c.competition_date,
+               u.username
         FROM judges j
         JOIN competitions c ON j.competition_id = c.competition_id
-        LEFT JOIN users u ON u.role = 'judge'
+        LEFT JOIN users u ON j.user_id = u.user_id
         ORDER BY c.competition_date DESC, j.judge_name
     `;
     db.query(sql, (err, result) => {
@@ -466,10 +630,212 @@ app.get('/judges', (req, res) => {
             console.error('Error fetching judges:', err);
             return res.status(500).json({ error: 'Error fetching judges' });
         }
+        console.log('Judges data being sent:', result); // Debug log
         res.json(result);
     });
 });
+app.get('/judge/:id', (req, res) => {
+    const { id } = req.params;
+    
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid judge ID' });
+    }
+    
+    const sql = `
+        SELECT j.judge_id, j.judge_name, j.email, j.phone, j.expertise, 
+               j.experience_years, j.credentials, j.user_id,
+               c.competition_name, c.category, c.competition_id, c.competition_date,
+               u.username
+        FROM judges j
+        JOIN competitions c ON j.competition_id = c.competition_id
+        LEFT JOIN users u ON j.user_id = u.user_id
+        WHERE j.judge_id = ?
+    `;
+    
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            console.error('Error fetching judge:', err);
+            return res.status(500).json({ error: 'Error fetching judge' });
+        }
+        
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Judge not found' });
+        }
+        
+        res.json(result[0]);
+    });
+});
 
+// Route to get a single participant by ID
+app.get('/participant/:id', (req, res) => {
+    const { id } = req.params;
+    
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid participant ID' });
+    }
+    
+    const sql = `
+        SELECT p.participant_id, p.participant_name, p.email, p.phone, p.age,
+               p.gender, p.school_organization, p.performance_title, 
+               p.performance_description, p.registration_fee, p.registration_date,
+               c.competition_name, c.competition_id, c.competition_date, c.category
+        FROM participants p
+        JOIN competitions c ON p.competition_id = c.competition_id
+        WHERE p.participant_id = ?
+    `;
+    
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            console.error('Error fetching participant:', err);
+            return res.status(500).json({ error: 'Error fetching participant' });
+        }
+        
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Participant not found' });
+        }
+        
+        res.json(result[0]);
+    });
+});
+
+app.get('/judge/:judgeId', (req, res) => {
+    const { judgeId } = req.params;
+    
+    if (isNaN(judgeId)) {
+        return res.status(400).json({ error: 'Invalid judge ID' });
+    }
+    
+    const sql = `
+        SELECT j.judge_id, 
+               j.judge_name, 
+               j.email, 
+               j.phone, 
+               j.expertise, 
+               j.experience_years, 
+               j.credentials, 
+               j.user_id,
+               c.competition_name, 
+               c.category, 
+               c.competition_id, 
+               c.competition_date,
+               u.username
+        FROM judges j
+        JOIN competitions c ON j.competition_id = c.competition_id
+        LEFT JOIN users u ON j.user_id = u.user_id
+        WHERE j.judge_id = ?
+    `;
+    
+    db.query(sql, [judgeId], (err, result) => {
+        if (err) {
+            console.error('Error fetching judge details:', err);
+            return res.status(500).json({ error: 'Error fetching judge details' });
+        }
+        
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Judge not found' });
+        }
+        
+        console.log('Judge details being sent:', result[0]); // Debug log
+        res.json(result[0]);
+    });
+});
+app.put('/update-judge/:id', (req, res) => {
+    const { id } = req.params;
+    const { 
+        judge_name, 
+        email, 
+        phone, 
+        expertise, 
+        experience_years, 
+        credentials, 
+        competition_id 
+    } = req.body;
+
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid judge ID' });
+    }
+
+    if (!judge_name || !email || !expertise || !competition_id) {
+        return res.status(400).json({ error: 'Required fields: judge_name, email, expertise, competition_id' });
+    }
+
+    // Validate expertise
+    const validExpertise = ['music', 'dance', 'art', 'singing'];
+    if (!validExpertise.includes(expertise)) {
+        return res.status(400).json({ error: 'Invalid expertise. Must be one of: music, dance, art, singing' });
+    }
+
+    if (isNaN(competition_id) || isNaN(experience_years)) {
+        return res.status(400).json({ error: 'Invalid competition ID or experience years' });
+    }
+
+    const sql = `UPDATE judges 
+                 SET judge_name = ?, email = ?, phone = ?, expertise = ?, 
+                     experience_years = ?, credentials = ?, competition_id = ? 
+                 WHERE judge_id = ?`;
+    
+    db.query(sql, [judge_name, email, phone, expertise, experience_years, credentials, competition_id, id], (err, result) => {
+        if (err) {
+            console.error('Error updating judge:', err);
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ error: 'Judge with this email already exists' });
+            }
+            return res.status(500).json({ error: 'Error updating judge' });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Judge not found' });
+        }
+        
+        res.json({ success: true, message: 'Judge updated successfully!' });
+    });
+});
+
+// Route to delete a judge (Delete)
+app.delete('/delete-judge/:id', (req, res) => {
+    const { id } = req.params;
+
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid judge ID' });
+    }
+
+    // First, get the user_id associated with this judge
+    const getUserIdSql = 'SELECT user_id FROM judges WHERE judge_id = ?';
+    db.query(getUserIdSql, [id], (err, result) => {
+        if (err) {
+            console.error('Error fetching judge user ID:', err);
+            return res.status(500).json({ error: 'Error fetching judge information' });
+        }
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Judge not found' });
+        }
+
+        const userId = result[0].user_id;
+
+        // Delete judge first
+        const deleteJudgeSql = 'DELETE FROM judges WHERE judge_id = ?';
+        db.query(deleteJudgeSql, [id], (err, result) => {
+            if (err) {
+                console.error('Error deleting judge:', err);
+                return res.status(500).json({ error: 'Error deleting judge' });
+            }
+
+            // Then delete the associated user account if it exists
+            if (userId) {
+                const deleteUserSql = 'DELETE FROM users WHERE user_id = ?';
+                db.query(deleteUserSql, [userId], (err, result) => {
+                    if (err) {
+                        console.error('Error deleting judge user account:', err);
+                        // Don't return error here, judge is already deleted
+                    }
+                });
+            }
+
+            res.json({ success: true, message: 'Judge deleted successfully!' });
+        });
+    });
+});
 // Route to submit scores - Updated to match your schema
 app.post('/submit-score', (req, res) => {
     const { 

@@ -353,7 +353,7 @@ function showViewJudges() {
             `;
         });
 
-        document.querySelector("table").innerHTML += tableContent;
+        document.querySelector("table").innerHTML = tableContent;
     })
     .catch(error => {
         console.error('Error fetching judges:', error);
