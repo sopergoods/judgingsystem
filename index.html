@@ -1,0 +1,37 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Judging System - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Automated Judging System</h1>
+            <p>Admin Dashboard</p>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#" onclick="showCreateCompetitionForm()">Create Competition</a></li>
+                <li><a href="#" onclick="showViewCompetitions()">View Competitions</a></li>
+                <li><a href="#" onclick="showAddJudgeForm()">Add Judge</a></li>
+                <li><a href="#" onclick="showViewJudges()">View Judges</a></li>
+                <li><a href="#" onclick="showAddParticipantForm()">Add Participant</a></li>
+                <li><a href="#" onclick="showViewParticipants()">View Participants</a></li>
+            </ul>
+        </nav>
+
+        <section id="content">
+            <div style="text-align: center; padding: 40px;">
+                <h2>Welcome to the Admin Dashboard</h2>
+                <p>Select an option from the navigation menu to manage competitions, judges, and participants.</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
