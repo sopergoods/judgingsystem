@@ -1,0 +1,214 @@
+-- ================================================
+-- AUTOMATED JUDGING SYSTEM - FRESH DATABASE SETUP
+-- ================================================
+
+-- Drop existing database if it exists
+DROP DATABASE IF EXISTS judging_system;
+
+-- Create new database
+CREATE DATABASE judging_system;
+
+-- Use the database
+USE judging_system;
+
+-- ================================================
+-- 1. USERS TABLE (Admin, Staff, Judges)
+-- ================================================
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'staff', 'judge') NOT NULL,
+    full_name VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ================================================
+-- 2. COMPETITIONS TABLE
+-- ================================================
+CREATE TABLE competitions (
+    competition_id INT AUTO_INCREMENT PRIMARY KEY,
+    competition_name VARCHAR(100) NOT NULL,
+    category ENUM('music', 'dance', 'art', 'singing') NOT NULL,
+    competition_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ================================================
+-- 3. JUDGES TABLE
+-- ================================================
+CREATE TABLE judges (
+    judge_id INT AUTO_INCREMENT PRIMARY KEY,
+    judge_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    expertise ENUM('music', 'dance', 'art', 'singing') NOT NULL,
+    experience_years INT DEFAULT 0,
+    credentials TEXT,
+    competition_id INT,
+    user_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (competition_id) REFERENCES competitions(competition_id) ON DELETE SET NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- ================================================
+-- 4. PARTICIPANTS TABLE
+-- ================================================
+CREATE TABLE participants (
+    participant_id INT AUTO_INCREMENT PRIMARY KEY,
+    participant_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    age INT NOT NULL,
+    gender ENUM('male', 'female', 'other') NOT NULL,
+    school_organization VARCHAR(100),
+    performance_title VARCHAR(200) NOT NULL,
+    performance_description TEXT,
+    competition_id INT NOT NULL,
+    registration_fee ENUM('paid', 'pending', 'waived') DEFAULT 'pending',
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (competition_id) REFERENCES competitions(competition_id) ON DELETE CASCADE
+);
+
+-- ================================================
+-- 5. SCORES TABLE
+-- ================================================
+CREATE TABLE scores (
+    score_id INT AUTO_INCREMENT PRIMARY KEY,
+    judge_id INT NOT NULL,
+    participant_id INT NOT NULL,
+    competition_id INT NOT NULL,
+    technical_score DECIMAL(5,2) DEFAULT 0.00,
+    artistic_score DECIMAL(5,2) DEFAULT 0.00,
+    overall_score DECIMAL(5,2) DEFAULT 0.00,
+    comments TEXT,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (judge_id) REFERENCES judges(judge_id) ON DELETE CASCADE,
+    FOREIGN KEY (participant_id) REFERENCES participants(participant_id) ON DELETE CASCADE,
+    FOREIGN KEY (competition_id) REFERENCES competitions(competition_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_judge_participant_competition (judge_id, participant_id, competition_id)
+);
+
+-- ================================================
+-- 6. INSERT SAMPLE DATA
+-- ================================================
+
+-- Insert sample users (Admin, Staff, Judges)
+INSERT INTO users (username, password, role, full_name) VALUES
+('admin', 'admin123', 'admin', 'System Administrator'),
+('staff1', 'password123', 'staff', 'Staff Member One'),
+('staff2', 'password123', 'staff', 'Staff Member Two');
+
+-- Insert sample competitions
+INSERT INTO competitions (competition_name, category, competition_date) VALUES
+('Spring Music Festival 2025', 'music', '2025-03-15'),
+('Annual Dance Competition', 'dance', '2025-04-20'),
+('Art Showcase 2025', 'art', '2025-05-10'),
+('Vocal Excellence Contest', 'singing', '2025-06-05');
+
+-- Insert sample judges (with user accounts)
+INSERT INTO users (username, password, role, full_name) VALUES
+('musicjudge1', 'judge123', 'judge', 'Dr. Sarah Johnson'),
+('dancejudge1', 'judge123', 'judge', 'Prof. Michael Chen'),
+('artjudge1', 'judge123', 'judge', 'Ms. Elena Rodriguez'),
+('vocaljudge1', 'judge123', 'judge', 'Mr. David Wilson');
+
+INSERT INTO judges (judge_name, email, phone, expertise, experience_years, credentials, competition_id, user_id) VALUES
+('Dr. Sarah Johnson', 'sarah.johnson@email.com', '555-0101', 'music', 15, 'PhD in Music Education, 15 years orchestral experience', 1, 4),
+('Prof. Michael Chen', 'michael.chen@email.com', '555-0102', 'dance', 12, 'Professional Ballet Dancer, Choreography Certificate', 2, 5),
+('Ms. Elena Rodriguez', 'elena.rodriguez@email.com', '555-0103', 'art', 8, 'MFA in Fine Arts, Gallery Curator for 8 years', 3, 6),
+('Mr. David Wilson', 'david.wilson@email.com', '555-0104', 'singing', 20, 'Professional Opera Singer, Voice Coach Certification', 4, 7);
+
+-- Insert sample participants
+INSERT INTO participants (participant_name, email, phone, age, gender, school_organization, performance_title, performance_description, competition_id, registration_fee) VALUES
+('Alice Thompson', 'alice.thompson@email.com', '555-1001', 16, 'female', 'Central High School', 'Moonlight Sonata', 'Classical piano performance of Beethoven', 1, 'paid'),
+('Bob Martinez', 'bob.martinez@email.com', '555-1002', 17, 'male', 'Westside Academy', 'Hip Hop Fusion', 'Contemporary hip hop with classical elements', 2, 'paid'),
+('Carol Lee', 'carol.lee@email.com', '555-1003', 15, 'female', 'Arts Preparatory School', 'Abstract Emotions', 'Oil painting exploring human emotions', 3, 'pending'),
+('David Park', 'david.park@email.com', '555-1004', 18, 'male', 'Downtown Music Institute', 'Ave Maria', 'Classical vocal performance', 4, 'waived'),
+('Emma Wilson', 'emma.wilson@email.com', '555-1005', 16, 'female', 'Central High School', 'Jazz Improvisation', 'Original jazz piano composition', 1, 'paid'),
+('Frank Rodriguez', 'frank.rodriguez@email.com', '555-1006', 17, 'male', 'Westside Academy', 'Breakdance Battle', 'Street dance performance', 2, 'pending');
+
+-- Insert sample scores
+INSERT INTO scores (judge_id, participant_id, competition_id, technical_score, artistic_score, overall_score, comments) VALUES
+(1, 1, 1, 85.5, 92.0, 88.75, 'Excellent technique, beautiful interpretation'),
+(1, 5, 1, 78.0, 85.5, 81.75, 'Good improvisation skills, needs work on timing'),
+(2, 2, 2, 92.5, 88.0, 90.25, 'Outstanding energy and creativity'),
+(2, 6, 2, 76.5, 82.0, 79.25, 'Good foundation, improve transitions'),
+(3, 3, 3, 88.0, 95.5, 91.75, 'Exceptional artistic vision and execution'),
+(4, 4, 4, 91.0, 87.5, 89.25, 'Powerful voice, excellent control');
+
+-- ================================================
+-- 7. CREATE USEFUL VIEWS
+-- ================================================
+
+-- View for judge competitions with participant count
+CREATE VIEW judge_competition_view AS
+SELECT 
+    j.judge_id,
+    j.judge_name,
+    c.competition_id,
+    c.competition_name,
+    c.category,
+    c.competition_date,
+    COUNT(p.participant_id) as participant_count
+FROM judges j
+JOIN competitions c ON j.competition_id = c.competition_id
+LEFT JOIN participants p ON c.competition_id = p.competition_id
+GROUP BY j.judge_id, j.judge_name, c.competition_id, c.competition_name, c.category, c.competition_date;
+
+-- View for participant competition details
+CREATE VIEW participant_competition_view AS
+SELECT 
+    p.participant_id,
+    p.participant_name,
+    p.email,
+    p.age,
+    p.gender,
+    p.school_organization,
+    p.performance_title,
+    p.performance_description,
+    p.registration_fee,
+    p.registration_date,
+    c.competition_id,
+    c.competition_name,
+    c.category,
+    c.competition_date
+FROM participants p
+JOIN competitions c ON p.competition_id = c.competition_id;
+
+-- ================================================
+-- 8. DISPLAY SUMMARY
+-- ================================================
+
+-- Show what was created
+SELECT 'Database Setup Complete!' as Status;
+
+SELECT 'USERS CREATED:' as Info;
+SELECT user_id, username, role, full_name FROM users;
+
+SELECT 'COMPETITIONS CREATED:' as Info;
+SELECT competition_id, competition_name, category, competition_date FROM competitions;
+
+SELECT 'JUDGES CREATED:' as Info;
+SELECT judge_id, judge_name, email, expertise, experience_years FROM judges;
+
+SELECT 'PARTICIPANTS CREATED:' as Info;
+SELECT participant_id, participant_name, age, performance_title, registration_fee FROM participants;
+
+SELECT 'SCORES RECORDED:' as Info;
+SELECT score_id, judge_id, participant_id, technical_score, artistic_score, overall_score FROM scores;
+
+-- ================================================
+-- SUCCESS MESSAGE
+-- ================================================
+SELECT 
+    'DATABASE SETUP COMPLETE!' as MESSAGE,
+    'You can now login with:' as LOGIN_INFO,
+    'admin/admin123 (Administrator)' as ADMIN_LOGIN,
+    'staff1/password123 (Staff)' as STAFF_LOGIN,
+    'musicjudge1/judge123 (Judge)' as JUDGE_LOGIN;
