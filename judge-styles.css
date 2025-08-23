@@ -1,4 +1,4 @@
-/* Maroon and White Theme for School Judging System */
+/* Judge Dashboard Maroon and White Theme */
 
 /* Basic reset and body styling */
 * {
@@ -63,7 +63,7 @@ nav ul {
 
 nav li {
     flex: 1;
-    min-width: 150px;
+    min-width: 180px;
 }
 
 nav a {
@@ -143,6 +143,123 @@ section {
     background: linear-gradient(135deg, #a0002a 0%, #c0003a 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+/* Scoring form specific styling */
+.scoring-form {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 6px 20px rgba(128, 0, 32, 0.1);
+}
+
+.scoring-form h3 {
+    color: #800020;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5em;
+}
+
+.score-input-group {
+    margin-bottom: 25px;
+}
+
+.score-input-group label {
+    display: block;
+    color: #800020;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.score-input-group input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 18px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.score-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: #800020;
+    box-shadow: 0 0 10px rgba(128, 0, 32, 0.2);
+}
+
+.score-input-group small {
+    display: block;
+    color: #666;
+    font-style: italic;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+/* Score display styling */
+.score-display {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 2px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.score-high {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.score-medium {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+}
+
+.score-low {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+}
+
+/* Competition card styling */
+.competition-card {
+    background: white;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.1);
+}
+
+.competition-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(128, 0, 32, 0.2);
+}
+
+.competition-card h3 {
+    color: #800020;
+    margin-bottom: 10px;
+    font-size: 1.4em;
+}
+
+.competition-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.competition-info p {
+    color: #666;
+    margin: 5px 0;
+}
+
+.competition-info strong {
+    color: #800020;
 }
 
 /* Form styling */
@@ -273,6 +390,40 @@ table tr:hover {
     background-color: #f0f0f0;
 }
 
+/* Judge-specific styling */
+.judge-badge {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 5px;
+}
+
+.scoring-guidelines {
+    background: #e7f3ff;
+    border: 2px solid #2196F3;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.scoring-guidelines h4 {
+    color: #0d47a1;
+    margin-bottom: 15px;
+}
+
+.scoring-guidelines ul {
+    color: #1976d2;
+    margin-left: 20px;
+}
+
+.scoring-guidelines li {
+    margin: 8px 0;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .container {
@@ -296,33 +447,14 @@ table tr:hover {
     .dashboard-card {
         margin-bottom: 20px;
     }
-}
-
-/* Status indicators */
-.status-paid {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.status-pending {
-    color: #ffc107;
-    font-weight: 600;
-}
-
-.status-waived {
-    color: #17a2b8;
-    font-weight: 600;
-}
-
-/* Score display */
-.score-display {
-    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-    display: inline-block;
-    margin: 2px;
+    
+    .competition-info {
+        grid-template-columns: 1fr;
+    }
+    
+    .scoring-form {
+        padding: 20px;
+    }
 }
 
 /* Alert messages */
@@ -349,4 +481,36 @@ table tr:hover {
     background-color: #fff3cd;
     border: 1px solid #ffeaa7;
     color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* Progress indicators */
+.progress-bar {
+    background: #f0f0f0;
+    border-radius: 10px;
+    padding: 3px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.progress-fill {
+    display: block;
+    height: 20px;
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    border-radius: 8px;
+    transition: width 0.8s ease;
+}
+
+/* Animation classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
