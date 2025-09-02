@@ -1,4 +1,4 @@
-// Staff Dashboard JavaScript
+// Enhanced Staff Dashboard JavaScript with Pageant Support and New Features
 
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -31,14 +31,31 @@ function logout() {
     window.location.href = 'login.html';
 }
 
-// Show Dashboard
+// Enhanced Dashboard
 function showDashboard() {
     document.getElementById("content").innerHTML = `
         <div style="text-align: center; padding: 40px;">
-            <h2>Welcome to the Staff Dashboard</h2>
-            <p>Manage day-to-day operations and assist with participant registration.</p>
+            <h2>🏆 Enhanced Staff Dashboard</h2>
+            <p>Manage day-to-day operations with support for custom events, pageants, and detailed criteria.</p>
+            
+            <div style="background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%); padding: 20px; border-radius: 12px; margin: 30px 0; border: 2px solid #800020;">
+                <h3 style="color: #800020; margin-bottom: 15px;">✨ Enhanced Staff Features</h3>
+                <ul style="color: #666; line-height: 1.8; text-align: left; max-width: 600px; margin: 0 auto;">
+                    <li><strong>Event Types:</strong> View and understand different competition categories</li>
+                    <li><strong>Pageant Support:</strong> Register participants with special pageant fields</li>
+                    <li><strong>Criteria Awareness:</strong> Understand how competitions are scored</li>
+                    <li><strong>Advanced Filtering:</strong> Filter by event types and competition categories</li>
+                    <li><strong>Enhanced Reports:</strong> Generate reports with new scoring insights</li>
+                </ul>
+            </div>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 30px;">
+                <div class="dashboard-card">
+                    <h3>🎭 Event Types</h3>
+                    <p>View available competition categories</p>
+                    <button onclick="showEventTypes()" class="card-button">View Event Types</button>
+                </div>
+                
                 <div class="dashboard-card">
                     <h3>🏆 Competitions</h3>
                     <p>View active competitions and details</p>
@@ -47,199 +64,546 @@ function showDashboard() {
                 
                 <div class="dashboard-card">
                     <h3>👥 Participants</h3>
-                    <p>Register and manage participants</p>
+                    <p>Register and manage all participants</p>
                     <button onclick="showAddParticipantForm()" class="card-button">Add Participant</button>
                     <button onclick="showViewParticipants()" class="card-button">Manage All</button>
                 </div>
                 
                 <div class="dashboard-card">
                     <h3>⚖️ Judges</h3>
-                    <p>View judge assignments and details</p>
+                    <p>View judge assignments and expertise</p>
                     <button onclick="showViewJudges()" class="card-button">View Judges</button>
                 </div>
                 
                 <div class="dashboard-card">
-                    <h3>📊 Reports</h3>
-                    <p>Generate participation and status reports</p>
+                    <h3>📊 Enhanced Reports</h3>
+                    <p>Generate detailed reports and analytics</p>
                     <button onclick="showReports()" class="card-button">View Reports</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>📋 Scoring Overview</h3>
+                    <p>View competition scoring progress</p>
+                    <button onclick="showScoringOverview()" class="card-button">View Progress</button>
                 </div>
             </div>
         </div>
     `;
 }
 
-// Show View Competitions (Read-only for staff)
-function showViewCompetitions() {
+// View Event Types (Staff can view but not edit)
+function showEventTypes() {
     document.getElementById("content").innerHTML = `
-        <h2>View Competitions</h2>
-        <table id="competitionsTable">
-            <tr>
-                <th>Competition Name</th>
-                <th>Category</th>
-                <th>Date</th>
-                <th>Participants</th>
-                <th>Actions</th>
-            </tr>
-        </table>
+        <h2>🎭 Available Event Types</h2>
+        <p style="margin-bottom: 20px;">Understanding different competition categories and their characteristics.</p>
+        
+        <div id="eventTypesList">
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 24px;">⏳</div>
+                <p>Loading event types...</p>
+            </div>
+        </div>
     `;
 
-    fetch('http://localhost:3002/competitions')
+    fetch('http://localhost:3002/event-types')
     .then(response => response.json())
-    .then(data => {
-        let tableContent = `
-            <tr>
-                <th>Competition Name</th>
-                <th>Category</th>
-                <th>Date</th>
-                <th>Participants</th>
-                <th>Actions</th>
-            </tr>
-        `;
+    .then(eventTypes => {
+        let eventTypesHtml = '<div style="display: grid; gap: 20px;">';
         
-        data.forEach(competition => {
-            // Count participants for this competition
-            fetch(`http://localhost:3002/participants/${competition.competition_id}`)
-            .then(response => response.json())
-            .then(participants => {
-                tableContent += `
-                    <tr>
-                        <td>${competition.competition_name}</td>
-                        <td>${competition.category}</td>
-                        <td>${competition.competition_date}</td>
-                        <td>${participants.length} participants</td>
-                        <td>
-                            <button onclick="viewCompetitionDetails(${competition.competition_id})">View Details</button>
-                        </td>
-                    </tr>
-                `;
-                document.getElementById("competitionsTable").innerHTML = tableContent;
-            })
-            .catch(error => {
-                console.error('Error fetching participants:', error);
-                tableContent += `
-                    <tr>
-                        <td>${competition.competition_name}</td>
-                        <td>${competition.category}</td>
-                        <td>${competition.competition_date}</td>
-                        <td>-</td>
-                        <td>
-                            <button onclick="viewCompetitionDetails(${competition.competition_id})">View Details</button>
-                        </td>
-                    </tr>
-                `;
-                document.getElementById("competitionsTable").innerHTML = tableContent;
-            });
+        eventTypes.forEach(eventType => {
+            const typeIcon = eventType.is_pageant ? '👑' : '🎪';
+            const typeColor = eventType.is_pageant ? '#ff69b4' : '#17a2b8';
+            
+            eventTypesHtml += `
+                <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${typeColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>${typeIcon} ${eventType.type_name}</h3>
+                        <span style="padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; background: ${typeColor}; color: white;">
+                            ${eventType.is_pageant ? 'BEAUTY PAGEANT' : 'REGULAR EVENT'}
+                        </span>
+                    </div>
+                    
+                    <p style="color: #666; margin-bottom: 15px;">
+                        ${eventType.description || 'No description provided'}
+                    </p>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4 style="color: #800020; margin-bottom: 10px;">Registration Requirements:</h4>
+                        ${eventType.is_pageant ? `
+                            <ul style="color: #666; margin-left: 20px;">
+                                <li>Basic participant information (name, age, contact)</li>
+                                <li>Physical measurements and height</li>
+                                <li>Special talents and skills</li>
+                                <li>Awards and achievements</li>
+                                <li>Performance/talent description</li>
+                            </ul>
+                        ` : `
+                            <ul style="color: #666; margin-left: 20px;">
+                                <li>Basic participant information</li>
+                                <li>Performance title and description</li>
+                                <li>School or organization affiliation</li>
+                                <li>Competition-specific requirements</li>
+                            </ul>
+                        `}
+                    </div>
+                </div>
+            `;
         });
+        
+        eventTypesHtml += '</div>';
+        
+        if (eventTypes.length === 0) {
+            eventTypesHtml = `
+                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🎭</div>
+                    <h3>No Event Types Available</h3>
+                    <p>Contact the administrator to set up event types.</p>
+                </div>
+            `;
+        }
+        
+        document.getElementById("eventTypesList").innerHTML = eventTypesHtml;
     })
     .catch(error => {
-        console.error('Error fetching competitions:', error);
-        document.getElementById("content").innerHTML += '<p class="alert alert-error">Error loading competitions.</p>';
+        console.error('Error loading event types:', error);
+        document.getElementById("eventTypesList").innerHTML = '<p class="alert alert-error">Error loading event types.</p>';
     });
+}
+
+// Enhanced View Competitions
+function showViewCompetitions() {
+    document.getElementById("content").innerHTML = `
+        <h2>🏆 Competition Management</h2>
+        
+        <div style="margin-bottom: 30px;">
+            <div style="display: grid; grid-template-columns: auto auto 1fr; gap: 15px; align-items: center;">
+                <label for="eventTypeFilter" style="font-weight: 600; color: #800020;">Filter by Event Type:</label>
+                <select id="eventTypeFilter" onchange="filterCompetitionsByType()" style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 5px;">
+                    <option value="">All Event Types</option>
+                </select>
+                <div></div>
+            </div>
+        </div>
+        
+        <div id="competitionsList">
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 24px;">⏳</div>
+                <p>Loading competitions...</p>
+            </div>
+        </div>
+    `;
+
+    // Load event types for filter
+    fetch('http://localhost:3002/event-types')
+    .then(response => response.json())
+    .then(eventTypes => {
+        const filterSelect = document.getElementById("eventTypeFilter");
+        eventTypes.forEach(eventType => {
+            const option = document.createElement("option");
+            option.value = eventType.event_type_id;
+            option.textContent = `${eventType.type_name} ${eventType.is_pageant ? '👑' : '🎪'}`;
+            filterSelect.appendChild(option);
+        });
+    });
+
+    // Load competitions
+    loadCompetitions();
+}
+
+function loadCompetitions(eventTypeFilter = '') {
+    fetch('http://localhost:3002/competitions')
+    .then(response => response.json())
+    .then(competitions => {
+        // Filter by event type if specified
+        let filteredCompetitions = competitions;
+        if (eventTypeFilter) {
+            filteredCompetitions = competitions.filter(comp => comp.event_type_id == eventTypeFilter);
+        }
+        
+        let competitionsHtml = '';
+        
+        if (filteredCompetitions.length === 0) {
+            competitionsHtml = `
+                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🏆</div>
+                    <h3>${eventTypeFilter ? 'No competitions found for this event type' : 'No Competitions Available'}</h3>
+                    <p>Contact the administrator to set up competitions.</p>
+                </div>
+            `;
+        } else {
+            competitionsHtml = '<div style="display: grid; gap: 20px;">';
+            
+            filteredCompetitions.forEach(competition => {
+                const eventIcon = competition.is_pageant ? '👑' : '🎪';
+                const typeColor = competition.is_pageant ? '#ff69b4' : '#17a2b8';
+                
+                competitionsHtml += `
+                    <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${typeColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3>${competition.competition_name} ${eventIcon}</h3>
+                            <span style="padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; background: ${typeColor}; color: white;">
+                                ${competition.type_name}
+                            </span>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin: 15px 0;">
+                            <div>
+                                <p><strong>Date:</strong> ${competition.competition_date}</p>
+                                <p><strong>Participants:</strong> ${competition.participant_count || 0}</p>
+                            </div>
+                            <div>
+                                <p><strong>Judges:</strong> ${competition.judge_count || 0}</p>
+                                <p><strong>Type:</strong> ${competition.is_pageant ? 'Beauty Pageant' : 'Performance Event'}</p>
+                            </div>
+                            <div>
+                                <p><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">Active</span></p>
+                            </div>
+                        </div>
+                        
+                        ${competition.event_description ? `
+                            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 15px 0;">
+                                <strong>Description:</strong> ${competition.event_description}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top: 20px;">
+                            <button onclick="viewCompetitionDetails(${competition.competition_id})" style="margin: 2px; padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">👁️ View Details</button>
+                            <button onclick="viewCompetitionCriteria(${competition.competition_id}, '${competition.competition_name}')" style="margin: 2px; padding: 8px 16px; background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">📋 View Criteria</button>
+                            <button onclick="registerParticipantForCompetition(${competition.competition_id})" style="margin: 2px; padding: 8px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">➕ Add Participant</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            competitionsHtml += '</div>';
+        }
+
+        document.getElementById("competitionsList").innerHTML = competitionsHtml;
+    })
+    .catch(error => {
+        console.error('Error loading competitions:', error);
+        document.getElementById("competitionsList").innerHTML = '<p class="alert alert-error">Error loading competitions.</p>';
+    });
+}
+
+function filterCompetitionsByType() {
+    const eventTypeId = document.getElementById("eventTypeFilter").value;
+    loadCompetitions(eventTypeId);
 }
 
 // View Competition Details
 function viewCompetitionDetails(competitionId) {
     Promise.all([
-        fetch(`http://localhost:3002/competitions`).then(r => r.json()),
-        fetch(`http://localhost:3002/participants/${competitionId}`).then(r => r.json())
+        fetch(`http://localhost:3002/competition/${competitionId}`).then(r => r.json()),
+        fetch(`http://localhost:3002/participants/${competitionId}`).then(r => r.json()),
+        fetch(`http://localhost:3002/judges`).then(r => r.json())
     ])
-    .then(([competitions, participants]) => {
-        const competition = competitions.find(c => c.competition_id == competitionId);
+    .then(([competition, participants, allJudges]) => {
+        const judges = allJudges.filter(j => j.competition_id == competitionId);
+        const eventIcon = competition.is_pageant ? '👑' : '🎪';
+        const typeColor = competition.is_pageant ? '#ff69b4' : '#17a2b8';
         
-        let participantsList = '';
-        participants.forEach(participant => {
-            participantsList += `
-                <tr>
-                    <td>${participant.participant_name}</td>
-                    <td>${participant.age}</td>
-                    <td>${participant.performance_title}</td>
-                    <td class="status-${participant.registration_fee}">${participant.registration_fee.toUpperCase()}</td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("content").innerHTML = `
-            <h2>Competition Details</h2>
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h3>${competition.competition_name}</h3>
-                <p><strong>Category:</strong> ${competition.category}</p>
-                <p><strong>Date:</strong> ${competition.competition_date}</p>
-                <p><strong>Total Participants:</strong> ${participants.length}</p>
+        let detailsHtml = `
+            <h2>👁️ Competition Details</h2>
+            
+            <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${typeColor};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>${competition.competition_name} ${eventIcon}</h3>
+                    <span style="padding: 8px 16px; border-radius: 15px; font-weight: bold; background: ${typeColor}; color: white;">
+                        ${competition.type_name}
+                    </span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 20px;">
+                    <div>
+                        <h4 style="color: #800020; border-bottom: 1px solid #800020; padding-bottom: 5px;">Basic Information</h4>
+                        <p><strong>Date:</strong> ${competition.competition_date}</p>
+                        <p><strong>Event Type:</strong> ${competition.type_name} ${eventIcon}</p>
+                        <p><strong>Category:</strong> ${competition.is_pageant ? 'Beauty Pageant Event' : 'Performance Competition'}</p>
+                    </div>
+                    <div>
+                        <h4 style="color: #800020; border-bottom: 1px solid #800020; padding-bottom: 5px;">Statistics</h4>
+                        <p><strong>Total Participants:</strong> ${participants.length}</p>
+                        <p><strong>Assigned Judges:</strong> ${judges.length}</p>
+                        <p><strong>Registration Status:</strong> <span style="color: #28a745; font-weight: bold;">Active</span></p>
+                    </div>
+                </div>
+                
+                ${competition.event_description ? `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #800020; border-bottom: 1px solid #800020; padding-bottom: 5px;">Event Description</h4>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                            ${competition.event_description}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
             
-            <h3>Participants</h3>
-            <table>
-                <tr>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Performance Title</th>
-                    <th>Registration Status</th>
-                </tr>
-                ${participantsList}
-            </table>
-            
-            <br>
-            <button onclick="showViewCompetitions()" class="secondary">Back to Competitions</button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div class="dashboard-card" style="text-align: left;">
+                    <h4 style="color: #800020; margin-bottom: 15px;">👥 Participants Overview</h4>
         `;
+        
+        if (participants.length === 0) {
+            detailsHtml += '<p style="color: #666;">No participants registered yet.</p>';
+        } else {
+            // Group participants by registration status
+            const statusGroups = participants.reduce((groups, participant) => {
+                if (!groups[participant.registration_fee]) {
+                    groups[participant.registration_fee] = [];
+                }
+                groups[participant.registration_fee].push(participant);
+                return groups;
+            }, {});
+            
+            Object.entries(statusGroups).forEach(([status, participants]) => {
+                const statusColor = status === 'paid' ? '#28a745' : status === 'pending' ? '#ffc107' : '#17a2b8';
+                detailsHtml += `
+                    <div style="margin-bottom: 10px;">
+                        <span style="color: ${statusColor}; font-weight: bold;">●</span> 
+                        ${status.toUpperCase()}: ${participants.length} participants
+                    </div>
+                `;
+            });
+        }
+        
+        detailsHtml += `
+                </div>
+                
+                <div class="dashboard-card" style="text-align: left;">
+                    <h4 style="color: #800020; margin-bottom: 15px;">⚖️ Judges Overview</h4>
+        `;
+        
+        if (judges.length === 0) {
+            detailsHtml += '<p style="color: #666;">No judges assigned yet.</p>';
+        } else {
+            judges.forEach(judge => {
+                detailsHtml += `
+                    <div style="margin-bottom: 8px; padding: 8px; background: #f8f9fa; border-radius: 5px;">
+                        <strong>${judge.judge_name}</strong><br>
+                        <small style="color: #666;">${judge.expertise}</small>
+                    </div>
+                `;
+            });
+        }
+        
+        detailsHtml += `
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="showViewCompetitions()" style="padding: 12px 20px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; margin-right: 10px;">← Back to Competitions</button>
+                <button onclick="viewCompetitionCriteria(${competitionId}, '${competition.competition_name.replace(/'/g, "\\'")}')" class="card-button">📋 View Scoring Criteria</button>
+            </div>
+        `;
+        
+        document.getElementById("content").innerHTML = detailsHtml;
     })
     .catch(error => {
-        console.error('Error fetching competition details:', error);
+        console.error('Error loading competition details:', error);
         alert('Error loading competition details');
     });
 }
 
-// Show Add Participant Form
-function showAddParticipantForm() {
+// View Competition Criteria (Staff can view but not edit)
+function viewCompetitionCriteria(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
-        <h2>Add Participant</h2>
-        <form id="addParticipantForm">
-            <label for="participant_name">Participant Name:</label>
-            <input type="text" id="participant_name" name="participant_name" required>
+        <h2>📋 Competition Scoring Criteria</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div style="background: #e7f3ff; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <strong>ℹ️ Information for Staff:</strong>
+            <ul style="margin-top: 10px; color: #1976d2;">
+                <li>These criteria determine how judges evaluate participants</li>
+                <li>Each criterion has a specific percentage weight in the final score</li>
+                <li>Judges score each criterion separately from 0 to 100 points</li>
+                <li>Final scores are calculated using weighted averages</li>
+            </ul>
+        </div>
+        
+        <div id="criteriaDisplay">
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 24px;">⏳</div>
+                <p>Loading scoring criteria...</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <button onclick="showViewCompetitions()" class="secondary">← Back to Competitions</button>
+        </div>
+    `;
+
+    fetch(`http://localhost:3002/competition-criteria/${competitionId}`)
+    .then(response => response.json())
+    .then(criteria => {
+        if (criteria.length === 0) {
+            document.getElementById("criteriaDisplay").innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                    <h3>No Scoring Criteria Set</h3>
+                    <p>The administrator hasn't set up scoring criteria for this competition yet.</p>
+                    <p>Contact them to configure the judging criteria before the competition begins.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let criteriaHtml = `
+            <div style="display: grid; gap: 15px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: #800020; margin-bottom: 10px;">Scoring Breakdown</h4>
+                    <div style="display: flex; justify-content: center; gap: 20px;">
+                        <div><strong>Total Criteria:</strong> ${criteria.length}</div>
+                        <div><strong>Total Weight:</strong> ${criteria.reduce((sum, c) => sum + parseFloat(c.percentage), 0).toFixed(1)}%</div>
+                    </div>
+                </div>
+        `;
+        
+        criteria.forEach((criterion, index) => {
+            criteriaHtml += `
+                <div class="dashboard-card" style="text-align: left; border-left: 5px solid #800020;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="color: #800020; margin: 0;">#{criterion.order_number} ${criterion.criteria_name}</h4>
+                        <div style="background: linear-gradient(135deg, #800020 0%, #a0002a 100%); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold;">
+                            ${criterion.percentage}%
+                        </div>
+                    </div>
+                    
+                    <p style="color: #666; margin-bottom: 15px;">
+                        <strong>What judges evaluate:</strong> ${criterion.description || 'This aspect of the performance will be scored'}
+                    </p>
+                    
+                    <div style="display: flex; align-items: center; gap: 20px; background: #f8f9fa; padding: 12px; border-radius: 8px;">
+                        <div><strong>Score Range:</strong> 0 - ${criterion.max_score} points</div>
+                        <div style="color: #666;">|</div>
+                        <div><strong>Weight:</strong> <span style="color: #800020;">${criterion.percentage}%</span> of final score</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        criteriaHtml += '</div>';
+        document.getElementById("criteriaDisplay").innerHTML = criteriaHtml;
+    })
+    .catch(error => {
+        console.error('Error loading criteria:', error);
+        document.getElementById("criteriaDisplay").innerHTML = '<p class="alert alert-error">Error loading scoring criteria.</p>';
+    });
+}
+
+// Enhanced Add Participant Form with Auto-Detection
+function showAddParticipantForm(preselectedCompetitionId = null) {
+    document.getElementById("content").innerHTML = `
+        <h2>👥 Register New Participant</h2>
+        
+        <form id="addParticipantForm" style="max-width: 800px;">
+            <div class="form-section">
+                <h3 style="color: #800020; border-bottom: 2px solid #800020; padding-bottom: 10px; margin-bottom: 20px;">Basic Information</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label for="participant_name">Participant Name:</label>
+                        <input type="text" id="participant_name" name="participant_name" required>
+                    </div>
+                    <div>
+                        <label for="email">Email Address:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="phone">Phone Number:</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+                    <div>
+                        <label for="age">Age:</label>
+                        <input type="number" id="age" name="age" min="1" max="120" required>
+                    </div>
+                    <div>
+                        <label for="gender">Gender:</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <label for="school_organization">School/Organization:</label>
+                <input type="text" id="school_organization" name="school_organization" placeholder="Enter school, company, or organization name">
+            </div>
             
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
+            <div class="form-section">
+                <h3 style="color: #800020; border-bottom: 2px solid #800020; padding-bottom: 10px; margin: 30px 0 20px 0;">Competition Details</h3>
+                
+                <label for="competition">Select Competition:</label>
+                <select id="competition" name="competition" required>
+                    <option value="">Choose Competition</option>
+                </select>
+                
+                <div id="competitionInfo" style="display: none; background: #e7f3ff; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                    <div id="competitionDetails"></div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px;">
+                    <div>
+                        <label for="performance_title">Performance/Entry Title:</label>
+                        <input type="text" id="performance_title" name="performance_title" placeholder="Title of performance, talent, or entry">
+                    </div>
+                    <div>
+                        <label for="registration_fee">Registration Status:</label>
+                        <select id="registration_fee" name="registration_fee" required>
+                            <option value="pending">Pending Payment</option>
+                            <option value="paid">Paid</option>
+                            <option value="waived">Fee Waived</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <label for="performance_description">Performance Description:</label>
+                <textarea id="performance_description" name="performance_description" rows="3" placeholder="Describe the performance, talent, or what the participant will be presenting..."></textarea>
+            </div>
             
-            <label for="phone">Phone Number:</label>
-            <input type="tel" id="phone" name="phone">
+            <div id="pageantSection" class="form-section" style="display: none;">
+                <h3 style="color: #ff69b4; border-bottom: 2px solid #ff69b4; padding-bottom: 10px; margin: 30px 0 20px 0;">👑 Beauty Pageant Information</h3>
+                
+                <div style="background: #fff0f5; border: 2px solid #ff69b4; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                    <strong>📝 Additional Requirements for Beauty Pageants:</strong>
+                    <p style="color: #666; margin-top: 8px;">Beauty pageant competitions require additional information for comprehensive evaluation.</p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label for="height">Height:</label>
+                        <input type="text" id="height" name="height" placeholder="e.g.,<input type="text" id="height" name="height" placeholder="e.g., 5'6&quot; or 168cm">
+                    </div>
+                    <div>
+                        <label for="measurements">Measurements:</label>
+                        <input type="text" id="measurements" name="measurements" placeholder="e.g., 34-24-36">
+                    </div>
+                </div>
+                
+                <label for="talents">Special Talents & Skills:</label>
+                <textarea id="talents" name="talents" rows="3" placeholder="List special talents, skills, musical instruments, languages, etc..."></textarea>
+                
+                <label for="special_awards">Awards & Achievements:</label>
+                <textarea id="special_awards" name="special_awards" rows="3" placeholder="List awards, honors, achievements, leadership positions, academic honors, etc..."></textarea>
+            </div>
             
-            <label for="age">Age:</label>
-            <input type="number" id="age" name="age" min="1" max="120" required>
-            
-            <label for="gender">Gender:</label>
-            <select id="gender" name="gender" required>
-                <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-            </select>
-            
-            <label for="school_organization">School/Organization:</label>
-            <input type="text" id="school_organization" name="school_organization">
-            
-            <label for="performance_title">Performance Title:</label>
-            <input type="text" id="performance_title" name="performance_title" required>
-            
-            <label for="performance_description">Performance Description:</label>
-            <textarea id="performance_description" name="performance_description" rows="4" placeholder="Describe the performance..."></textarea>
-            
-            <label for="competition">Competition:</label>
-            <select id="competition" name="competition" required>
-                <option value="">Select Competition</option>
-            </select>
-            
-            <label for="registration_fee">Registration Fee Status:</label>
-            <select id="registration_fee" name="registration_fee" required>
-                <option value="pending">Pending</option>
-                <option value="paid">Paid</option>
-                <option value="waived">Waived</option>
-            </select>
-            
-            <input type="submit" value="Add Participant">
-            <button type="button" onclick="showViewParticipants()" class="secondary">Cancel</button>
+            <div style="margin-top: 40px; text-align: center;">
+                <button type="submit" style="background: linear-gradient(135deg, #800020 0%, #a0002a 100%); color: white; border: none; padding: 15px 40px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px;">
+                    ✅ Register Participant
+                </button>
+                <button type="button" onclick="showViewParticipants()" class="secondary" style="margin-left: 15px; padding: 15px 30px; font-size: 16px;">
+                    Cancel
+                </button>
+            </div>
         </form>
     `;
 
-    // Populate competition dropdown
+    // Load competitions and handle form logic
     fetch('http://localhost:3002/competitions')
     .then(response => response.json())
     .then(competitions => {
@@ -247,13 +611,61 @@ function showAddParticipantForm() {
         competitions.forEach(competition => {
             const option = document.createElement("option");
             option.value = competition.competition_id;
-            option.textContent = `${competition.competition_name} (${competition.category})`;
+            option.setAttribute('data-is-pageant', competition.is_pageant);
+            option.setAttribute('data-type-name', competition.type_name);
+            option.setAttribute('data-description', competition.event_description || '');
+            const eventIcon = competition.is_pageant ? '👑' : '🎪';
+            option.textContent = `${competition.competition_name} (${competition.type_name}) ${eventIcon}`;
             competitionSelect.appendChild(option);
         });
+
+        // Preselect competition if provided
+        if (preselectedCompetitionId) {
+            competitionSelect.value = preselectedCompetitionId;
+            handleCompetitionChange();
+        }
+
+        // Handle competition selection changes
+        competitionSelect.onchange = handleCompetitionChange;
     })
     .catch(error => {
         console.error('Error fetching competitions:', error);
     });
+
+    function handleCompetitionChange() {
+        const select = document.getElementById("competition");
+        const selectedOption = select.options[select.selectedIndex];
+        
+        if (select.value) {
+            const isPageant = selectedOption.getAttribute('data-is-pageant') === '1';
+            const typeName = selectedOption.getAttribute('data-type-name');
+            const description = selectedOption.getAttribute('data-description');
+            const eventIcon = isPageant ? '👑' : '🎪';
+            
+            // Show/hide pageant section
+            document.getElementById("pageantSection").style.display = isPageant ? "block" : "none";
+            
+            // Show competition info
+            document.getElementById("competitionInfo").style.display = "block";
+            document.getElementById("competitionDetails").innerHTML = `
+                <h4 style="color: #800020; margin-bottom: 10px;">${eventIcon} ${typeName} Event</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <p><strong>Category:</strong> ${isPageant ? 'Beauty Pageant' : 'Performance Competition'}</p>
+                        <p><strong>Registration Fields:</strong> ${isPageant ? 'Extended (includes pageant info)' : 'Standard'}</p>
+                    </div>
+                    <div>
+                        <p><strong>Evaluation Type:</strong> Multi-Criteria Scoring</p>
+                        <p><strong>Special Requirements:</strong> ${isPageant ? 'Physical measurements, talents' : 'Performance details'}</p>
+                    </div>
+                </div>
+                ${description ? `<p style="margin-top: 10px;"><strong>Description:</strong> ${description}</p>` : ''}
+            `;
+        } else {
+            document.getElementById("pageantSection").style.display = "none";
+            document.getElementById("competitionInfo").style.display = "none";
+        }
+    }
 
     document.getElementById("addParticipantForm").onsubmit = function(event) {
         event.preventDefault();
@@ -268,7 +680,12 @@ function showAddParticipantForm() {
             performance_title: document.getElementById("performance_title").value,
             performance_description: document.getElementById("performance_description").value,
             competition_id: document.getElementById("competition").value,
-            registration_fee: document.getElementById("registration_fee").value
+            registration_fee: document.getElementById("registration_fee").value,
+            // Pageant specific fields
+            height: document.getElementById("height").value,
+            measurements: document.getElementById("measurements").value,
+            talents: document.getElementById("talents").value,
+            special_awards: document.getElementById("special_awards").value
         };
 
         fetch('http://localhost:3002/add-participant', {
@@ -281,7 +698,7 @@ function showAddParticipantForm() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Participant added successfully!');
+                alert('Participant registered successfully!');
                 showViewParticipants();
             } else {
                 alert('Error: ' + data.error);
@@ -289,489 +706,12 @@ function showAddParticipantForm() {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error adding participant');
+            alert('Error registering participant');
         });
     };
 }
 
-// Show View Participants
-function showViewParticipants() {
-    document.getElementById("content").innerHTML = `
-        <h2>Manage Participants</h2>
-        <div style="margin-bottom: 20px;">
-            <button onclick="showAddParticipantForm()">Add New Participant</button>
-        </div>
-        <table id="participantsTable">
-            <tr>
-                <th>Name</th>
-                <th>Age</th>
-                <th>Performance Title</th>
-                <th>Competition</th>
-                <th>Registration Status</th>
-                <th>Actions</th>
-            </tr>
-        </table>
-    `;
-
-    fetch('http://localhost:3002/participants')
-    .then(response => response.json())
-    .then(data => {
-        let tableContent = `
-            <tr>
-                <th>Name</th>
-                <th>Age</th>
-                <th>Performance Title</th>
-                <th>Competition</th>
-                <th>Registration Status</th>
-                <th>Actions</th>
-            </tr>
-        `;
-        
-        data.forEach(participant => {
-            tableContent += `
-                <tr>
-                    <td>${participant.participant_name}</td>
-                    <td>${participant.age}</td>
-                    <td>${participant.performance_title}</td>
-                    <td>${participant.competition_name || 'Not assigned'}</td>
-                    <td class="status-${participant.registration_fee}">${participant.registration_fee.toUpperCase()}</td>
-                    <td>
-                        <button onclick="viewParticipantDetails(${participant.participant_id})">View Details</button>
-                        <button onclick="editParticipant(${participant.participant_id})">Edit</button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("participantsTable").innerHTML = tableContent;
-    })
-    .catch(error => {
-        console.error('Error fetching participants:', error);
-        document.getElementById("content").innerHTML += '<p class="alert alert-error">Error loading participants.</p>';
-    });
-}
-
-// View Participant Details
-function viewParticipantDetails(id) {
-    fetch(`http://localhost:3002/participant/${id}`)
-    .then(response => response.json())
-    .then(participant => {
-        document.getElementById("content").innerHTML = `
-            <h2>Participant Details</h2>
-            <div class="dashboard-card" style="text-align: left; max-width: 600px; margin: 0 auto;">
-                <h3>${participant.participant_name}</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-                    <div>
-                        <p><strong>Email:</strong> ${participant.email}</p>
-                        <p><strong>Phone:</strong> ${participant.phone || 'Not provided'}</p>
-                        <p><strong>Age:</strong> ${participant.age}</p>
-                        <p><strong>Gender:</strong> ${participant.gender}</p>
-                    </div>
-                    <div>
-                        <p><strong>School/Organization:</strong> ${participant.school_organization || 'Not specified'}</p>
-                        <p><strong>Competition:</strong> ${participant.competition_name || 'Not assigned'}</p>
-                        <p><strong>Registration Status:</strong> <span class="status-${participant.registration_fee}">${participant.registration_fee.toUpperCase()}</span></p>
-                    </div>
-                </div>
-                <div style="margin-top: 20px;">
-                    <p><strong>Performance Title:</strong> ${participant.performance_title}</p>
-                    <p><strong>Performance Description:</strong></p>
-                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 10px;">
-                        ${participant.performance_description || 'No description provided'}
-                    </div>
-                </div>
-            </div>
-            <br>
-            <button onclick="showViewParticipants()">Back to Participants</button>
-            <button onclick="editParticipant(${participant.participant_id})">Edit Participant</button>
-        `;
-    })
-    .catch(error => {
-        console.error('Error fetching participant details:', error);
-        alert('Error loading participant details');
-    });
-}
-
-// Edit Participant (similar to admin but staff-specific)
-function editParticipant(id) {
-    fetch(`http://localhost:3002/participant/${id}`)
-    .then(response => response.json())
-    .then(participant => {
-        document.getElementById("content").innerHTML = `
-            <h2>Edit Participant</h2>
-            <form id="editParticipantForm">
-                <input type="hidden" id="participant_id" value="${participant.participant_id}">
-                
-                <label for="participant_name">Participant Name:</label>
-                <input type="text" id="participant_name" name="participant_name" value="${participant.participant_name}" required>
-                
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" value="${participant.email}" required>
-                
-                <label for="phone">Phone Number:</label>
-                <input type="tel" id="phone" name="phone" value="${participant.phone || ''}">
-                
-                <label for="age">Age:</label>
-                <input type="number" id="age" name="age" value="${participant.age}" min="1" max="120" required>
-                
-                <label for="gender">Gender:</label>
-                <select id="gender" name="gender" required>
-                    <option value="male" ${participant.gender === 'male' ? 'selected' : ''}>Male</option>
-                    <option value="female" ${participant.gender === 'female' ? 'selected' : ''}>Female</option>
-                    <option value="other" ${participant.gender === 'other' ? 'selected' : ''}>Other</option>
-                </select>
-                
-                <label for="school_organization">School/Organization:</label>
-                <input type="text" id="school_organization" name="school_organization" value="${participant.school_organization || ''}">
-                
-                <label for="performance_title">Performance Title:</label>
-                <input type="text" id="performance_title" name="performance_title" value="${participant.performance_title}" required>
-                
-                <label for="performance_description">Performance Description:</label>
-                <textarea id="performance_description" name="performance_description" rows="4">${participant.performance_description || ''}</textarea>
-                
-                <label for="competition">Competition:</label>
-                <select id="competition" name="competition" required>
-                    <option value="">Select Competition</option>
-                </select>
-                
-                <label for="registration_fee">Registration Fee Status:</label>
-                <select id="registration_fee" name="registration_fee" required>
-                    <option value="paid" ${participant.registration_fee === 'paid' ? 'selected' : ''}>Paid</option>
-                    <option value="pending" ${participant.registration_fee === 'pending' ? 'selected' : ''}>Pending</option>
-                    <option value="waived" ${participant.registration_fee === 'waived' ? 'selected' : ''}>Waived</option>
-                </select>
-                
-                <input type="submit" value="Update Participant">
-                <button type="button" onclick="showViewParticipants()" class="secondary">Cancel</button>
-            </form>
-        `;
-
-        // Populate competition dropdown
-        fetch('http://localhost:3002/competitions')
-        .then(response => response.json())
-        .then(competitions => {
-            const competitionSelect = document.getElementById("competition");
-            competitions.forEach(competition => {
-                const option = document.createElement("option");
-                option.value = competition.competition_id;
-                option.textContent = `${competition.competition_name} (${competition.category})`;
-                if (participant.competition_id == competition.competition_id) {
-                    option.selected = true;
-                }
-                competitionSelect.appendChild(option);
-            });
-        });
-
-        document.getElementById("editParticipantForm").onsubmit = function(event) {
-            event.preventDefault();
-            
-            const participantData = {
-                participant_name: document.getElementById("participant_name").value,
-                email: document.getElementById("email").value,
-                phone: document.getElementById("phone").value,
-                age: document.getElementById("age").value,
-                gender: document.getElementById("gender").value,
-                school_organization: document.getElementById("school_organization").value,
-                performance_title: document.getElementById("performance_title").value,
-                performance_description: document.getElementById("performance_description").value,
-                competition_id: document.getElementById("competition").value,
-                registration_fee: document.getElementById("registration_fee").value
-            };
-
-            fetch(`http://localhost:3002/update-participant/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(participantData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Participant updated successfully!');
-                    showViewParticipants();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error updating participant');
-            });
-        };
-    })
-    .catch(error => {
-        console.error('Error fetching participant:', error);
-        alert('Error loading participant data');
-    });
-}
-
-// Show View Judges (Read-only for staff)
-function showViewJudges() {
-    document.getElementById("content").innerHTML = `
-        <h2>View Judges</h2>
-        <table id="judgesTable">
-            <tr>
-                <th>Judge Name</th>
-                <th>Email</th>
-                <th>Expertise</th>
-                <th>Experience</th>
-                <th>Competition</th>
-                <th>Actions</th>
-            </tr>
-        </table>
-    `;
-
-    fetch('http://localhost:3002/judges')
-    .then(response => response.json())
-    .then(data => {
-        let tableContent = `
-            <tr>
-                <th>Judge Name</th>
-                <th>Email</th>
-                <th>Expertise</th>
-                <th>Experience</th>
-                <th>Competition</th>
-                <th>Actions</th>
-            </tr>
-        `;
-        
-        data.forEach(judge => {
-            tableContent += `
-                <tr>
-                    <td>${judge.judge_name}</td>
-                    <td>${judge.email}</td>
-                    <td>${judge.expertise}</td>
-                    <td>${judge.experience_years} years</td>
-                    <td>${judge.competition_name || 'Not assigned'}</td>
-                    <td>
-                        <button onclick="viewJudgeDetails(${judge.judge_id})">View Details</button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("judgesTable").innerHTML = tableContent;
-    })
-    .catch(error => {
-        console.error('Error fetching judges:', error);
-        document.getElementById("content").innerHTML += '<p class="alert alert-error">Error loading judges.</p>';
-    });
-}
-
-// View Judge Details
-function viewJudgeDetails(id) {
-    fetch(`http://localhost:3002/judge/${id}`)
-    .then(response => response.json())
-    .then(judge => {
-        document.getElementById("content").innerHTML = `
-            <h2>Judge Details</h2>
-            <div class="dashboard-card" style="text-align: left; max-width: 600px; margin: 0 auto;">
-                <h3>${judge.judge_name}</h3>
-                <p><strong>Email:</strong> ${judge.email}</p>
-                <p><strong>Phone:</strong> ${judge.phone || 'Not provided'}</p>
-                <p><strong>Area of Expertise:</strong> ${judge.expertise}</p>
-                <p><strong>Years of Experience:</strong> ${judge.experience_years}</p>
-                <p><strong>Assigned Competition:</strong> ${judge.competition_name || 'Not assigned'}</p>
-                <p><strong>Username:</strong> ${judge.username || 'Not set'}</p>
-                <div style="margin-top: 20px;">
-                    <strong>Credentials & Qualifications:</strong>
-                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 10px;">
-                        ${judge.credentials || 'No credentials provided'}
-                    </div>
-                </div>
-            </div>
-            <br>
-            <button onclick="showViewJudges()">Back to Judges List</button>
-        `;
-    })
-    .catch(error => {
-        console.error('Error fetching judge details:', error);
-        alert('Error loading judge details');
-    });
-}
-
-// Show Reports
-function showReports() {
-    document.getElementById("content").innerHTML = `
-        <h2>Reports</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div class="dashboard-card">
-                <h3>📊 Participant Summary</h3>
-                <p>Overview of all registered participants</p>
-                <button onclick="generateParticipantReport()" class="card-button">Generate Report</button>
-            </div>
-            
-            <div class="dashboard-card">
-                <h3>💰 Payment Status Report</h3>
-                <p>Registration fee payment status</p>
-                <button onclick="generatePaymentReport()" class="card-button">Generate Report</button>
-            </div>
-            
-            <div class="dashboard-card">
-                <h3>🏆 Competition Summary</h3>
-                <p>Overview of all competitions</p>
-                <button onclick="generateCompetitionReport()" class="card-button">Generate Report</button>
-            </div>
-        </div>
-        
-        <div id="reportContent" style="margin-top: 30px;"></div>
-    `;
-}
-
-// Generate Participant Report
-function generateParticipantReport() {
-    fetch('http://localhost:3002/participants')
-    .then(response => response.json())
-    .then(participants => {
-        const totalParticipants = participants.length;
-        const genderStats = participants.reduce((acc, p) => {
-            acc[p.gender] = (acc[p.gender] || 0) + 1;
-            return acc;
-        }, {});
-        
-        const competitionStats = participants.reduce((acc, p) => {
-            const comp = p.competition_name || 'Unassigned';
-            acc[comp] = (acc[comp] || 0) + 1;
-            return acc;
-        }, {});
-
-        let reportHtml = `
-            <div class="dashboard-card" style="text-align: left;">
-                <h3>📊 Participant Summary Report</h3>
-                <p><strong>Total Participants:</strong> ${totalParticipants}</p>
-                
-                <h4 style="margin-top: 20px; color: #800020;">Gender Distribution:</h4>
-                <ul>
-        `;
-        
-        Object.entries(genderStats).forEach(([gender, count]) => {
-            reportHtml += `<li>${gender}: ${count} (${((count/totalParticipants)*100).toFixed(1)}%)</li>`;
-        });
-        
-        reportHtml += `
-                </ul>
-                
-                <h4 style="margin-top: 20px; color: #800020;">Participants by Competition:</h4>
-                <ul>
-        `;
-        
-        Object.entries(competitionStats).forEach(([comp, count]) => {
-            reportHtml += `<li>${comp}: ${count} participants</li>`;
-        });
-        
-        reportHtml += `
-                </ul>
-            </div>
-        `;
-        
-        document.getElementById("reportContent").innerHTML = reportHtml;
-    })
-    .catch(error => {
-        console.error('Error generating report:', error);
-        document.getElementById("reportContent").innerHTML = '<p class="alert alert-error">Error generating report.</p>';
-    });
-}
-
-// Generate Payment Report
-function generatePaymentReport() {
-    fetch('http://localhost:3002/participants')
-    .then(response => response.json())
-    .then(participants => {
-        const paymentStats = participants.reduce((acc, p) => {
-            acc[p.registration_fee] = (acc[p.registration_fee] || 0) + 1;
-            return acc;
-        }, {});
-        
-        const totalParticipants = participants.length;
-
-        let reportHtml = `
-            <div class="dashboard-card" style="text-align: left;">
-                <h3>💰 Payment Status Report</h3>
-                <p><strong>Total Registrations:</strong> ${totalParticipants}</p>
-                
-                <h4 style="margin-top: 20px; color: #800020;">Payment Status:</h4>
-                <ul>
-        `;
-        
-        Object.entries(paymentStats).forEach(([status, count]) => {
-            const percentage = ((count/totalParticipants)*100).toFixed(1);
-            reportHtml += `<li class="status-${status}">${status.toUpperCase()}: ${count} (${percentage}%)</li>`;
-        });
-        
-        reportHtml += `
-                </ul>
-                
-                <h4 style="margin-top: 20px; color: #800020;">Action Required:</h4>
-                <ul>
-        `;
-        
-        if (paymentStats.pending) {
-            reportHtml += `<li>Follow up with ${paymentStats.pending} pending payments</li>`;
-        }
-        
-        reportHtml += `
-                </ul>
-            </div>
-        `;
-        
-        document.getElementById("reportContent").innerHTML = reportHtml;
-    })
-    .catch(error => {
-        console.error('Error generating payment report:', error);
-        document.getElementById("reportContent").innerHTML = '<p class="alert alert-error">Error generating payment report.</p>';
-    });
-}
-
-// Generate Competition Report
-function generateCompetitionReport() {
-    Promise.all([
-        fetch('http://localhost:3002/competitions').then(r => r.json()),
-        fetch('http://localhost:3002/participants').then(r => r.json()),
-        fetch('http://localhost:3002/judges').then(r => r.json())
-    ])
-    .then(([competitions, participants, judges]) => {
-        let reportHtml = `
-            <div class="dashboard-card" style="text-align: left;">
-                <h3>🏆 Competition Summary Report</h3>
-                <p><strong>Total Competitions:</strong> ${competitions.length}</p>
-                
-                <h4 style="margin-top: 20px; color: #800020;">Competition Details:</h4>
-                <table style="width: 100%; margin-top: 10px;">
-                    <tr>
-                        <th>Competition</th>
-                        <th>Category</th>
-                        <th>Date</th>
-                        <th>Participants</th>
-                        <th>Judges</th>
-                    </tr>
-        `;
-        
-        competitions.forEach(comp => {
-            const participantCount = participants.filter(p => p.competition_id === comp.competition_id).length;
-            const judgeCount = judges.filter(j => j.competition_id === comp.competition_id).length;
-            
-            reportHtml += `
-                <tr>
-                    <td>${comp.competition_name}</td>
-                    <td>${comp.category}</td>
-                    <td>${comp.competition_date}</td>
-                    <td>${participantCount}</td>
-                    <td>${judgeCount}</td>
-                </tr>
-            `;
-        });
-        
-        reportHtml += `
-                </table>
-            </div>
-        `;
-        
-        document.getElementById("reportContent").innerHTML = reportHtml;
-    })
-    .catch(error => {
-        console.error('Error generating competition report:', error);
-        document.getElementById("reportContent").innerHTML = '<p class="alert alert-error">Error generating competition report.</p>';
-    });
+// Quick registration for specific competition
+function registerParticipantForCompetition(competitionId) {
+    showAddParticipantForm(competitionId);
 }
