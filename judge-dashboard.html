@@ -9,11 +9,16 @@
 <body>
     <div class="container">
         <header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1>Automated Judging System</h1>
-                    <p>Judge Dashboard</p>
-                </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="header-left">
+            <div class="logo">
+                <img src="logo-school-removebg-preview.png" alt="School Logo">
+            </div>
+            <div class="header-content">
+                <h1>Automated Judging System</h1>
+                <p>Judge Dashboard</p>
+            </div>
+        </div>
                 <div style="text-align: right;">
                     <div id="userInfo">Welcome, Judge</div>
                     <div style="font-size: 12px;">Role: Judge</div>
@@ -40,25 +45,25 @@
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
                     <div class="dashboard-card">
-                        <h3>🏆 My Competitions</h3>
+                        <h3> My Competitions</h3>
                         <p>View competitions assigned to you</p>
                         <button onclick="showMyCompetitions()" class="card-button">View Assignments</button>
                     </div>
                     
                     <div class="dashboard-card">
-                        <h3>⭐ Score Participants</h3>
+                        <h3> Score Participants</h3>
                         <p>Rate and score participant performances</p>
                         <button onclick="showMyCompetitions()" class="card-button">Start Scoring</button>
                     </div>
                     
                     <div class="dashboard-card">
-                        <h3>📝 Scoring History</h3>
+                        <h3> Scoring History</h3>
                         <p>Review your previous scores and comments</p>
                         <button onclick="showScoringHistory()" class="card-button">View History</button>
                     </div>
                     
                     <div class="dashboard-card">
-                        <h3>👤 My Profile</h3>
+                        <h3> My Profile</h3>
                         <p>View your judge profile and credentials</p>
                         <button onclick="showProfile()" class="card-button">View Profile</button>
                     </div>
