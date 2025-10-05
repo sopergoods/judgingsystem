@@ -1474,3 +1474,614 @@ function editParticipant(participantId) {
 document.addEventListener('DOMContentLoaded', function() {
     showDashboard();
 });
+
+// ==========================================
+// AJAX ENHANCEMENTS FOR STAFF DASHBOARD
+// ADD THIS AT THE BOTTOM OF staff-app.js
+// ==========================================
+
+// ==========================================
+// 1. OFFLINE/ONLINE DETECTION
+// ==========================================
+let isOnline = navigator.onLine;
+let offlineQueue = [];
+
+window.addEventListener('online', function() {
+    isOnline = true;
+    showNotification('You are back online!', 'success');
+    processOfflineQueue();
+});
+
+window.addEventListener('offline', function() {
+    isOnline = false;
+    showNotification('You are offline. Changes will be saved when connection is restored.', 'warning');
+});
+
+function processOfflineQueue() {
+    if (offlineQueue.length === 0) return;
+    showNotification(`Syncing ${offlineQueue.length} saved changes...`, 'info');
+    
+    const promises = offlineQueue.map(({ url, options }) => fetch(url, options));
+    Promise.all(promises)
+        .then(() => {
+            showNotification('All changes synced successfully!', 'success');
+            offlineQueue = [];
+        })
+        .catch(error => {
+            showNotification('Some changes failed to sync. Will retry...', 'warning');
+        });
+}
+
+// ==========================================
+// 2. NOTIFICATION SYSTEM
+// ==========================================
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    `;
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    notification.style.background = colors[type] || colors.info;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+// ==========================================
+// 3. CONNECTION SPEED MONITOR
+// ==========================================
+let connectionQuality = 'good';
+
+function checkConnectionSpeed() {
+    const startTime = new Date().getTime();
+    fetch('http://localhost:3002/competitions', { method: 'HEAD' })
+    .then(() => {
+        const endTime = new Date().getTime();
+        const latency = endTime - startTime;
+        
+        if (latency < 200) {
+            updateConnectionIndicator('🟢 Excellent', '#28a745');
+        } else if (latency < 500) {
+            updateConnectionIndicator('🟡 Good', '#ffc107');
+        } else {
+            updateConnectionIndicator('🔴 Slow', '#dc3545');
+        }
+    })
+    .catch(() => {
+        updateConnectionIndicator('⚫ Offline', '#dc3545');
+    });
+}
+
+function updateConnectionIndicator(text, color) {
+    let indicator = document.getElementById('connection-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'connection-indicator';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 15px;
+            background: white;
+            border: 2px solid ${color};
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+        document.body.appendChild(indicator);
+    }
+    indicator.textContent = text;
+    indicator.style.borderColor = color;
+    indicator.style.color = color;
+}
+
+setInterval(checkConnectionSpeed, 10000);
+checkConnectionSpeed();
+
+// ==========================================
+// 4. LIVE PARTICIPANT STATUS MONITOR
+// ==========================================
+function showLiveParticipantStatus(competitionId, competitionName) {
+    document.getElementById("content").innerHTML = `
+        <h2>📊 Live Participant Status</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #2196F3;">
+            <strong>🔴 LIVE</strong> - Updates every 5 seconds
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showViewCompetitions()" class="secondary">← Back to Competitions</button>
+        </div>
+        
+        <div id="participantStatusGrid">
+            <div class="loading">Loading participant status...</div>
+        </div>
+    `;
+    
+    updateParticipantStatus(competitionId);
+    const statusInterval = setInterval(() => updateParticipantStatus(competitionId), 5000);
+    window.currentStatusInterval = statusInterval;
+}
+
+function updateParticipantStatus(competitionId) {
+    Promise.all([
+        fetch(`http://localhost:3002/participants/${competitionId}`).then(r => r.json()),
+        fetch(`http://localhost:3002/overall-scores/${competitionId}`).then(r => r.json()),
+        fetch('http://localhost:3002/judges').then(r => r.json())
+    ])
+    .then(([participants, scores, allJudges]) => {
+        const judges = allJudges.filter(j => j.competition_id == competitionId);
+        const totalJudges = judges.length;
+        
+        if (participants.length === 0) {
+            document.getElementById("participantStatusGrid").innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                    <h3>No Participants Yet</h3>
+                    <p>Add participants to this competition to track their scoring status.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">';
+        
+        participants.forEach(participant => {
+            const participantScores = scores.filter(s => s.participant_id === participant.participant_id);
+            const scoredByJudges = participantScores.length;
+            const percentage = totalJudges > 0 ? (scoredByJudges / totalJudges * 100).toFixed(0) : 0;
+            
+            const statusColor = percentage == 100 ? '#28a745' : percentage > 0 ? '#ffc107' : '#dc3545';
+            const statusText = percentage == 100 ? 'COMPLETE ✅' : percentage > 0 ? 'IN PROGRESS 🔄' : 'WAITING ⏳';
+            
+            html += `
+                <div class="participant-status-card" style="background: white; border: 3px solid ${statusColor}; padding: 20px; border-radius: 12px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <h4 style="margin: 0 0 15px 0; color: #800020;">${participant.participant_name}</h4>
+                    
+                    <div style="background: #f0f0f0; height: 25px; border-radius: 15px; overflow: hidden; margin: 15px 0;">
+                        <div style="background: ${statusColor}; height: 100%; width: ${percentage}%; transition: width 0.5s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
+                            ${percentage > 10 ? percentage + '%' : ''}
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <small style="font-weight: bold; color: ${statusColor};">${statusText}</small>
+                        <small style="color: #666;">${scoredByJudges}/${totalJudges} judges</small>
+                    </div>
+                    
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        <small style="color: #999;">Performance: ${participant.performance_title || 'N/A'}</small>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        document.getElementById("participantStatusGrid").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error updating participant status:', error);
+        showNotification('Error loading participant status', 'error');
+    });
+}
+
+function stopParticipantStatus() {
+    if (window.currentStatusInterval) {
+        clearInterval(window.currentStatusInterval);
+    }
+}
+
+// ==========================================
+// 5. REAL-TIME PARTICIPANT COUNT UPDATES
+// ==========================================
+let participantCountInterval;
+
+function startParticipantCountUpdates() {
+    participantCountInterval = setInterval(updateParticipantCounts, 10000);
+}
+
+function updateParticipantCounts() {
+    fetch('http://localhost:3002/competitions')
+    .then(response => response.json())
+    .then(competitions => {
+        competitions.forEach(comp => {
+            const countElement = document.getElementById(`participant-count-${comp.competition_id}`);
+            if (countElement) {
+                const oldCount = parseInt(countElement.textContent);
+                const newCount = comp.participant_count || 0;
+                
+                if (oldCount !== newCount) {
+                    countElement.textContent = newCount;
+                    countElement.style.color = '#28a745';
+                    countElement.style.fontWeight = 'bold';
+                    
+                    // Flash animation
+                    countElement.style.animation = 'flash 1s ease-in-out';
+                    
+                    setTimeout(() => {
+                        countElement.style.color = '';
+                        countElement.style.fontWeight = '';
+                        countElement.style.animation = '';
+                    }, 2000);
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error updating participant counts:', error);
+    });
+}
+
+function stopParticipantCountUpdates() {
+    if (participantCountInterval) clearInterval(participantCountInterval);
+}
+
+// ==========================================
+// 6. LIVE SEARCH FOR PARTICIPANTS
+// ==========================================
+function setupLiveParticipantSearch() {
+    const searchContainer = document.createElement('div');
+    searchContainer.style.cssText = 'margin-bottom: 20px;';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'participantSearch';
+    searchInput.placeholder = '🔍 Search participants by name, email, or school...';
+    searchInput.style.cssText = `
+        width: 100%;
+        max-width: 500px;
+        padding: 15px 20px;
+        border: 2px solid #ddd;
+        border-radius: 25px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    `;
+    
+    searchInput.onfocus = function() {
+        this.style.borderColor = '#800020';
+        this.style.boxShadow = '0 0 10px rgba(128, 0, 32, 0.2)';
+    };
+    
+    searchInput.onblur = function() {
+        this.style.borderColor = '#ddd';
+        this.style.boxShadow = 'none';
+    };
+    
+    let searchTimeout;
+    searchInput.oninput = function(e) {
+        clearTimeout(searchTimeout);
+        
+        // Show searching indicator
+        const resultsDiv = document.getElementById('participantsList');
+        if (e.target.value.length > 0) {
+            resultsDiv.style.opacity = '0.5';
+        }
+        
+        searchTimeout = setTimeout(() => {
+            liveSearchParticipants(e.target.value);
+        }, 300);
+    };
+    
+    searchContainer.appendChild(searchInput);
+    return searchContainer;
+}
+
+function liveSearchParticipants(query) {
+    const resultsDiv = document.getElementById('participantsList');
+    
+    if (query.length === 0) {
+        // Reload all participants if search is empty
+        loadParticipants();
+        return;
+    }
+    
+    fetch('http://localhost:3002/participants')
+    .then(response => response.json())
+    .then(participants => {
+        const filtered = participants.filter(participant => {
+            const searchText = `${participant.participant_name} ${participant.email} ${participant.school_organization} ${participant.performance_title}`.toLowerCase();
+            return searchText.includes(query.toLowerCase());
+        });
+        
+        resultsDiv.style.opacity = '1';
+        
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+                    <h3>🔍 No Results Found</h3>
+                    <p>No participants match "${query}"</p>
+                    <button onclick="document.getElementById('participantSearch').value=''; loadParticipants();" class="card-button">Clear Search</button>
+                </div>
+            `;
+        } else {
+            showNotification(`Found ${filtered.length} participant(s)`, 'info');
+            displayFilteredParticipants(filtered);
+        }
+    })
+    .catch(error => {
+        console.error('Search error:', error);
+        showNotification('Search error occurred', 'error');
+        resultsDiv.style.opacity = '1';
+    });
+}
+
+function displayFilteredParticipants(participants) {
+    let html = '<div style="display: grid; gap: 20px;">';
+    
+    participants.forEach(participant => {
+        const statusColor = participant.status === 'done' ? '#28a745' : 
+                           participant.status === 'ongoing' ? '#ffc107' : '#dc3545';
+        const eventIcon = participant.is_pageant ? '👑' : '🎪';
+        
+        html += `
+            <div class="dashboard-card" style="text-align: left; border-left: 4px solid ${statusColor};">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <h3>${participant.participant_name} ${eventIcon}</h3>
+                    <span style="padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; background: ${statusColor}; color: white;">
+                        ${participant.status.toUpperCase()}
+                    </span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 15px 0;">
+                    <div>
+                        <p><strong>Age:</strong> ${participant.age}</p>
+                        <p><strong>Gender:</strong> ${participant.gender}</p>
+                        <p><strong>Email:</strong> ${participant.email}</p>
+                    </div>
+                    <div>
+                        <p><strong>Competition:</strong> ${participant.competition_name}</p>
+                        <p><strong>Event Type:</strong> ${participant.type_name || participant.category} ${eventIcon}</p>
+                        <p><strong>Performance:</strong> ${participant.performance_title || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p><strong>School/Org:</strong> ${participant.school_organization || 'N/A'}</p>
+                        ${participant.is_pageant && participant.height ? `<p><strong>Height:</strong> ${participant.height}</p>` : ''}
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <button onclick="viewParticipantDetails(${participant.participant_id})" style="margin: 2px; padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">👁️ View Details</button>
+                    <button onclick="editParticipant(${participant.participant_id})" style="margin: 2px; padding: 8px 16px; background: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer;">✏️ Edit</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    document.getElementById('participantsList').innerHTML = html;
+}
+
+// ==========================================
+// 7. QUICK STATS DASHBOARD
+// ==========================================
+function showQuickStatsDashboard() {
+    document.getElementById("content").innerHTML = `
+        <h2>📊 Quick Statistics Dashboard</h2>
+        
+        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #2196F3;">
+            <strong>🔄 Auto-refreshing</strong> - Statistics update every 15 seconds
+        </div>
+        
+        <div id="quickStatsContent">
+            <div class="loading">Loading statistics...</div>
+        </div>
+    `;
+    
+    loadQuickStats();
+    const statsInterval = setInterval(loadQuickStats, 15000);
+    window.currentStatsInterval = statsInterval;
+}
+
+function loadQuickStats() {
+    Promise.all([
+        fetch('http://localhost:3002/competitions').then(r => r.json()),
+        fetch('http://localhost:3002/participants').then(r => r.json()),
+        fetch('http://localhost:3002/judges').then(r => r.json())
+    ])
+    .then(([competitions, participants, judges]) => {
+        // Calculate stats
+        const totalCompetitions = competitions.length;
+        const totalParticipants = participants.length;
+        const totalJudges = judges.length;
+        
+        const activeCompetitions = competitions.filter(c => new Date(c.competition_date) >= new Date()).length;
+        const paidParticipants = participants.filter(p => p.status === 'paid').length;
+        const pendingParticipants = participants.filter(p => p.status === 'pending').length;
+        
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div style="text-align: center; background: linear-gradient(135deg, #800020 0%, #a0002a 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(128, 0, 32, 0.3);">
+                    <h4 style="font-size: 3em; margin: 0;">${totalCompetitions}</h4>
+                    <p style="margin: 10px 0 0 0; font-size: 1.1em;">Total Competitions</p>
+                    <small>${activeCompetitions} active</small>
+                </div>
+                
+                <div style="text-align: center; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                    <h4 style="font-size: 3em; margin: 0;">${totalParticipants}</h4>
+                    <p style="margin: 10px 0 0 0; font-size: 1.1em;">Total Participants</p>
+                    <small>${paidParticipants} paid | ${pendingParticipants} pending</small>
+                </div>
+                
+                <div style="text-align: center; background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);">
+                    <h4 style="font-size: 3em; margin: 0;">${totalJudges}</h4>
+                    <p style="margin: 10px 0 0 0; font-size: 1.1em;">Total Judges</p>
+                    <small>Assigned to competitions</small>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <h3>📈 Recent Activity</h3>
+                <div style="background: white; padding: 20px; border-radius: 12px; border: 2px solid #ddd; margin-top: 15px;">
+                    <p>🔴 Live updates - Last refreshed: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('quickStatsContent').innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error loading quick stats:', error);
+        showNotification('Error loading statistics', 'error');
+    });
+}
+
+function stopQuickStats() {
+    if (window.currentStatsInterval) {
+        clearInterval(window.currentStatsInterval);
+    }
+}
+
+// ==========================================
+// 8. ENHANCE EXISTING FUNCTIONS
+// ==========================================
+
+// Enhance the existing showViewParticipants function
+const originalShowViewParticipants = showViewParticipants;
+showViewParticipants = function() {
+    originalShowViewParticipants();
+    
+    // Add live search after the page loads
+    setTimeout(() => {
+        const content = document.getElementById('content');
+        const searchBox = setupLiveParticipantSearch();
+        
+        // Insert search box before the filters
+        const filterDiv = content.querySelector('[id*="filter"]')?.parentElement;
+        if (filterDiv) {
+            filterDiv.parentElement.insertBefore(searchBox, filterDiv);
+        } else {
+            content.insertBefore(searchBox, content.firstChild.nextSibling);
+        }
+    }, 100);
+};
+
+// ==========================================
+// 9. SELECT COMPETITION FOR LIVE STATUS
+// ==========================================
+function selectCompetitionForLiveStatus() {
+    fetch('http://localhost:3002/competitions')
+    .then(response => response.json())
+    .then(competitions => {
+        if (competitions.length === 0) {
+            showNotification('No competitions available', 'warning');
+            return;
+        }
+        
+        let html = `
+            <h2>Select Competition for Live Status</h2>
+            <div style="display: grid; gap: 15px; margin-top: 20px;">
+        `;
+        
+        competitions.forEach(comp => {
+            const eventIcon = comp.is_pageant ? '👑' : '🎪';
+            html += `
+                <div class="dashboard-card" style="text-align: left; cursor: pointer; transition: all 0.3s ease;" 
+                     onclick="showLiveParticipantStatus(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')"
+                     onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(128, 0, 32, 0.2)'"
+                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
+                    <h3>${comp.competition_name} ${eventIcon}</h3>
+                    <p><strong>Date:</strong> ${comp.competition_date}</p>
+                    <p><strong>Participants:</strong> <span id="participant-count-${comp.competition_id}">${comp.participant_count || 0}</span></p>
+                    <p><strong>Judges:</strong> ${comp.judge_count || 0}</p>
+                    <button class="card-button" style="margin-top: 10px;">View Live Status</button>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        document.getElementById("content").innerHTML = html;
+        
+        // Start auto-updating participant counts
+        startParticipantCountUpdates();
+    })
+    .catch(error => {
+        console.error('Error loading competitions:', error);
+        showNotification('Error loading competitions', 'error');
+    });
+}
+
+// ==========================================
+// 10. ADD TO DASHBOARD
+// ==========================================
+// Enhance the existing showDashboard to include new features
+const originalShowDashboard = showDashboard;
+showDashboard = function() {
+    originalShowDashboard();
+    
+    // Add new dashboard cards
+    setTimeout(() => {
+        const content = document.getElementById('content');
+        const dashboardGrid = content.querySelector('[style*="grid"]');
+        
+        if (dashboardGrid) {
+            const newCards = `
+                <div class="dashboard-card">
+                    <h3>📊 Live Status</h3>
+                    <p>Real-time participant scoring status</p>
+                    <button onclick="selectCompetitionForLiveStatus()" class="card-button">View Live Status</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>📈 Quick Stats</h3>
+                    <p>Auto-refreshing statistics dashboard</p>
+                    <button onclick="showQuickStatsDashboard()" class="card-button">View Statistics</button>
+                </div>
+            `;
+            
+            dashboardGrid.insertAdjacentHTML('beforeend', newCards);
+        }
+    }, 100);
+};
+
+// ==========================================
+// 11. CLEANUP ON PAGE NAVIGATION
+// ==========================================
+function cleanupIntervals() {
+    stopParticipantStatus();
+    stopParticipantCountUpdates();
+    stopQuickStats();
+}
+
+// Auto-cleanup when navigating
+window.addEventListener('beforeunload', cleanupIntervals);
+
+// ==========================================
+// 12. FLASH ANIMATION CSS
+// ==========================================
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes flash {
+        0%, 100% { background-color: transparent; }
+        50% { background-color: #ffd700; }
+    }
+`;
+document.head.appendChild(style);
+
+// ==========================================
+// END OF AJAX ENHANCEMENTS FOR staff-app.js
+// ==========================================
+
+console.log('✅ AJAX Enhancements loaded for Staff Dashboard');

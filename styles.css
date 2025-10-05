@@ -537,3 +537,51 @@ table tr:hover {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ==========================================
+   AJAX ANIMATION STYLES - ADD AT BOTTOM
+   ========================================== */
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.score-updated {
+    animation: scoreFlash 1s ease-in-out;
+}
+
+@keyframes scoreFlash {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: #ffd700; }
+}
+
+.notification {
+    animation: slideIn 0.3s ease-out;
+}
+
+.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

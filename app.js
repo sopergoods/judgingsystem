@@ -318,7 +318,10 @@ function showCreateCompetitionForm() {
         };
     });
 
- document.getElementById("competitionForm").addEventListener("submit", function(event) {
+ // Replace the broken form submission handler in showCreateCompetitionForm()
+// Find this section around line 142 and replace it with:
+
+document.getElementById("createCompetitionForm").addEventListener("submit", function(event) {
     event.preventDefault(); // Prevent default form submission
 
     const competitionData = {
@@ -353,6 +356,8 @@ function showCreateCompetitionForm() {
 }
 
 // Enhanced View Competitions with Criteria Management
+// COMPLETE FIX: Replace your showViewCompetitions function with this corrected version
+
 function showViewCompetitions() {
     document.getElementById("content").innerHTML = `
         <h2>Manage Competitions</h2>
@@ -360,10 +365,6 @@ function showViewCompetitions() {
             <button onclick="showCreateCompetitionForm()" class="card-button">
                 Add New Competition
             </button>
-            ${competition.is_pageant ? 
-    `<button onclick="setupFlexiblePageant(${competition.competition_id}, '${competition.competition_name}')" style="background: #e91e63; color: white; margin: 2px; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Setup Pageant Days</button>` : 
-    ''
-}
         </div>
         <div id="competitionsList">
             <div class="loading">Loading competitions...</div>
@@ -373,7 +374,7 @@ function showViewCompetitions() {
     fetch('http://localhost:3002/competitions')
     .then(response => response.json())
     .then(competitions => {
-        let competitionsHtml = `<div style="display: grid; gap: 20px;">`;
+        let competitionsHtml = '<div style="display: grid; gap: 20px;">';
         
         competitions.forEach(competition => {
             const categoryBadge = competition.is_pageant ? 
@@ -395,14 +396,14 @@ function showViewCompetitions() {
                         </div>
                     </div>
                     <div style="margin-top: 20px;">
-                       <button onclick="manageCriteria(${competition.competition_id}, '${competition.competition_name}')" class="card-button">Manage Criteria</button>
-${competition.is_pageant ? 
-    `<button onclick="setupFlexiblePageant(${competition.competition_id}, '${competition.competition_name}')" style="background: #e91e63; color: white;">Setup Pageant Days</button>` : 
-    ''
-}
-                        <button onclick="viewCompetitionDetails(${competition.competition_id})" style="background: #17a2b8;">View Details</button>
-                        <button onclick="editCompetition(${competition.competition_id})" style="background: #ffc107; color: #000;">Edit</button>
-                        <button onclick="deleteCompetition(${competition.competition_id})" style="background: #dc3545;">Delete</button>
+                        <button onclick="manageCriteria(${competition.competition_id}, '${competition.competition_name.replace(/'/g, "\\'")}')">Manage Criteria</button>
+                        ${competition.is_pageant ? 
+                            `<button onclick="setupFlexiblePageant(${competition.competition_id}, '${competition.competition_name.replace(/'/g, "\\'")}')">Setup Pageant Days</button>` : 
+                            ''
+                        }
+                        <button onclick="viewCompetitionDetails(${competition.competition_id})">View Details</button>
+                        <button onclick="editCompetition(${competition.competition_id})">Edit</button>
+                        <button onclick="deleteCompetition(${competition.competition_id})">Delete</button>
                     </div>
                 </div>
             `;
@@ -1419,6 +1420,9 @@ function addPageantSegment(competitionId) {
     document.getElementById("segmentsList").insertAdjacentHTML('afterbegin', segmentHtml);
 }
 // Flexible Pageant Setup - Admin Controls Everything
+// FIXED Multi-Day Pageant Setup Function
+// Replace the setupFlexiblePageant function in your app.js with this:
+
 function setupFlexiblePageant(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
         <h2>Setup Multi-Day Pageant</h2>
@@ -1474,8 +1478,10 @@ function setupFlexiblePageant(competitionId, competitionName) {
     .then(response => response.json())
     .then(competition => {
         document.getElementById('start_date').value = competition.competition_date;
-    });
+    })
+    .catch(error => console.error('Error loading competition:', error));
 
+    // Update day inputs function
     window.updateDayInputs = function() {
         const totalDays = parseInt(document.getElementById('total_days').value);
         const dayInputsDiv = document.getElementById('dayInputs');
@@ -1529,7 +1535,7 @@ function setupFlexiblePageant(competitionId, competitionName) {
                                     </select>
                                 </div>
                                 <div>
-                                    <label>Custom Name (if selected custom):</label>
+                                    <label>Custom Name (if custom):</label>
                                     <input type="text" class="custom-segment-name" placeholder="Enter custom segment name">
                                 </div>
                             </div>
@@ -1543,7 +1549,7 @@ function setupFlexiblePageant(competitionId, competitionName) {
                         </div>
                     </div>
                     
-                    <button type="button" onclick="addSegmentToDay(${day})" style="background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 4px;">
+                    <button type="button" onclick="addSegmentToDay(${day})" style="background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 4px; margin-top: 10px;">
                         Add Another Segment to Day ${day}
                     </button>
                 </div>
@@ -1557,13 +1563,16 @@ function setupFlexiblePageant(competitionId, competitionName) {
         
         // Auto-fill dates
         const startDate = new Date(document.getElementById('start_date').value);
-        for (let day = 1; day <= totalDays; day++) {
-            const dayDate = new Date(startDate);
-            dayDate.setDate(startDate.getDate() + (day - 1));
-            document.getElementById(`day_${day}_date`).value = dayDate.toISOString().split('T')[0];
+        if (!isNaN(startDate.getTime())) {
+            for (let day = 1; day <= totalDays; day++) {
+                const dayDate = new Date(startDate);
+                dayDate.setDate(startDate.getDate() + (day - 1));
+                document.getElementById(`day_${day}_date`).value = dayDate.toISOString().split('T')[0];
+            }
         }
     };
 
+    // Add segment to day function
     window.addSegmentToDay = function(day) {
         const segmentsDiv = document.getElementById(`day_${day}_segments`);
         const segmentCount = segmentsDiv.children.length + 1;
@@ -1590,7 +1599,7 @@ function setupFlexiblePageant(competitionId, competitionName) {
                     </select>
                 </div>
                 <div>
-                    <label>Custom Name (if selected custom):</label>
+                    <label>Custom Name (if custom):</label>
                     <input type="text" class="custom-segment-name" placeholder="Enter custom segment name">
                 </div>
             </div>
@@ -1606,14 +1615,30 @@ function setupFlexiblePageant(competitionId, competitionName) {
         segmentsDiv.appendChild(newSegment);
     };
 
+    // Remove segment function
     window.removeSegment = function(button) {
-        button.closest('.segment-input').remove();
+        const segmentInput = button.closest('.segment-input');
+        const segmentsDiv = segmentInput.parentElement;
+        
+        // Don't remove if it's the last segment
+        if (segmentsDiv.children.length > 1) {
+            segmentInput.remove();
+        } else {
+            alert('Each day must have at least one segment.');
+        }
     };
 
+    // Form submission
     document.getElementById('pageantSetupForm').onsubmit = function(event) {
         event.preventDefault();
         
         const totalDays = parseInt(document.getElementById('total_days').value);
+        
+        if (!totalDays) {
+            alert('Please select the number of days.');
+            return;
+        }
+        
         const pageantData = {
             competition_id: competitionId,
             total_days: totalDays,
@@ -1622,39 +1647,71 @@ function setupFlexiblePageant(competitionId, competitionName) {
         
         // Collect data for each day
         for (let day = 1; day <= totalDays; day++) {
+            const dayDate = document.getElementById(`day_${day}_date`).value;
+            const dayTime = document.getElementById(`day_${day}_time`).value;
+            const dayDescription = document.getElementById(`day_${day}_description`).value;
+            
+            if (!dayDate || !dayDescription) {
+                alert(`Please fill in all fields for Day ${day}`);
+                return;
+            }
+            
             const dayData = {
                 day_number: day,
-                date: document.getElementById(`day_${day}_date`).value,
-                time: document.getElementById(`day_${day}_time`).value,
-                description: document.getElementById(`day_${day}_description`).value,
+                date: dayDate,
+                time: dayTime,
+                description: dayDescription,
                 segments: []
             };
             
             // Collect segments for this day
             const segmentInputs = document.getElementById(`day_${day}_segments`).querySelectorAll('.segment-input');
+            
             segmentInputs.forEach((segmentDiv, index) => {
                 const segmentSelect = segmentDiv.querySelector('.segment-select');
                 const customName = segmentDiv.querySelector('.custom-segment-name');
                 const description = segmentDiv.querySelector('.segment-description');
                 
                 let segmentName = segmentSelect.value;
-                if (segmentName === 'custom' && customName.value.trim()) {
-                    segmentName = customName.value.trim();
+                
+                // If custom is selected, use the custom name
+                if (segmentName === 'custom') {
+                    if (customName.value.trim()) {
+                        segmentName = customName.value.trim();
+                    } else {
+                        alert(`Day ${day}, Segment ${index + 1}: Please enter a custom segment name or choose a different option.`);
+                        return;
+                    }
                 }
                 
-                if (segmentName && segmentName !== 'custom') {
+                // Only add if segment name is selected
+                if (segmentName && segmentName !== '' && segmentName !== 'custom') {
                     dayData.segments.push({
                         name: segmentName,
-                        description: description.value,
+                        description: description.value.trim(),
                         order: index + 1
                     });
                 }
             });
             
+            // Check if day has at least one segment
+            if (dayData.segments.length === 0) {
+                alert(`Day ${day} must have at least one segment with a name selected.`);
+                return;
+            }
+            
             pageantData.days.push(dayData);
         }
         
-        // Save to server
+        // Validate we have all days
+        if (pageantData.days.length !== totalDays) {
+            alert('Please complete all day setups.');
+            return;
+        }
+        
+        // Send to server
+        console.log('Sending pageant data:', pageantData);
+        
         fetch('http://localhost:3002/create-flexible-pageant', {
             method: 'POST',
             headers: {
@@ -1673,7 +1730,542 @@ function setupFlexiblePageant(competitionId, competitionName) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error creating pageant setup');
+            alert('Error creating pageant setup: ' + error.message);
         });
     };
+
+
 }
+
+// ==========================================
+// AJAX ENHANCEMENTS FOR ADMIN DASHBOARD
+// ADD THIS AT THE BOTTOM OF app.js
+// ==========================================
+
+// ==========================================
+// 1. OFFLINE/ONLINE DETECTION
+// ==========================================
+let isOnline = navigator.onLine;
+let offlineQueue = [];
+
+window.addEventListener('online', function() {
+    isOnline = true;
+    showNotification('You are back online!', 'success');
+    processOfflineQueue();
+});
+
+window.addEventListener('offline', function() {
+    isOnline = false;
+    showNotification('You are offline. Changes will be saved when connection is restored.', 'warning');
+});
+
+function processOfflineQueue() {
+    if (offlineQueue.length === 0) return;
+    showNotification(`Syncing ${offlineQueue.length} saved changes...`, 'info');
+    
+    const promises = offlineQueue.map(({ url, options }) => fetch(url, options));
+    Promise.all(promises)
+        .then(() => {
+            showNotification('All changes synced successfully!', 'success');
+            offlineQueue = [];
+        })
+        .catch(error => {
+            showNotification('Some changes failed to sync. Will retry...', 'warning');
+        });
+}
+
+// ==========================================
+// 2. NOTIFICATION SYSTEM
+// ==========================================
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    `;
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    notification.style.background = colors[type] || colors.info;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+// ==========================================
+// 3. CONNECTION SPEED MONITOR
+// ==========================================
+let connectionQuality = 'good';
+
+function checkConnectionSpeed() {
+    const startTime = new Date().getTime();
+    fetch('http://localhost:3002/competitions', { method: 'HEAD' })
+    .then(() => {
+        const endTime = new Date().getTime();
+        const latency = endTime - startTime;
+        
+        if (latency < 200) {
+            updateConnectionIndicator('🟢 Excellent', '#28a745');
+        } else if (latency < 500) {
+            updateConnectionIndicator('🟡 Good', '#ffc107');
+        } else {
+            updateConnectionIndicator('🔴 Slow', '#dc3545');
+        }
+    })
+    .catch(() => {
+        updateConnectionIndicator('⚫ Offline', '#dc3545');
+    });
+}
+
+function updateConnectionIndicator(text, color) {
+    let indicator = document.getElementById('connection-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'connection-indicator';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 15px;
+            background: white;
+            border: 2px solid ${color};
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+        document.body.appendChild(indicator);
+    }
+    indicator.textContent = text;
+    indicator.style.borderColor = color;
+    indicator.style.color = color;
+}
+
+setInterval(checkConnectionSpeed, 10000);
+checkConnectionSpeed();
+
+// ==========================================
+// 4. LIVE LEADERBOARD
+// ==========================================
+function showLiveLeaderboard(competitionId, competitionName) {
+    document.getElementById("content").innerHTML = `
+        <h2>🏆 Live Leaderboard</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #2196F3;">
+            <strong>🔴 LIVE</strong> - Updates automatically every 5 seconds
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showViewCompetitions()" class="secondary">← Back to Competitions</button>
+        </div>
+        
+        <div id="leaderboardContent">
+            <div class="loading">Loading leaderboard...</div>
+        </div>
+    `;
+    
+    loadLeaderboard(competitionId);
+    const leaderboardInterval = setInterval(() => loadLeaderboard(competitionId), 5000);
+    window.currentLeaderboardInterval = leaderboardInterval;
+}
+
+function loadLeaderboard(competitionId) {
+    fetch(`http://localhost:3002/overall-scores/${competitionId}`)
+    .then(response => response.json())
+    .then(scores => {
+        const participantScores = {};
+        scores.forEach(score => {
+            if (!participantScores[score.participant_id]) {
+                participantScores[score.participant_id] = {
+                    name: score.participant_name,
+                    performance: score.performance_title,
+                    scores: [],
+                    total: 0,
+                    average: 0
+                };
+            }
+            participantScores[score.participant_id].scores.push(score.total_score);
+        });
+        
+        const rankings = Object.values(participantScores).map(participant => {
+            participant.total = participant.scores.reduce((a, b) => a + b, 0);
+            participant.average = participant.total / participant.scores.length;
+            return participant;
+        }).sort((a, b) => b.average - a.average);
+        
+        displayLeaderboard(rankings);
+    })
+    .catch(error => {
+        console.error('Error loading leaderboard:', error);
+        document.getElementById("leaderboardContent").innerHTML = 
+            '<p class="alert alert-error">Error loading leaderboard. Retrying...</p>';
+    });
+}
+
+function displayLeaderboard(rankings) {
+    if (rankings.length === 0) {
+        document.getElementById("leaderboardContent").innerHTML = `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>No Scores Yet</h3>
+                <p>Waiting for judges to submit scores...</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div style="display: grid; gap: 15px;">';
+    rankings.forEach((participant, index) => {
+        const rank = index + 1;
+        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+        const bgColor = rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)' : 
+                       rank === 2 ? 'linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%)' : 
+                       rank === 3 ? 'linear-gradient(135deg, #cd7f32 0%, #e69a5a 100%)' : '#ffffff';
+        const borderColor = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : '#ddd';
+        
+        html += `
+            <div style="background: ${bgColor}; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 3px solid ${borderColor}; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div style="font-size: 3em; font-weight: bold;">${medal}</div>
+                    <div>
+                        <h3 style="margin: 0; color: #800020;">${participant.name}</h3>
+                        <small style="color: #666;">${participant.performance || 'N/A'}</small><br>
+                        <small style="color: #666;">Scored by ${participant.scores.length} judge(s)</small>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 3em; font-weight: bold; color: #800020;">${participant.average.toFixed(2)}</div>
+                    <small style="color: #666;">Average Score</small>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    document.getElementById("leaderboardContent").innerHTML = html;
+}
+
+function stopLeaderboard() {
+    if (window.currentLeaderboardInterval) {
+        clearInterval(window.currentLeaderboardInterval);
+    }
+}
+
+// ==========================================
+// 5. LIVE JUDGE ACTIVITY MONITOR
+// ==========================================
+function showJudgeActivityMonitor() {
+    document.getElementById("content").innerHTML = `
+        <h2>👁️ Live Judge Activity Monitor</h2>
+        
+        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #2196F3;">
+            <strong>Real-time monitoring</strong> - See which judges are actively scoring (updates every 3 seconds)
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showDashboard()" class="secondary">← Back to Dashboard</button>
+        </div>
+        
+        <div id="judgeActivityContent">
+            <div class="loading">Loading judge activity...</div>
+        </div>
+    `;
+    
+    updateJudgeActivity();
+    const activityInterval = setInterval(updateJudgeActivity, 3000);
+    window.currentActivityInterval = activityInterval;
+}
+
+function updateJudgeActivity() {
+    Promise.all([
+        fetch('http://localhost:3002/judges').then(r => r.json()),
+        fetch('http://localhost:3002/competitions').then(r => r.json())
+    ])
+    .then(([judges, competitions]) => {
+        let activityHtml = '<div style="display: grid; gap: 15px;">';
+        
+        const judgePromises = judges.map(judge => {
+            const competition = competitions.find(c => c.competition_id === judge.competition_id);
+            if (!competition) return Promise.resolve(null);
+            
+            return fetch(`http://localhost:3002/overall-scores/${competition.competition_id}`)
+            .then(r => r.json())
+            .then(scores => {
+                const judgeScores = scores.filter(s => s.judge_id === judge.judge_id);
+                
+                // Check if any score was submitted in last 2 minutes
+                const now = new Date();
+                const recentScores = judgeScores.filter(s => {
+                    const scoreTime = new Date(s.submitted_at || s.updated_at);
+                    return (now - scoreTime) < 120000; // 2 minutes
+                });
+                
+                const isActive = recentScores.length > 0;
+                const statusColor = isActive ? '#28a745' : '#6c757d';
+                const statusText = isActive ? '🟢 ACTIVE NOW' : '⚪ IDLE';
+                const lastActivity = judgeScores.length > 0 ? 
+                    new Date(judgeScores[0].submitted_at || judgeScores[0].updated_at) : null;
+                
+                return `
+                    <div style="background: white; border: 3px solid ${statusColor}; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 5px 0; color: #800020;">⚖️ ${judge.judge_name}</h3>
+                                <p style="margin: 0; color: #666;"><strong>Competition:</strong> ${competition.competition_name}</p>
+                                <p style="margin: 5px 0 0 0; color: #666;"><strong>Expertise:</strong> ${judge.expertise}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: bold; font-size: 1.2em; color: ${statusColor}; margin-bottom: 5px;">${statusText}</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #800020;">${judgeScores.length}</div>
+                                <small style="color: #666;">scores submitted</small>
+                                ${lastActivity ? `<br><small style="color: #999;">Last: ${lastActivity.toLocaleTimeString()}</small>` : ''}
+                            </div>
+                        </div>
+                        ${isActive ? `
+                            <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px; color: #155724; font-size: 14px;">
+                                🔥 Currently scoring participants!
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        });
+        
+        Promise.all(judgePromises)
+        .then(results => {
+            const validResults = results.filter(r => r !== null);
+            if (validResults.length === 0) {
+                activityHtml = `
+                    <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                        <h3>No Judges Assigned</h3>
+                        <p>Assign judges to competitions to monitor their activity.</p>
+                    </div>
+                `;
+            } else {
+                activityHtml += validResults.join('') + '</div>';
+            }
+            document.getElementById("judgeActivityContent").innerHTML = activityHtml;
+        });
+    })
+    .catch(error => {
+        console.error('Error updating judge activity:', error);
+    });
+}
+
+function stopJudgeActivity() {
+    if (window.currentActivityInterval) {
+        clearInterval(window.currentActivityInterval);
+    }
+}
+
+// ==========================================
+// 6. LIVE SEARCH
+// ==========================================
+function setupLiveSearch(type, containerId) {
+    const searchContainer = document.createElement('div');
+    searchContainer.style.cssText = 'margin-bottom: 20px;';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = `🔍 Search ${type}...`;
+    searchInput.style.cssText = `
+        width: 100%;
+        max-width: 400px;
+        padding: 12px 20px;
+        border: 2px solid #ddd;
+        border-radius: 25px;
+        font-size: 16px;
+        transition: border-color 0.3s ease;
+    `;
+    
+    searchInput.onfocus = function() {
+        this.style.borderColor = '#800020';
+    };
+    
+    searchInput.onblur = function() {
+        this.style.borderColor = '#ddd';
+    };
+    
+    let searchTimeout;
+    searchInput.oninput = function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => liveSearch(e.target.value, type), 300);
+    };
+    
+    searchContainer.appendChild(searchInput);
+    return searchContainer;
+}
+
+function liveSearch(query, type) {
+    const url = type === 'participants' ? 
+        'http://localhost:3002/participants' : 
+        'http://localhost:3002/judges';
+    
+    fetch(url)
+    .then(response => response.json())
+    .then(items => {
+        const filtered = items.filter(item => {
+            const searchText = type === 'participants' ? 
+                `${item.participant_name} ${item.email} ${item.school_organization}`.toLowerCase() :
+                `${item.judge_name} ${item.email} ${item.expertise}`.toLowerCase();
+            return searchText.includes(query.toLowerCase());
+        });
+        
+        showNotification(`Found ${filtered.length} ${type}`, 'info');
+        
+        // You can extend this to actually filter the display
+        console.log('Filtered results:', filtered);
+    })
+    .catch(error => {
+        console.error('Search error:', error);
+    });
+}
+
+// ==========================================
+// 7. REAL-TIME PARTICIPANT COUNT UPDATES
+// ==========================================
+let participantCountInterval;
+
+function startParticipantCountUpdates() {
+    participantCountInterval = setInterval(updateParticipantCounts, 10000);
+}
+
+function updateParticipantCounts() {
+    fetch('http://localhost:3002/competitions')
+    .then(response => response.json())
+    .then(competitions => {
+        competitions.forEach(comp => {
+            const countElement = document.getElementById(`participant-count-${comp.competition_id}`);
+            if (countElement) {
+                const oldCount = parseInt(countElement.textContent);
+                const newCount = comp.participant_count || 0;
+                
+                if (oldCount !== newCount) {
+                    countElement.textContent = newCount;
+                    countElement.style.color = '#28a745';
+                    setTimeout(() => {
+                        countElement.style.color = '';
+                    }, 2000);
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error updating participant counts:', error);
+    });
+}
+
+function stopParticipantCountUpdates() {
+    if (participantCountInterval) clearInterval(participantCountInterval);
+}
+
+// ==========================================
+// 8. ENHANCED DASHBOARD WITH QUICK ACTIONS
+// ==========================================
+// Modify the existing showDashboard function to add new buttons
+// Add this to your existing dashboard cards:
+
+function addLiveFeaturesToDashboard() {
+    // This enhances the existing dashboard
+    // Add after the existing dashboard cards in showDashboard()
+    const dashboardContent = `
+        <div class="dashboard-card">
+            <h3>🔴 Live Leaderboard</h3>
+            <p>Real-time competition rankings</p>
+            <button onclick="selectCompetitionForLeaderboard()" class="card-button">View Live Rankings</button>
+        </div>
+        
+        <div class="dashboard-card">
+            <h3>👁️ Judge Activity</h3>
+            <p>Monitor judge scoring activity</p>
+            <button onclick="showJudgeActivityMonitor()" class="card-button">Monitor Judges</button>
+        </div>
+    `;
+    
+    return dashboardContent;
+}
+
+function selectCompetitionForLeaderboard() {
+    fetch('http://localhost:3002/competitions')
+    .then(response => response.json())
+    .then(competitions => {
+        if (competitions.length === 0) {
+            showNotification('No competitions available', 'warning');
+            return;
+        }
+        
+        let html = `
+            <h2>Select Competition for Live Leaderboard</h2>
+            <div style="display: grid; gap: 15px; margin-top: 20px;">
+        `;
+        
+        competitions.forEach(comp => {
+            html += `
+                <div class="dashboard-card" style="text-align: left; cursor: pointer;" onclick="showLiveLeaderboard(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">
+                    <h3>${comp.competition_name}</h3>
+                    <p><strong>Date:</strong> ${comp.competition_date}</p>
+                    <p><strong>Participants:</strong> ${comp.participant_count || 0}</p>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        document.getElementById("content").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error loading competitions:', error);
+        showNotification('Error loading competitions', 'error');
+    });
+}
+
+// ==========================================
+// 9. AUTO-REFRESH FOR SCORING RESULTS
+// ==========================================
+let scoringResultsInterval;
+
+function startScoringResultsRefresh(competitionId) {
+    scoringResultsInterval = setInterval(() => {
+        loadScoringResults(); // Refresh the current view
+    }, 10000); // Every 10 seconds
+}
+
+function stopScoringResultsRefresh() {
+    if (scoringResultsInterval) {
+        clearInterval(scoringResultsInterval);
+    }
+}
+
+// ==========================================
+// 10. CLEANUP ON PAGE NAVIGATION
+// ==========================================
+// Call this when navigating away from live pages
+function cleanupIntervals() {
+    stopLeaderboard();
+    stopJudgeActivity();
+    stopParticipantCountUpdates();
+    stopScoringResultsRefresh();
+}
+
+// ==========================================
+// END OF AJAX ENHANCEMENTS FOR app.js
+// ==========================================
+
+console.log('✅ AJAX Enhancements loaded for Admin Dashboard');
