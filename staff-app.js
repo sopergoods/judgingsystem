@@ -1637,8 +1637,15 @@ function updateParticipantStatus(competitionId) {
         const judges = allJudges.filter(j => j.competition_id == competitionId);
         const totalJudges = judges.length;
         
+        // FIX: Check if element exists before updating
+        const participantStatusGrid = document.getElementById("participantStatusGrid");
+        if (!participantStatusGrid) {
+            console.error('participantStatusGrid element not found');
+            return;
+        }
+        
         if (participants.length === 0) {
-            document.getElementById("participantStatusGrid").innerHTML = `
+            participantStatusGrid.innerHTML = `
                 <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
                     <h3>No Participants Yet</h3>
                     <p>Add participants to this competition to track their scoring status.</p>
@@ -1658,7 +1665,7 @@ function updateParticipantStatus(competitionId) {
             const statusText = percentage == 100 ? 'COMPLETE ✅' : percentage > 0 ? 'IN PROGRESS 🔄' : 'WAITING ⏳';
             
             html += `
-                <div class="participant-status-card" style="background: white; border: 3px solid ${statusColor}; padding: 20px; border-radius: 12px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="participant-status-card" style="background: white; border: 3px solid ${statusColor}; padding: 20px; border-radius: 12px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0 0 15px 0; color: #800020;">${participant.participant_name}</h4>
                     
                     <div style="background: #f0f0f0; height: 25px; border-radius: 15px; overflow: hidden; margin: 15px 0;">
@@ -1680,20 +1687,22 @@ function updateParticipantStatus(competitionId) {
         });
         
         html += '</div>';
-        document.getElementById("participantStatusGrid").innerHTML = html;
+        participantStatusGrid.innerHTML = html;
     })
     .catch(error => {
         console.error('Error updating participant status:', error);
-        showNotification('Error loading participant status', 'error');
+        const participantStatusGrid = document.getElementById("participantStatusGrid");
+        if (participantStatusGrid) {
+            participantStatusGrid.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #fff3cd; border-radius: 8px;">
+                    <h3>⚠️ Error Loading Status</h3>
+                    <p>Could not load participant status. Please refresh the page.</p>
+                    <button onclick="location.reload()" class="card-button">Refresh Page</button>
+                </div>
+            `;
+        }
     });
 }
-
-function stopParticipantStatus() {
-    if (window.currentStatusInterval) {
-        clearInterval(window.currentStatusInterval);
-    }
-}
-
 // ==========================================
 // 5. REAL-TIME PARTICIPANT COUNT UPDATES
 // ==========================================

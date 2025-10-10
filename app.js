@@ -381,32 +381,34 @@ function showViewCompetitions() {
                 '<span style="background: #e91e63; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">PAGEANT</span>' :
                 '<span style="background: #2196f3; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">REGULAR</span>';
             
-            competitionsHtml += `
-                <div class="dashboard-card" style="text-align: left;">
-                    <h3>${competition.competition_name} ${categoryBadge}</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
-                        <div>
-                            <p><strong>Event Type:</strong> ${competition.type_name}</p>
-                            <p><strong>Date:</strong> ${competition.competition_date}</p>
-                            <p><strong>Participants:</strong> ${competition.participant_count || 0}</p>
-                        </div>
-                        <div>
-                            <p><strong>Judges:</strong> ${competition.judge_count || 0}</p>
-                            <p><strong>Description:</strong> ${competition.event_description || 'No description'}</p>
-                        </div>
-                    </div>
-                    <div style="margin-top: 20px;">
-                        <button onclick="manageCriteria(${competition.competition_id}, '${competition.competition_name.replace(/'/g, "\\'")}')">Manage Criteria</button>
-                        ${competition.is_pageant ? 
-                            `<button onclick="setupFlexiblePageant(${competition.competition_id}, '${competition.competition_name.replace(/'/g, "\\'")}')">Setup Pageant Days</button>` : 
-                            ''
-                        }
-                        <button onclick="viewCompetitionDetails(${competition.competition_id})">View Details</button>
-                        <button onclick="editCompetition(${competition.competition_id})">Edit</button>
-                        <button onclick="deleteCompetition(${competition.competition_id})">Delete</button>
-                    </div>
-                </div>
-            `;
+            // Fix: Use proper string concatenation
+            competitionsHtml += '<div class="dashboard-card" style="text-align: left;">';
+            competitionsHtml += '<h3>' + competition.competition_name + ' ' + categoryBadge + '</h3>';
+            competitionsHtml += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">';
+            competitionsHtml += '<div>';
+            competitionsHtml += '<p><strong>Event Type:</strong> ' + competition.type_name + '</p>';
+            competitionsHtml += '<p><strong>Date:</strong> ' + competition.competition_date + '</p>';
+            competitionsHtml += '<p><strong>Participants:</strong> ' + (competition.participant_count || 0) + '</p>';
+            competitionsHtml += '</div>';
+            competitionsHtml += '<div>';
+            competitionsHtml += '<p><strong>Judges:</strong> ' + (competition.judge_count || 0) + '</p>';
+            competitionsHtml += '<p><strong>Description:</strong> ' + (competition.event_description || 'No description') + '</p>';
+            competitionsHtml += '</div>';
+            competitionsHtml += '</div>';
+            competitionsHtml += '<div style="margin-top: 20px;">';
+            competitionsHtml += '<button onclick="manageCriteria(' + competition.competition_id + ', \'' + competition.competition_name.replace(/'/g, "\\'") + '\')">Manage Criteria</button>';
+            
+            // Add pageant buttons if it's a pageant
+            if (competition.is_pageant) {
+                competitionsHtml += '<button onclick="setupFlexiblePageant(' + competition.competition_id + ', \'' + competition.competition_name.replace(/'/g, "\\'") + '\')">Setup Pageant Days</button>';
+                competitionsHtml += '<button onclick="viewPageantSegments(' + competition.competition_id + ', \'' + competition.competition_name.replace(/'/g, "\\'") + '\')">View Schedule</button>';
+            }
+            
+            competitionsHtml += '<button onclick="viewCompetitionDetails(' + competition.competition_id + ')">View Details</button>';
+            competitionsHtml += '<button onclick="editCompetition(' + competition.competition_id + ')">Edit</button>';
+            competitionsHtml += '<button onclick="deleteCompetition(' + competition.competition_id + ')">Delete</button>';
+            competitionsHtml += '</div>';
+            competitionsHtml += '</div>';
         });
         
         competitionsHtml += '</div>';
@@ -1471,7 +1473,7 @@ function setupFlexiblePageant(competitionId, competitionName) {
                 <button type="button" onclick="showViewCompetitions()" class="secondary">Cancel</button>
             </div>
         </form>
-    `;
+    `};
 
     // Set default start date to competition date
     fetch(`http://localhost:3002/competition/${competitionId}`)
@@ -1572,6 +1574,133 @@ function setupFlexiblePageant(competitionId, competitionName) {
         }
     };
 
+    function viewPageantSegments(competitionId, competitionName) {
+    document.getElementById("content").innerHTML = `
+        <h2>👑 Pageant Schedule</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showViewCompetitions()" class="secondary">← Back to Competitions</button>
+            <button onclick="setupFlexiblePageant(${competitionId}, '${competitionName.replace(/'/g, "\\'")}')" class="card-button">+ Add More Days</button>
+        </div>
+        
+        <div id="segmentsDisplay">
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 24px;">⏳</div>
+                <p>Loading pageant schedule...</p>
+            </div>
+        </div>
+    `;
+    
+    // Fetch pageant segments
+    fetch(`http://localhost:3002/pageant-segments/${competitionId}`)
+    .then(response => response.json())
+    .then(segments => {
+        if (segments.length === 0) {
+            document.getElementById("segmentsDisplay").innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+                    <h3>⚠️ No Pageant Schedule Set</h3>
+                    <p>This pageant competition doesn't have a multi-day schedule yet.</p>
+                    <button onclick="setupFlexiblePageant(${competitionId}, '${competitionName.replace(/'/g, "\\'")}')" class="card-button">Setup Schedule Now</button>
+                </div>
+            `;
+            return;
+        }
+        
+        // Group segments by day
+        const segmentsByDay = {};
+        segments.forEach(segment => {
+            if (!segmentsByDay[segment.day_number]) {
+                segmentsByDay[segment.day_number] = [];
+            }
+            segmentsByDay[segment.day_number].push(segment);
+        });
+        
+        let html = `
+            <div style="background: #d4edda; border: 2px solid #28a745; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                <strong>✅ Schedule Created!</strong>
+                <p style="margin-top: 8px;">This pageant has <strong>${Object.keys(segmentsByDay).length} days</strong> with <strong>${segments.length} total segments</strong></p>
+            </div>
+        `;
+        
+        // Display each day
+        Object.keys(segmentsByDay).sort((a, b) => a - b).forEach(dayNumber => {
+            const daySegments = segmentsByDay[dayNumber];
+            const firstSegment = daySegments[0];
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left; margin-bottom: 20px; border-left: 5px solid #ff69b4;">
+                    <h3>📅 Day ${dayNumber} - ${new Date(firstSegment.segment_date).toLocaleDateString()}</h3>
+                    <p><strong>Time:</strong> ${firstSegment.segment_time || '18:00'}</p>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4 style="color: #800020;">Segments:</h4>
+                        <div style="display: grid; gap: 10px; margin-top: 10px;">
+            `;
+            
+            daySegments.forEach((segment, index) => {
+                html += `
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 3px solid #800020;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${index + 1}. ${segment.segment_name}</strong>
+                                ${segment.description ? `<br><small style="color: #666;">${segment.description}</small>` : ''}
+                            </div>
+                            <div>
+                                <button onclick="deletePageantSegment(${segment.segment_id}, ${competitionId}, '${competitionName.replace(/'/g, "\\'")}')" 
+                                        style="background: #dc3545; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer;">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        document.getElementById("segmentsDisplay").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error loading pageant segments:', error);
+        document.getElementById("segmentsDisplay").innerHTML = `
+            <div style="text-align: center; padding: 40px; background: #f8d7da; border-radius: 8px; border: 2px solid #dc3545;">
+                <h3>❌ Error Loading Schedule</h3>
+                <p>Could not load pageant schedule. Error: ${error.message}</p>
+            </div>
+        `;
+    });
+}
+
+// Function to delete a pageant segment
+function deletePageantSegment(segmentId, competitionId, competitionName) {
+    if (!confirm('Are you sure you want to delete this segment?')) {
+        return;
+    }
+    
+    fetch(`http://localhost:3002/delete-pageant-segment/${segmentId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Segment deleted successfully!');
+            viewPageantSegments(competitionId, competitionName);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting segment');
+    });
+}
+
     // Add segment to day function
     window.addSegmentToDay = function(day) {
         const segmentsDiv = document.getElementById(`day_${day}_segments`);
@@ -1629,113 +1758,128 @@ function setupFlexiblePageant(competitionId, competitionName) {
     };
 
     // Form submission
-    document.getElementById('pageantSetupForm').onsubmit = function(event) {
-        event.preventDefault();
+// FIND the setupFlexiblePageant function in app.js (around line 1413)
+// FIND the form submission section (around line 1482)
+// REPLACE the form submission handler with this FIXED version:
+
+document.getElementById('pageantSetupForm').onsubmit = function(event) {
+    event.preventDefault();
+    
+    const totalDays = parseInt(document.getElementById('total_days').value);
+    
+    if (!totalDays) {
+        alert('Please select the number of days.');
+        return;
+    }
+    
+    const pageantData = {
+        competition_id: competitionId,
+        total_days: totalDays,
+        days: []
+    };
+    
+    // Collect data for each day
+    for (let day = 1; day <= totalDays; day++) {
+        const dayDateInput = document.getElementById(`day_${day}_date`);
+        const dayTimeInput = document.getElementById(`day_${day}_time`);
+        const dayDescriptionInput = document.getElementById(`day_${day}_description`);
         
-        const totalDays = parseInt(document.getElementById('total_days').value);
-        
-        if (!totalDays) {
-            alert('Please select the number of days.');
+        if (!dayDateInput || !dayDateInput.value || !dayDescriptionInput || !dayDescriptionInput.value) {
+            alert(`Please fill in all fields for Day ${day}`);
             return;
         }
         
-        const pageantData = {
-            competition_id: competitionId,
-            total_days: totalDays,
-            days: []
+        // FIX: Extract just the date part (YYYY-MM-DD)
+        let dayDate = dayDateInput.value;
+        if (dayDate.includes('T')) {
+            dayDate = dayDate.split('T')[0]; // Extract YYYY-MM-DD from datetime
+        }
+        
+        const dayTime = dayTimeInput ? dayTimeInput.value : '18:00';
+        const dayDescription = dayDescriptionInput.value;
+        
+        const dayData = {
+            day_number: day,
+            date: dayDate, // Now in correct format YYYY-MM-DD
+            time: dayTime,
+            description: dayDescription,
+            segments: []
         };
         
-        // Collect data for each day
-        for (let day = 1; day <= totalDays; day++) {
-            const dayDate = document.getElementById(`day_${day}_date`).value;
-            const dayTime = document.getElementById(`day_${day}_time`).value;
-            const dayDescription = document.getElementById(`day_${day}_description`).value;
-            
-            if (!dayDate || !dayDescription) {
-                alert(`Please fill in all fields for Day ${day}`);
-                return;
-            }
-            
-            const dayData = {
-                day_number: day,
-                date: dayDate,
-                time: dayTime,
-                description: dayDescription,
-                segments: []
-            };
-            
-            // Collect segments for this day
-            const segmentInputs = document.getElementById(`day_${day}_segments`).querySelectorAll('.segment-input');
-            
-            segmentInputs.forEach((segmentDiv, index) => {
-                const segmentSelect = segmentDiv.querySelector('.segment-select');
-                const customName = segmentDiv.querySelector('.custom-segment-name');
-                const description = segmentDiv.querySelector('.segment-description');
-                
-                let segmentName = segmentSelect.value;
-                
-                // If custom is selected, use the custom name
-                if (segmentName === 'custom') {
-                    if (customName.value.trim()) {
-                        segmentName = customName.value.trim();
-                    } else {
-                        alert(`Day ${day}, Segment ${index + 1}: Please enter a custom segment name or choose a different option.`);
-                        return;
-                    }
-                }
-                
-                // Only add if segment name is selected
-                if (segmentName && segmentName !== '' && segmentName !== 'custom') {
-                    dayData.segments.push({
-                        name: segmentName,
-                        description: description.value.trim(),
-                        order: index + 1
-                    });
-                }
-            });
-            
-            // Check if day has at least one segment
-            if (dayData.segments.length === 0) {
-                alert(`Day ${day} must have at least one segment with a name selected.`);
-                return;
-            }
-            
-            pageantData.days.push(dayData);
-        }
+        // Collect segments for this day
+        const segmentInputs = document.getElementById(`day_${day}_segments`).querySelectorAll('.segment-input');
         
-        // Validate we have all days
-        if (pageantData.days.length !== totalDays) {
-            alert('Please complete all day setups.');
+        segmentInputs.forEach((segmentDiv, index) => {
+            const segmentSelect = segmentDiv.querySelector('.segment-select');
+            const customName = segmentDiv.querySelector('.custom-segment-name');
+            const description = segmentDiv.querySelector('.segment-description');
+            
+            let segmentName = segmentSelect.value;
+            
+            // If custom is selected, use the custom name
+            if (segmentName === 'custom') {
+                if (customName.value.trim()) {
+                    segmentName = customName.value.trim();
+                } else {
+                    alert(`Day ${day}, Segment ${index + 1}: Please enter a custom segment name or choose a different option.`);
+                    return;
+                }
+            }
+            
+            // Only add if segment name is selected
+            if (segmentName && segmentName !== '' && segmentName !== 'custom') {
+                dayData.segments.push({
+                    name: segmentName,
+                    description: description.value.trim(),
+                    order: index + 1
+                });
+            }
+        });
+        
+        // Check if day has at least one segment
+        if (dayData.segments.length === 0) {
+            alert(`Day ${day} must have at least one segment with a name selected.`);
             return;
         }
         
-        // Send to server
-        console.log('Sending pageant data:', pageantData);
-        
-        fetch('http://localhost:3002/create-flexible-pageant', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(pageantData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(`${totalDays}-day pageant created successfully with ${data.total_segments} segments!`);
-                showViewCompetitions();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error creating pageant setup: ' + error.message);
-        });
-    };
-
-
-}
+        pageantData.days.push(dayData);
+    }
+    
+    // Validate we have all days
+    if (pageantData.days.length !== totalDays) {
+        alert('Please complete all day setups.');
+        return;
+    }
+    
+    // Debug: Show what we're sending
+    console.log('Sending pageant data:', JSON.stringify(pageantData, null, 2));
+    
+    // Send to server
+    fetch('http://localhost:3002/create-flexible-pageant', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pageantData)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            alert(`${totalDays}-day pageant created successfully with ${data.total_segments} segments!`);
+            showViewCompetitions();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating pageant setup: ' + error.message);
+    });
+};
 
 // ==========================================
 // AJAX ENHANCEMENTS FOR ADMIN DASHBOARD

@@ -374,15 +374,16 @@ app.post('/add-participant', (req, res) => {
         return res.status(400).json({ error: 'Required fields missing' });
     }
 
+    // FIX: Remove the double comma in the SQL statement
     const sql = `INSERT INTO participants 
-               (participant_name, email, phone, age, gender, school_organization, 
- performance_title, performance_description, competition_id, status,
- height, measurements, talents, special_awards) 
+                (participant_name, email, phone, age, gender, school_organization, 
+                 performance_title, performance_description, competition_id, status,
+                 height, measurements, talents, special_awards) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     
     db.query(sql, [
         participant_name, email, phone, age, gender, school_organization,
-        performance_title, performance_description, competition_id, status || 'pending',,
+        performance_title, performance_description, competition_id, status || 'pending',
         height, measurements, talents, special_awards
     ], (err, result) => {
         if (err) {
@@ -393,6 +394,28 @@ app.post('/add-participant', (req, res) => {
             success: true, 
             message: 'Participant added successfully!',
             participant_id: result.insertId 
+        });
+    });
+});
+
+
+app.put('/update-participant-status/:id', (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+        return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    const sql = 'UPDATE participants SET status = ? WHERE participant_id = ?';
+    db.query(sql, [status, id], (err, result) => {
+        if (err) {
+            console.error('Error updating participant status:', err);
+            return res.status(500).json({ error: 'Error updating status' });
+        }
+        res.json({ 
+            success: true, 
+            message: 'Participant status updated successfully!' 
         });
     });
 });
@@ -958,34 +981,68 @@ app.post('/submit-segment-scores', (req, res) => {
 });
 // Flexible Pageant Creation Endpoint
 app.post('/create-flexible-pageant', (req, res) => {
+    console.log('Received pageant data:', JSON.stringify(req.body, null, 2));
+    
     const { competition_id, total_days, days } = req.body;
     
     if (!competition_id || !days || days.length === 0) {
-        return res.status(400).json({ error: 'Invalid pageant data' });
+        return res.status(400).json({ 
+            success: false,
+            error: 'Invalid pageant data - competition_id and days are required' 
+        });
     }
     
     let totalSegments = 0;
     const insertPromises = [];
     
     days.forEach(day => {
+        // Validate day data
+        if (!day.segments || day.segments.length === 0) {
+            console.error('Day has no segments:', day);
+            return;
+        }
+        
         day.segments.forEach(segment => {
             totalSegments++;
+            
             const promise = new Promise((resolve, reject) => {
                 const sql = `INSERT INTO pageant_segments 
                            (competition_id, segment_name, segment_date, segment_time, description, order_number, day_number) 
                            VALUES (?, ?, ?, ?, ?, ?, ?)`;
                 
+                // Ensure date is in correct format (YYYY-MM-DD)
+                let formattedDate = day.date;
+                if (day.date && day.date.includes('T')) {
+                    // If datetime string, extract date part
+                    formattedDate = day.date.split('T')[0];
+                }
+                
+                console.log('Inserting segment:', {
+                    competition_id,
+                    segment_name: segment.name,
+                    segment_date: formattedDate,
+                    segment_time: day.time || '18:00',
+                    description: segment.description,
+                    order_number: segment.order,
+                    day_number: day.day_number
+                });
+                
                 db.query(sql, [
                     competition_id, 
                     segment.name, 
-                    day.date, 
-                    day.time, 
-                    segment.description, 
+                    formattedDate, 
+                    day.time || '18:00', 
+                    segment.description || '', 
                     segment.order, 
                     day.day_number
                 ], (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
+                    if (err) {
+                        console.error('SQL Error:', err);
+                        reject(err);
+                    } else {
+                        console.log('Segment inserted successfully:', result.insertId);
+                        resolve(result);
+                    }
                 });
             });
             
@@ -993,8 +1050,16 @@ app.post('/create-flexible-pageant', (req, res) => {
         });
     });
     
+    if (insertPromises.length === 0) {
+        return res.status(400).json({ 
+            success: false,
+            error: 'No segments to insert' 
+        });
+    }
+    
     Promise.all(insertPromises)
     .then(() => {
+        console.log('All segments inserted successfully');
         res.json({ 
             success: true, 
             message: 'Flexible pageant created successfully!',
@@ -1003,11 +1068,49 @@ app.post('/create-flexible-pageant', (req, res) => {
     })
     .catch(error => {
         console.error('Error creating flexible pageant:', error);
-        res.status(500).json({ error: 'Error creating pageant setup' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Error creating pageant setup: ' + error.message 
+        });
     });
 });
 app.listen(port, () => {
     console.log(`running na sya guys http://localhost:${port}`);
    ;
 
+});
+app.get('/pageant-segments/:competitionId', (req, res) => {
+    const { competitionId } = req.params;
+    
+    const sql = `
+        SELECT * FROM pageant_segments 
+        WHERE competition_id = ? AND is_active = TRUE
+        ORDER BY day_number, order_number
+    `;
+    
+    db.query(sql, [competitionId], (err, result) => {
+        if (err) {
+            console.error('Error fetching pageant segments:', err);
+            return res.status(500).json({ error: 'Error fetching pageant segments' });
+        }
+        res.json(result);
+    });
+});
+
+// Delete a pageant segment
+app.delete('/delete-pageant-segment/:segmentId', (req, res) => {
+    const { segmentId } = req.params;
+    
+    const sql = 'DELETE FROM pageant_segments WHERE segment_id = ?';
+    
+    db.query(sql, [segmentId], (err, result) => {
+        if (err) {
+            console.error('Error deleting pageant segment:', err);
+            return res.status(500).json({ error: 'Error deleting segment' });
+        }
+        res.json({ 
+            success: true, 
+            message: 'Segment deleted successfully!' 
+        });
+    });
 });
