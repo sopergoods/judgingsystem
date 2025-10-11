@@ -339,12 +339,13 @@ function showSegmentSelection(judgeId, participantId, competitionId, participant
 // 7. SEGMENT SCORING WITH CRITERIA
 // ==========================================
 function showSegmentScoring(judgeId, participantId, competitionId, segmentId, participantName, segmentName) {
-    console.log('Loading criteria for segment...'); // Debug
+    console.log('Loading segment-specific criteria...'); // Debug
     
-    fetch(`http://localhost:3002/competition-criteria/${competitionId}`)
+    // CHANGE: Fetch segment-specific criteria instead of all competition criteria
+    fetch(`http://localhost:3002/segment-criteria/${segmentId}`)
     .then(response => response.json())
     .then(criteria => {
-        console.log('Criteria loaded:', criteria); // Debug
+        console.log('Segment criteria loaded:', criteria); // Debug // Debug
         
         if (criteria.length === 0) {
             showNotification('No criteria configured for this competition', 'error');

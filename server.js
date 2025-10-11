@@ -1397,4 +1397,77 @@ app.get('/pageant-segment-scores/:segmentId/:participantId/:judgeId', (req, res)
         res.json(result);
     });
 });
+
+// Get segment-specific criteria
+app.get('/segment-criteria/:segmentId', (req, res) => {
+    const { segmentId } = req.params;
+    
+    const sql = `
+        SELECT cc.*, sc.segment_criteria_id
+        FROM competition_criteria cc
+        JOIN segment_criteria sc ON cc.criteria_id = sc.criteria_id
+        WHERE sc.segment_id = ? AND sc.is_active = TRUE
+        ORDER BY cc.order_number
+    `;
+    
+    db.query(sql, [segmentId], (err, result) => {
+        if (err) {
+            console.error('Error fetching segment criteria:', err);
+            return res.status(500).json({ error: 'Error fetching segment criteria' });
+        }
+        res.json(result);
+    });
+});
+
+// Assign criteria to a segment
+app.post('/assign-segment-criteria', (req, res) => {
+    const { segment_id, criteria_ids } = req.body;
+    
+    if (!segment_id || !criteria_ids || criteria_ids.length === 0) {
+        return res.status(400).json({ 
+            success: false,
+            error: 'Segment ID and criteria IDs are required' 
+        });
+    }
+    
+    // First, delete existing criteria assignments for this segment
+    db.query('DELETE FROM segment_criteria WHERE segment_id = ?', [segment_id], (err) => {
+        if (err) {
+            console.error('Error deleting old segment criteria:', err);
+            return res.status(500).json({ 
+                success: false,
+                error: 'Error updating segment criteria' 
+            });
+        }
+        
+        // Insert new criteria assignments
+        const insertPromises = criteria_ids.map(criteria_id => {
+            return new Promise((resolve, reject) => {
+                const sql = `
+                    INSERT INTO segment_criteria (segment_id, criteria_id) 
+                    VALUES (?, ?)
+                `;
+                db.query(sql, [segment_id, criteria_id], (err, result) => {
+                    if (err) reject(err);
+                    else resolve(result);
+                });
+            });
+        });
+        
+        Promise.all(insertPromises)
+        .then(() => {
+            res.json({ 
+                success: true, 
+                message: 'Segment criteria assigned successfully!' 
+            });
+        })
+        .catch(err => {
+            console.error('Error inserting segment criteria:', err);
+            res.status(500).json({ 
+                success: false,
+                error: 'Error assigning segment criteria' 
+            });
+        });
+    });
+});
 console.log('✅ Pageant Segment Scoring Endpoints Added');
