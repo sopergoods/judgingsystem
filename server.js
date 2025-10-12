@@ -25,6 +25,15 @@ const db = mysql.createConnection({
     database: process.env.DB_NAME || 'judging_system',
     multipleStatements: true
 });
+console.log('=== 🔍 DATABASE CONNECTION DEBUG ===');
+console.log('MYSQLHOST:', process.env.MYSQLHOST || 'MISSING');
+console.log('MYSQLUSER:', process.env.MYSQLUSER || 'MISSING');
+console.log('MYSQLDATABASE:', process.env.MYSQLDATABASE || 'MISSING');
+console.log('MYSQL_DATABASE:', process.env.MYSQL_DATABASE || 'MISSING');
+console.log('MYSQLPORT:', process.env.MYSQLPORT || 'MISSING');
+console.log('DB_HOST:', process.env.DB_HOST || 'MISSING');
+console.log('NODE_ENV:', process.env.NODE_ENV || 'MISSING');
+console.log('===================================');
 
 // Connect to database
 db.connect((err) => {
