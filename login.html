@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Judging System - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Background image placeholder - replace 'college-bg.jpg' with your college image */
+            background: url('backgroundg.jpg') center center fixed;
+            background-size: cover;
+            background-color: #800020;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Background overlay for better readability */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+        }
+
+        .login-container {
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            overflow: hidden;
+            border: 3px solid #800020;
+            z-index: 2;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: #800020;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        /* Logo placeholder */
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border: 3px solid #800020;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px auto;
+            font-weight: bold;
+            color: #800020;
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        /* When you add your logo image, use this class */
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .login-header h1 {
+            color: #800020;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+            font-weight: 600;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .login-header .subtitle {
+            color: #800020;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #800020;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f9f9f9;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #800020;
+            background: white;
+            box-shadow: 0 0 10px rgba(128, 0, 32, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: #800020;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(128, 0, 32, 0.4);
+            background: #a0002a;
+        }
+
+        .login-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #c33;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #3c3;
+        }
+
+        .demo-accounts {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f8f8;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .demo-accounts h4 {
+            color: #800020;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .demo-account {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .demo-account .role {
+            font-weight: 600;
+            color: #800020;
+        }
+
+        .demo-account .credentials {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .school-branding {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #800020;
+            color: white;
+            border-radius: 15px;
+            margin: -50px -50px 30px -50px;
+        }
+
+        .school-branding h2 {
+            font-size: 1.4em;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+            
+            .login-header h1 {
+                font-size: 1.8em;
+            }
+            
+            .demo-account {
+                flex-direction: column;
+                text-align: center;
+                gap: 5px;
+            }
+
+            .logo {
+                width: 60px;
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="school-branding">
+            <h2>School Competition Portal</h2>
+            <p>Automated Judging System</p>
+        </div>
+
+        <div class="login-header">
+            
+            <div class="logo">
+               
+               
+                <img src="logo-school-removebg-preview.png" alt="College Logo">
+                
+            </div>
+            
+            <h1>Welcome</h1>
+            <p>Sign in to access your dashboard</p>
+            <p class="subtitle">Judges • Staff • Administrators</p>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="login-btn">Sign In</button>
+        </form>
+
+        <div class="demo-accounts">
+            <h4>Demo Accounts for Testing</h4>
+            <div class="demo-account">
+                <div>
+                    <div class="role">Administrator</div>
+                    <div class="credentials">admin / admin123</div>
+                </div>
+            </div>
+            <div class="demo-account">
+                <div>
+                    <div class="role">Staff Member</div>
+                    <div class="credentials">staff1 / password123</div>
+                </div>
+            </div>
+            <div class="demo-account">
+                <div>
+                    <div class="role">Judge</div>
+                    <div class="credentials">Create via Admin Panel</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Clear previous messages
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            console.log('Attempting login for:', username);
+            
+            fetch('http://localhost:3002/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Login response:', data);
+                
+                if (data.success) {
+                    // Store user data in sessionStorage
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Show success message
+                    document.getElementById('successMessage').textContent = 'Login successful! Redirecting...';
+                    document.getElementById('successMessage').style.display = 'block';
+                    
+                    // Debug the user role
+                    console.log('User role detected:', data.user.role);
+                    
+                    // Redirect based on role with explicit checks
+                    setTimeout(() => {
+                        if (data.user.role === 'admin') {
+                            console.log('Redirecting to admin dashboard');
+                            window.location.href = 'index.html';
+                        } else if (data.user.role === 'staff') {
+                            console.log('Redirecting to staff dashboard');
+                            window.location.href = 'staff-dashboard.html';
+                        } else if (data.user.role === 'judge') {
+                            console.log('Redirecting to judge dashboard');
+                            window.location.href = 'judge-dashboard.html';
+                        } else {
+                            console.error('Unknown role:', data.user.role);
+                            alert('Unknown user role: ' + data.user.role);
+                        }
+                    }, 1000);
+                } else {
+                    // Show error message
+                    console.error('Login failed:', data.message);
+                    document.getElementById('errorMessage').textContent = data.message;
+                    document.getElementById('errorMessage').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                document.getElementById('errorMessage').textContent = 'Network error. Please try again.';
+                document.getElementById('errorMessage').style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

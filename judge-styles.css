@@ -1,0 +1,607 @@
+/* Judge Dashboard Maroon and White Theme */
+
+/* Basic reset and body styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+bodybody {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Background image - your school background */
+    background: url('backgroundg.jpg') center center fixed;
+    background-size: cover;
+    background-color: #800020;
+    color: #333;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Background overlay for better text readability */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: -1;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* Header styling with maroon theme */
+header {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.3);
+    margin-bottom: 20px;
+}
+
+header h1 {
+    font-size: 2.2em;
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+header p {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Logo styling */
+.logo {
+    width: 60px;
+    height: 60px;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+}
+
+.logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.header-content h1 {
+    font-size: 2.2em;
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header-content p {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+/* Navigation styling */
+nav {
+    margin: 20px 0;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    padding: 0;
+}
+
+nav li {
+    flex: 1;
+    min-width: 180px;
+}
+
+nav a {
+    display: block;
+    text-decoration: none;
+    color: #800020;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 15px 10px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border-right: 1px solid #f0f0f0;
+}
+
+nav li:last-child a {
+    border-right: none;
+}
+
+nav a:hover {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* Content section */
+section {
+    margin-top: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 30px;
+    min-height: 400px;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    background: white;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.1);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(128, 0, 32, 0.2);
+    border-color: #a0002a;
+}
+
+.dashboard-card h3 {
+    color: #800020;
+    font-size: 1.3em;
+    margin-bottom: 10px;
+}
+
+.dashboard-card p {
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+.card-button {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 5px;
+    transition: all 0.3s ease;
+}
+
+.card-button:hover {
+    background: linear-gradient(135deg, #a0002a 0%, #c0003a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+/* Scoring form specific styling */
+.scoring-form {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 6px 20px rgba(128, 0, 32, 0.1);
+}
+
+.scoring-form h3 {
+    color: #800020;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5em;
+}
+
+.score-input-group {
+    margin-bottom: 25px;
+}
+
+.score-input-group label {
+    display: block;
+    color: #800020;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.score-input-group input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 18px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.score-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: #800020;
+    box-shadow: 0 0 10px rgba(128, 0, 32, 0.2);
+}
+
+.score-input-group small {
+    display: block;
+    color: #666;
+    font-style: italic;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+/* Score display styling */
+.score-display {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 2px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.score-high {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.score-medium {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+}
+
+.score-low {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+}
+
+/* Competition card styling */
+.competition-card {
+    background: white;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.1);
+}
+
+.competition-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(128, 0, 32, 0.2);
+}
+
+.competition-card h3 {
+    color: #800020;
+    margin-bottom: 10px;
+    font-size: 1.4em;
+}
+
+.competition-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.competition-info p {
+    color: #666;
+    margin: 5px 0;
+}
+
+.competition-info strong {
+    color: #800020;
+}
+
+/* Form styling */
+form {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+    border: 2px solid #f0f0f0;
+}
+
+form h2 {
+    color: #800020;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+form label {
+    display: block;
+    color: #800020;
+    font-weight: 600;
+    margin-bottom: 5px;
+    margin-top: 15px;
+}
+
+form input[type="text"], 
+form input[type="email"], 
+form input[type="tel"], 
+form input[type="number"], 
+form input[type="date"], 
+form select, 
+form textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0 15px 0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+form input:focus, 
+form select:focus, 
+form textarea:focus {
+    outline: none;
+    border-color: #800020;
+    box-shadow: 0 0 5px rgba(128, 0, 32, 0.3);
+}
+
+form input[type="submit"], 
+form button[type="submit"] {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+}
+
+form input[type="submit"]:hover, 
+form button[type="submit"]:hover {
+    background: linear-gradient(135deg, #a0002a 0%, #c0003a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+/* Button styling */
+button {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 5px;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #a0002a 0%, #c0003a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+button.secondary {
+    background: linear-gradient(135deg, #666 0%, #888 100%);
+}
+
+button.secondary:hover {
+    background: linear-gradient(135deg, #888 0%, #aaa 100%);
+}
+
+/* Table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+table th {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+table tr:hover {
+    background-color: #f0f0f0;
+}
+
+/* Judge-specific styling */
+.judge-badge {
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 5px;
+}
+
+.scoring-guidelines {
+    background: #e7f3ff;
+    border: 2px solid #2196F3;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.scoring-guidelines h4 {
+    color: #0d47a1;
+    margin-bottom: 15px;
+}
+
+.scoring-guidelines ul {
+    color: #1976d2;
+    margin-left: 20px;
+}
+
+.scoring-guidelines li {
+    margin: 8px 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 10px;
+    }
+    
+    nav ul {
+        flex-direction: column;
+    }
+    
+    nav a {
+        border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    header h1 {
+        font-size: 1.8em;
+    }
+    
+    .dashboard-card {
+        margin-bottom: 20px;
+    }
+    
+    .competition-info {
+        grid-template-columns: 1fr;
+    }
+    
+    .scoring-form {
+        padding: 20px;
+    }
+}
+
+/* Alert messages */
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-weight: 600;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* Progress indicators */
+.progress-bar {
+    background: #f0f0f0;
+    border-radius: 10px;
+    padding: 3px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.progress-fill {
+    display: block;
+    height: 20px;
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    border-radius: 8px;
+    transition: width 0.8s ease;
+}
+
+/* Animation classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   AJAX ANIMATION STYLES - ADD AT BOTTOM
+   ========================================== */
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.score-updated {
+    animation: scoreFlash 1s ease-in-out;
+}
+
+@keyframes scoreFlash {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: #ffd700; }
+}
+
+.notification {
+    animation: slideIn 0.3s ease-out;
+}

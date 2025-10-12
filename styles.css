@@ -1,0 +1,587 @@
+/* Clean Maroon and White Theme for School Judging System */
+
+/* Basic reset and body styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Background image placeholder - replace 'college-bg.jpg' with your college image */
+    background: url('backgroundschool.jpg') center center fixed;
+    background-size: cover;
+    /* Fallback background with overlay */
+    background-color: #800020;
+    position: relative;
+    min-height: 100vh;
+}
+
+/* Background overlay for better text readability */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: -1;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Header styling with logo space */
+header {
+    background: #800020;
+    color: white;
+    padding: 20px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.3);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 80px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Logo placeholder */
+.logo {
+    width: 60px;
+    height: 60px;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #800020;
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* When you add your logo image, use this class */
+.logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.header-content h1 {
+    font-size: 2.2em;
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header-content p {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+.header-right {
+    text-align: right;
+    color: white;
+}
+
+/* Navigation styling */
+nav {
+    margin: 20px 0;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    overflow: hidden;
+    border: 2px solid #800020;
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    padding: 0;
+}
+
+nav li {
+    flex: 1;
+    min-width: 150px;
+}
+
+nav a {
+    display: block;
+    text-decoration: none;
+    color: #800020;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 15px 10px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border-right: 1px solid #e0e0e0;
+}
+
+nav li:last-child a {
+    border-right: none;
+}
+
+nav a:hover {
+    background: #800020;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* Content section */
+section {
+    margin-top: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    padding: 30px;
+    min-height: 400px;
+    border: 2px solid #800020;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    background: white;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.1);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(128, 0, 32, 0.2);
+    background: #fafafa;
+}
+
+.dashboard-card h3 {
+    color: #800020;
+    font-size: 1.4em;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.dashboard-card p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.card-button {
+    background: #800020;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 5px;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.card-button:hover {
+    background: #a0002a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+/* Form styling */
+form {
+    background-color: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+    border: 2px solid #800020;
+    margin: 20px 0;
+}
+
+form h2, form h3 {
+    color: #800020;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+form h2 {
+    font-size: 1.8em;
+    border-bottom: 2px solid #800020;
+    padding-bottom: 10px;
+}
+
+form h3 {
+    font-size: 1.4em;
+    margin-top: 30px;
+}
+
+form label {
+    display: block;
+    color: #800020;
+    font-weight: 600;
+    margin-bottom: 5px;
+    margin-top: 15px;
+}
+
+form input[type="text"], 
+form input[type="email"], 
+form input[type="tel"], 
+form input[type="number"], 
+form input[type="date"], 
+form input[type="password"],
+form select, 
+form textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0 15px 0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+form input:focus, 
+form select:focus, 
+form textarea:focus {
+    outline: none;
+    border-color: #800020;
+    box-shadow: 0 0 5px rgba(128, 0, 32, 0.3);
+}
+
+form input[type="submit"], 
+form button[type="submit"] {
+    background: #800020;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+form input[type="submit"]:hover, 
+form button[type="submit"]:hover {
+    background: #a0002a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+/* Button styling */
+button {
+    background: #800020;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 5px;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: #a0002a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+button.secondary {
+    background: #666;
+    color: white;
+}
+
+button.secondary:hover {
+    background: #888;
+}
+
+/* Table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 2px solid #800020;
+}
+
+table th {
+    background: #800020;
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+table tr:hover {
+    background-color: #f0f0f0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 10px;
+    }
+    
+    header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .header-left {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    nav ul {
+        flex-direction: column;
+    }
+    
+    nav a {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .header-content h1 {
+        font-size: 1.8em;
+    }
+    
+    .dashboard-card {
+        margin-bottom: 20px;
+    }
+}
+
+/* Status indicators */
+.status-paid {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.status-pending {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.status-waived {
+    color: #17a2b8;
+    font-weight: 600;
+}
+
+/* Score display */
+.score-display {
+    background: #800020;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 2px;
+}
+
+/* Alert messages */
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-weight: 600;
+    border: 2px solid;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+/* Enhanced features sections */
+.feature-highlight {
+    background: #f8f9fa;
+    border: 2px solid #800020;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.feature-highlight h3 {
+    color: #800020;
+    margin-bottom: 15px;
+}
+
+.feature-highlight ul {
+    color: #666;
+    line-height: 1.8;
+}
+
+.feature-highlight li {
+    margin: 8px 0;
+}
+
+/* Criteria management styles */
+.criterion-item {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.criterion-item:hover {
+    border-color: #800020;
+    box-shadow: 0 2px 10px rgba(128, 0, 32, 0.1);
+}
+
+/* Form sections */
+.form-section {
+    margin: 30px 0;
+}
+
+.form-section h3 {
+    color: #800020;
+    border-bottom: 2px solid #800020;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+/* Grid layouts */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+@media (max-width: 768px) {
+    .grid-2,
+    .grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Loading states */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #800020;
+    font-size: 18px;
+}
+
+.loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #800020;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   AJAX ANIMATION STYLES - ADD AT BOTTOM
+   ========================================== */
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.score-updated {
+    animation: scoreFlash 1s ease-in-out;
+}
+
+@keyframes scoreFlash {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: #ffd700; }
+}
+
+.notification {
+    animation: slideIn 0.3s ease-out;
+}
+
+.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
