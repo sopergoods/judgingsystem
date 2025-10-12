@@ -95,7 +95,7 @@ function showEventTypes() {
         </div>
     `;
 
-    fetch('http://localhost:3002/event-types')
+    fetch('http://https://production-production-df45.up.railway.app/event-types')
     .then(response => response.json())
     .then(eventTypes => {
         let eventTypesHtml = '<div style="display: grid; gap: 20px;">';
@@ -184,7 +184,7 @@ function showViewCompetitions() {
     `;
 
     // Load event types for filter
-    fetch('http://localhost:3002/event-types')
+    fetch('http://https://production-production-df45.up.railway.app/event-types')
     .then(response => response.json())
     .then(eventTypes => {
         const filterSelect = document.getElementById("eventTypeFilter");
@@ -201,7 +201,7 @@ function showViewCompetitions() {
 }
 
 function loadCompetitions(eventTypeFilter = '') {
-    fetch('http://localhost:3002/competitions')
+    fetch('http://https://production-production-df45.up.railway.app/competitions')
     .then(response => response.json())
     .then(competitions => {
         // Filter by event type if specified
@@ -284,9 +284,9 @@ function filterCompetitionsByType() {
 // View Competition Details
 function viewCompetitionDetails(competitionId) {
     Promise.all([
-        fetch(`http://localhost:3002/competition/${competitionId}`).then(r => r.json()),
-        fetch(`http://localhost:3002/participants/${competitionId}`).then(r => r.json()),
-        fetch(`http://localhost:3002/judges`).then(r => r.json())
+        fetch(`http://https://production-production-df45.up.railway.app/competition/${competitionId}`).then(r => r.json()),
+        fetch(`http://https://production-production-df45.up.railway.app/participants/${competitionId}`).then(r => r.json()),
+        fetch(`http://https://production-production-df45.up.railway.app/judges`).then(r => r.json())
     ])
     .then(([competition, participants, allJudges]) => {
         const judges = allJudges.filter(j => j.competition_id == competitionId);
@@ -423,7 +423,7 @@ function viewCompetitionCriteria(competitionId, competitionName) {
         </div>
     `;
 
-    fetch(`http://localhost:3002/competition-criteria/${competitionId}`)
+    fetch(`http://https://production-production-df45.up.railway.app/competition-criteria/${competitionId}`)
     .then(response => response.json())
     .then(criteria => {
         if (criteria.length === 0) {
@@ -594,7 +594,7 @@ function showAddParticipantForm(preselectedCompetitionId = null) {
     `;
 
     // Load competitions and handle form logic
-    fetch('http://localhost:3002/competitions')
+    fetch('http://https://production-production-df45.up.railway.app/competitions')
     .then(response => response.json())
     .then(competitions => {
         const competitionSelect = document.getElementById("competition");
@@ -678,7 +678,7 @@ function showAddParticipantForm(preselectedCompetitionId = null) {
             special_awards: document.getElementById("special_awards").value
         };
 
-        fetch('http://localhost:3002/add-participant', {
+        fetch('http://https://production-production-df45.up.railway.app/add-participant', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -744,7 +744,7 @@ function showViewParticipants() {
     `;
 
     // Populate competition filter dropdown
-    fetch('http://localhost:3002/competitions')
+    fetch('http://https://production-production-df45.up.railway.app/competitions')
     .then(response => response.json())
     .then(competitions => {
         const filterSelect = document.getElementById("filterCompetition");
@@ -761,9 +761,9 @@ function showViewParticipants() {
 }
 
 function loadParticipants(competitionId = '', status = '') {
-    let url = 'http://localhost:3002/participants';
+    let url = 'http://https://production-production-df45.up.railway.app/participants';
     if (competitionId) {
-        url = `http://localhost:3002/participants/${competitionId}`;
+        url = `http://https://production-production-df45.up.railway.app/participants/${competitionId}`;
     }
 
     fetch(url)
@@ -863,7 +863,7 @@ function filterParticipants() {
 
 // View Participant Details
 function viewParticipantDetails(id) {
-    fetch(`http://localhost:3002/participant/${id}`)
+    fetch(`http://https://production-production-df45.up.railway.app/participant/${id}`)
     .then(response => response.json())
     .then(participant => {
        const statusColor = participant.status === 'done' ? '#28a745' : 
@@ -965,7 +965,7 @@ function updateRegistrationStatus(participantId, currentStatus) {
     const confirmMessage = `Change registration status to "${nextStatus.toUpperCase()}"?`;
     
     if (confirm(confirmMessage)) {
-        fetch(`http://localhost:3002/update-participant-status/${participantId}`, {
+        fetch(`http://https://production-production-df45.up.railway.app/update-participant-status/${participantId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -1002,7 +1002,7 @@ function showViewJudges() {
         </div>
     `;
 
-    fetch('http://localhost:3002/judges')
+    fetch('http://https://production-production-df45.up.railway.app/judges')
     .then(response => response.json())
     .then(judges => {
         let judgesHtml = '';
@@ -1072,7 +1072,7 @@ function showViewJudges() {
 
 // View Judge Details
 function viewJudgeDetails(id) {
-    fetch(`http://localhost:3002/judge/${id}`)
+    fetch(`http://https://production-production-df45.up.railway.app/judge/${id}`)
     .then(response => response.json())
     .then(judge => {
         const eventIcon = judge.is_pageant ? '👑' : '🎪';
@@ -1143,9 +1143,9 @@ function showReports() {
 
     // Load data for reports
     Promise.all([
-        fetch('http://localhost:3002/competitions').then(r => r.json()),
-        fetch('http://localhost:3002/participants').then(r => r.json()),
-        fetch('http://localhost:3002/judges').then(r => r.json())
+        fetch('http://https://production-production-df45.up.railway.app/competitions').then(r => r.json()),
+        fetch('http://https://production-production-df45.up.railway.app/participants').then(r => r.json()),
+        fetch('http://https://production-production-df45.up.railway.app/judges').then(r => r.json())
     ])
     .then(([competitions, participants, judges]) => {
         generateReports(competitions, participants, judges);
@@ -1311,7 +1311,7 @@ function showScoringOverview() {
     `;
 
     // Load competitions for dropdown
-    fetch('http://localhost:3002/competitions')
+    fetch('http://https://production-production-df45.up.railway.app/competitions')
     .then(response => response.json())
     .then(competitions => {
         const select = document.getElementById("scoringCompetition");
@@ -1349,10 +1349,10 @@ function loadScoringOverview() {
 
     // Load competition data, participants, judges, and scores
     Promise.all([
-        fetch(`http://localhost:3002/competition/${competitionId}`).then(r => r.json()),
-        fetch(`http://localhost:3002/participants/${competitionId}`).then(r => r.json()),
-        fetch(`http://localhost:3002/judges`).then(r => r.json()),
-        fetch(`http://localhost:3002/overall-scores/${competitionId}`).then(r => r.json()).catch(() => [])
+        fetch(`http://https://production-production-df45.up.railway.app/competition/${competitionId}`).then(r => r.json()),
+        fetch(`http://https://production-production-df45.up.railway.app/participants/${competitionId}`).then(r => r.json()),
+        fetch(`http://https://production-production-df45.up.railway.app/judges`).then(r => r.json()),
+        fetch(`http://https://production-production-df45.up.railway.app/overall-scores/${competitionId}`).then(r => r.json()).catch(() => [])
     ])
     .then(([competition, participants, allJudges, scores]) => {
         const judges = allJudges.filter(j => j.competition_id == competitionId);
@@ -1555,7 +1555,7 @@ let connectionQuality = 'good';
 
 function checkConnectionSpeed() {
     const startTime = new Date().getTime();
-    fetch('http://localhost:3002/competitions', { method: 'HEAD' })
+    fetch('http://https://production-production-df45.up.railway.app/competitions', { method: 'HEAD' })
     .then(() => {
         const endTime = new Date().getTime();
         const latency = endTime - startTime;
@@ -1629,9 +1629,9 @@ function showLiveParticipantStatus(competitionId, competitionName) {
 
 function updateParticipantStatus(competitionId) {
     Promise.all([
-        fetch(`http://localhost:3002/participants/${competitionId}`).then(r => r.json()),
-        fetch(`http://localhost:3002/overall-scores/${competitionId}`).then(r => r.json()),
-        fetch('http://localhost:3002/judges').then(r => r.json())
+        fetch(`http://https://production-production-df45.up.railway.app/participants/${competitionId}`).then(r => r.json()),
+        fetch(`http://https://production-production-df45.up.railway.app/overall-scores/${competitionId}`).then(r => r.json()),
+        fetch('http://https://production-production-df45.up.railway.app/judges').then(r => r.json())
     ])
     .then(([participants, scores, allJudges]) => {
         const judges = allJudges.filter(j => j.competition_id == competitionId);
@@ -1713,7 +1713,7 @@ function startParticipantCountUpdates() {
 }
 
 function updateParticipantCounts() {
-    fetch('http://localhost:3002/competitions')
+    fetch('http://https://production-production-df45.up.railway.app/competitions')
     .then(response => response.json())
     .then(competitions => {
         competitions.forEach(comp => {
@@ -1807,7 +1807,7 @@ function liveSearchParticipants(query) {
         return;
     }
     
-    fetch('http://localhost:3002/participants')
+    fetch('http://https://production-production-df45.up.railway.app/participants')
     .then(response => response.json())
     .then(participants => {
         const filtered = participants.filter(participant => {
@@ -1906,9 +1906,9 @@ function showQuickStatsDashboard() {
 
 function loadQuickStats() {
     Promise.all([
-        fetch('http://localhost:3002/competitions').then(r => r.json()),
-        fetch('http://localhost:3002/participants').then(r => r.json()),
-        fetch('http://localhost:3002/judges').then(r => r.json())
+        fetch('http://https://production-production-df45.up.railway.app/competitions').then(r => r.json()),
+        fetch('http://https://production-production-df45.up.railway.app/participants').then(r => r.json()),
+        fetch('http://https://production-production-df45.up.railway.app/judges').then(r => r.json())
     ])
     .then(([competitions, participants, judges]) => {
         // Calculate stats
@@ -1991,7 +1991,7 @@ showViewParticipants = function() {
 // 9. SELECT COMPETITION FOR LIVE STATUS
 // ==========================================
 function selectCompetitionForLiveStatus() {
-    fetch('http://localhost:3002/competitions')
+    fetch('http://https://production-production-df45.up.railway.app/competitions')
     .then(response => response.json())
     .then(competitions => {
         if (competitions.length === 0) {

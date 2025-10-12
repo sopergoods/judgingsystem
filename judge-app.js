@@ -76,7 +76,7 @@ function showMyCompetitions() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
 
-    fetch('http://localhost:3002/judges')
+    fetch('http://https://production-production-df45.up.railway.app/judges')
     .then(response => response.json())
     .then(judges => {
         const currentJudge = judges.find(j => j.user_id === user.user_id);
@@ -88,7 +88,7 @@ function showMyCompetitions() {
             return;
         }
 
-        fetch(`http://localhost:3002/judge-competitions/${currentJudge.judge_id}`)
+        fetch(`http://https://production-production-df45.up.railway.app/judge-competitions/${currentJudge.judge_id}`)
         .then(response => response.json())
         .then(competitions => {
             let competitionsHtml = `
@@ -139,7 +139,7 @@ function showMyCompetitions() {
 // 4. VIEW PARTICIPANTS
 // ==========================================
 function viewCompetitionParticipants(competitionId) {
-    fetch(`http://localhost:3002/participants/${competitionId}`)
+    fetch(`http://https://production-production-df45.up.railway.app/participants/${competitionId}`)
     .then(response => response.json())
     .then(participants => {
         let participantsHtml = `
@@ -201,7 +201,7 @@ function scoreParticipant(participantId, competitionId, participantName) {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
 
-    fetch('http://localhost:3002/judges')
+    fetch('http://https://production-production-df45.up.railway.app/judges')
     .then(response => response.json())
     .then(judges => {
         const currentJudge = judges.find(j => j.user_id === user.user_id);
@@ -211,7 +211,7 @@ function scoreParticipant(participantId, competitionId, participantName) {
         }
 
         // Check if this is a pageant competition
-        fetch(`http://localhost:3002/competition/${competitionId}`)
+        fetch(`http://https://production-production-df45.up.railway.app/competition/${competitionId}`)
         .then(response => response.json())
         .then(competition => {
             console.log('Competition:', competition); // Debug
@@ -256,7 +256,7 @@ function showSegmentSelection(judgeId, participantId, competitionId, participant
         </div>
     `;
 
-    fetch(`http://localhost:3002/pageant-segments/${competitionId}`)
+    fetch(`http://https://production-production-df45.up.railway.app/pageant-segments/${competitionId}`)
     .then(response => response.json())
     .then(segments => {
         console.log('Segments loaded:', segments); // Debug
@@ -342,7 +342,7 @@ function showSegmentScoring(judgeId, participantId, competitionId, segmentId, pa
     console.log('Loading segment-specific criteria...'); // Debug
     
     // CHANGE: Fetch segment-specific criteria instead of all competition criteria
-    fetch(`http://localhost:3002/segment-criteria/${segmentId}`)
+    fetch(`http://https://production-production-df45.up.railway.app/segment-criteria/${segmentId}`)
     .then(response => response.json())
     .then(criteria => {
         console.log('Segment criteria loaded:', criteria); // Debug // Debug
@@ -501,7 +501,7 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
 
         console.log('Submitting scores:', submissionData); // Debug
 
-        fetch('http://localhost:3002/submit-segment-scores', {
+        fetch('http://https://production-production-df45.up.railway.app/submit-segment-scores', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(submissionData)
@@ -558,7 +558,7 @@ function calculateSegmentTotalScore() {
 // 8. REGULAR COMPETITION SCORING
 // ==========================================
 function showRegularScoring(judgeId, participantId, competitionId, participantName) {
-    fetch(`http://localhost:3002/competition-criteria/${competitionId}`)
+    fetch(`http://https://production-production-df45.up.railway.app/competition-criteria/${competitionId}`)
     .then(response => response.json())
     .then(criteria => {
         if (criteria.length === 0) {
@@ -670,7 +670,7 @@ function showDetailedScoreForm(judgeId, participantId, competitionId, participan
             general_comments: document.getElementById("general_comments").value
         };
 
-        fetch('http://localhost:3002/submit-detailed-scores', {
+        fetch('http://https://production-production-df45.up.railway.app/submit-detailed-scores', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(submissionData)
@@ -717,7 +717,7 @@ function showScoringHistory() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
 
-    fetch('http://localhost:3002/judges')
+    fetch('http://https://production-production-df45.up.railway.app/judges')
     .then(response => response.json())
     .then(judges => {
         const currentJudge = judges.find(j => j.user_id === user.user_id);
@@ -729,7 +729,7 @@ function showScoringHistory() {
             return;
         }
 
-        fetch(`http://localhost:3002/judge-competitions/${currentJudge.judge_id}`)
+        fetch(`http://https://production-production-df45.up.railway.app/judge-competitions/${currentJudge.judge_id}`)
         .then(response => response.json())
         .then(competitions => {
             let historyHtml = `
@@ -748,8 +748,8 @@ function showScoringHistory() {
             Promise.all(
                 competitions.map(comp => 
                     Promise.all([
-                        fetch(`http://localhost:3002/overall-scores/${comp.competition_id}`).then(r => r.json()),
-                        fetch(`http://localhost:3002/detailed-scores/${comp.competition_id}`).then(r => r.json()).catch(() => [])
+                        fetch(`http://https://production-production-df45.up.railway.app/overall-scores/${comp.competition_id}`).then(r => r.json()),
+                        fetch(`http://https://production-production-df45.up.railway.app/detailed-scores/${comp.competition_id}`).then(r => r.json()).catch(() => [])
                     ])
                     .then(([overallScores, detailedScores]) => ({
                         competition: comp,
@@ -799,7 +799,7 @@ function showProfile() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
 
-    fetch('http://localhost:3002/judges')
+    fetch('http://https://production-production-df45.up.railway.app/judges')
     .then(response => response.json())
     .then(judges => {
         const currentJudge = judges.find(j => j.user_id === user.user_id);
@@ -902,7 +902,7 @@ window.addEventListener('offline', function() {
 
 function checkConnectionSpeed() {
     const startTime = new Date().getTime();
-    fetch('http://localhost:3002/competitions', { method: 'HEAD' })
+    fetch('http://https://production-production-df45.up.railway.app/competitions', { method: 'HEAD' })
     .then(() => {
         const endTime = new Date().getTime();
         const latency = endTime - startTime;
