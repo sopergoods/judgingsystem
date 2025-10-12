@@ -20,26 +20,31 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '')));
 
 
+// Database connection
 const db = mysql.createConnection({
-    host: process.env.MYSQLHOST || 'localhost',
-    user: process.env.MYSQLUSER || 'root',
-    password: process.env.MYSQLPASSWORD || '',
+    host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+    user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
     database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system',
-    port: parseInt(process.env.MYSQLPORT || '3306'),
+    port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
     connectTimeout: 30000
 });
 
-// Debug logging
-console.log('=== 🔍 DATABASE CONNECTION DEBUG ===');
-console.log('MYSQLHOST:', process.env.MYSQLHOST || 'MISSING');
-console.log('MYSQLUSER:', process.env.MYSQLUSER || 'MISSING');
-console.log('MYSQLPASSWORD:', process.env.MYSQLPASSWORD ? 'SET' : 'MISSING'); // Don't log actual password
-console.log('MYSQLDATABASE:', process.env.MYSQLDATABASE || 'MISSING');
-console.log('MYSQL_DATABASE:', process.env.MYSQL_DATABASE || 'MISSING');
-console.log('MYSQLPORT:', process.env.MYSQLPORT || 'MISSING');
-console.log('DB_HOST:', process.env.DB_HOST || 'MISSING');
-console.log('NODE_ENV:', process.env.NODE_ENV || 'MISSING');
-console.log('===================================');
+// Debug what we're actually using
+console.log('🔧 Attempting connection with:');
+console.log('  Host:', process.env.MYSQLHOST || process.env.DB_HOST || 'localhost');
+console.log('  User:', process.env.MYSQLUSER || process.env.DB_USER || 'root');
+console.log('  Database:', process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system');
+console.log('  Port:', process.env.MYSQLPORT || process.env.DB_PORT || '3306');
+
+// Connect to database
+db.connect((err) => {
+    if (err) {
+        console.error('❌ Database connection failed:', err.message);
+        return;
+    }
+    console.log('✅ Connected to MySQL database');
+});
 
 // Connect to database
 db.connect((err) => {
