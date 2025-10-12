@@ -1106,10 +1106,8 @@ app.post('/create-flexible-pageant', (req, res) => {
         });
     });
 });
-app.listen(port, () => {
-    console.log(`running na sya guys http://localhost:${port}`);
-   ;
-
+app.listen(PORT, '0.0.0.0', () => {  // ✅ Use the PORT from line 11
+  console.log(`🚀 Server running on port ${PORT}`);
 });
 app.get('/pageant-segments/:competitionId', (req, res) => {
     const { competitionId } = req.params;
