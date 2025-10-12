@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Disable dotenv on Railway - use Railway's environment variables instead
+if (process.env.RAILWAY_ENVIRONMENT !== 'production' && !process.env.MYSQLHOST) {
+    require('dotenv').config();
+}
 const express = require('express');
 const mysql = require('mysql');
 const path = require('path');
@@ -18,16 +21,19 @@ app.use(express.static(path.join(__dirname, '')));
 
 
 const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    host: process.env.MYSQLHOST || 'localhost',
+    user: process.env.MYSQLUSER || 'root',
+    password: process.env.MYSQLPASSWORD || '',
     database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system',
-    database: process.env.DB_NAME || 'judging_system',
-    multipleStatements: true
+    port: parseInt(process.env.MYSQLPORT || '3306'),
+    connectTimeout: 30000
 });
+
+// Debug logging
 console.log('=== 🔍 DATABASE CONNECTION DEBUG ===');
 console.log('MYSQLHOST:', process.env.MYSQLHOST || 'MISSING');
 console.log('MYSQLUSER:', process.env.MYSQLUSER || 'MISSING');
+console.log('MYSQLPASSWORD:', process.env.MYSQLPASSWORD ? 'SET' : 'MISSING'); // Don't log actual password
 console.log('MYSQLDATABASE:', process.env.MYSQLDATABASE || 'MISSING');
 console.log('MYSQL_DATABASE:', process.env.MYSQL_DATABASE || 'MISSING');
 console.log('MYSQLPORT:', process.env.MYSQLPORT || 'MISSING');
