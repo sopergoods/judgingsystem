@@ -21,6 +21,7 @@ const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
+    database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system',
     database: process.env.DB_NAME || 'judging_system',
     multipleStatements: true
 });
