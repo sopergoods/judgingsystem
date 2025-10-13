@@ -450,80 +450,97 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
             </div>
         </form>
     `;
+    setTimeout(() => {
+        loadDraft(judgeId, participantId, segmentId);
+        
+        // Add auto-save to all input fields
+        const allInputs = document.querySelectorAll('#segmentScoreForm input, #segmentScoreForm textarea');
+        allInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                autoSaveDraft(judgeId, participantId, segmentId);
+            });
+        });
+    }, 500);
+    
 
     document.getElementById("content").innerHTML = formHtml;
 
     // Form submission
-    document.getElementById("segmentScoreForm").onsubmit = function(event) {
-        event.preventDefault();
+   document.getElementById("segmentScoreForm").onsubmit = function(event) {
+    event.preventDefault();
 
-        const scores = [];
-        let totalWeightedScore = 0;
-        let hasError = false;
+    const scores = [];
+    let totalWeightedScore = 0;
+    let hasError = false;
 
-        criteria.forEach(criterion => {
-            if (hasError) return;
-            
-            const scoreInput = document.getElementById(`score_${criterion.criteria_id}`);
-            const score = parseFloat(scoreInput.value);
-            const comments = document.getElementById(`comments_${criterion.criteria_id}`).value;
-            const percentage = parseFloat(criterion.percentage);
-            
-            if (isNaN(score) || score < 0 || score > 100) {
-                showNotification(`Score for ${criterion.criteria_name} must be between 0 and 100`, 'error');
-                hasError = true;
-                return;
-            }
-
-            const weightedScore = (score * percentage) / 100;
-            totalWeightedScore += weightedScore;
-
-            scores.push({
-                criteria_id: criterion.criteria_id,
-                score: score,
-                weighted_score: weightedScore,
-                comments: comments || null
-            });
-        });
-
-        if (hasError || scores.length !== criteria.length) {
+    criteria.forEach(criterion => {
+        if (hasError) return;
+        
+        const scoreInput = document.getElementById(`score_${criterion.criteria_id}`);
+        const score = parseFloat(scoreInput.value);
+        const comments = document.getElementById(`comments_${criterion.criteria_id}`).value;
+        const percentage = parseFloat(criterion.percentage);
+        
+        if (isNaN(score) || score < 0 || score > 100) {
+            showNotification(`Score for ${criterion.criteria_name} must be between 0 and 100`, 'error');
+            hasError = true;
             return;
         }
 
-        const submissionData = {
-            judge_id: judgeId,
-            participant_id: participantId,
-            segment_id: segmentId,
-            scores: scores,
-            general_comments: document.getElementById("general_comments").value || null,
-            total_score: totalWeightedScore
-        };
+        const weightedScore = (score * percentage) / 100;
+        totalWeightedScore += weightedScore;
 
-        console.log('Submitting scores:', submissionData); // Debug
-
-        fetch('https://mseufci-judgingsystem.up.railway.app/submit-segment-scores', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submissionData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Server response:', data); // Debug
-            
-            if (data.success) {
-                showNotification(`✅ Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
-                setTimeout(() => {
-                    showSegmentSelection(judgeId, participantId, competitionId, participantName);
-                }, 2000);
-            } else {
-                showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error submitting segment scores: ' + error.message, 'error');
+        scores.push({
+            criteria_id: criterion.criteria_id,
+            score: score,
+            weighted_score: weightedScore,
+            comments: comments || null
         });
+    });
+
+    if (hasError || scores.length !== criteria.length) {
+        console.error('Form validation failed');
+        return;
+    }
+
+    const submissionData = {
+        judge_id: judgeId,
+        participant_id: participantId,
+        segment_id: segmentId,
+        scores: scores,
+        general_comments: document.getElementById("general_comments").value || null,
+        total_score: totalWeightedScore
     };
+
+    console.log('📤 Submitting scores:', submissionData);
+
+    fetch('https://mseufci-judgingsystem.up.railway.app/submit-segment-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData)
+    })
+    .then(response => {
+        console.log('📥 Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('📥 Response data:', data);
+        
+        if (data.success) {
+            showNotification(`✅ Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
+            setTimeout(() => {
+                showSegmentSelection(judgeId, participantId, competitionId, participantName);
+            }, 2000);
+        } else {
+            console.error('Submission failed:', data);
+            showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Fetch error:', error);
+        showNotification('Error submitting segment scores: ' + error.message, 'error');
+    });
+};
 }
 
 function calculateSegmentTotalScore() {
@@ -943,6 +960,208 @@ function updateConnectionIndicator(text, color) {
     indicator.textContent = text;
     indicator.style.borderColor = color;
     indicator.style.color = color;
+}
+
+// ==========================================
+// DRAFT AUTO-SAVE FUNCTIONALITY
+// ==========================================
+
+let draftSaveTimeout;
+let lastDraftSave = null;
+
+// Auto-save draft scores as judge types
+function autoSaveDraft(judgeId, participantId, segmentId) {
+    // Clear previous timeout
+    clearTimeout(draftSaveTimeout);
+    
+    // Show saving indicator
+    showDraftStatus('Saving draft...', 'saving');
+    
+    // Wait 2 seconds after user stops typing
+    draftSaveTimeout = setTimeout(() => {
+        saveDraftToServer(judgeId, participantId, segmentId);
+    }, 2000);
+}
+
+// Save draft to server via AJAX
+function saveDraftToServer(judgeId, participantId, segmentId) {
+    const criteriaInputs = document.querySelectorAll('[data-criteria-id]');
+    const draftScores = [];
+    
+    criteriaInputs.forEach(input => {
+        const score = parseFloat(input.value) || 0;
+        const criteriaId = input.getAttribute('data-criteria-id');
+        const percentage = parseFloat(input.getAttribute('data-percentage')) || 0;
+        const comments = document.getElementById(`comments_${criteriaId}`)?.value || '';
+        
+        draftScores.push({
+            criteria_id: criteriaId,
+            score: score,
+            weighted_score: (score * percentage) / 100,
+            comments: comments
+        });
+    });
+    
+    const generalComments = document.getElementById('general_comments')?.value || '';
+    const totalScore = calculateCurrentTotal();
+    
+    const draftData = {
+        judge_id: judgeId,
+        participant_id: participantId,
+        segment_id: segmentId,
+        scores: draftScores,
+        general_comments: generalComments,
+        total_score: totalScore,
+        is_draft: true,
+        saved_at: new Date().toISOString()
+    };
+    
+    // Save to localStorage (instant backup)
+    const draftKey = `draft_${judgeId}_${participantId}_${segmentId}`;
+    localStorage.setItem(draftKey, JSON.stringify(draftData));
+    
+    // Save to server via AJAX
+    fetch('https://mseufci-judgingsystem.up.railway.app/save-draft-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(draftData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            lastDraftSave = new Date();
+            showDraftStatus('✅ Draft saved', 'success');
+            setTimeout(() => hideDraftStatus(), 3000);
+        } else {
+            showDraftStatus('⚠️ Save failed (using local backup)', 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('Draft save error:', error);
+        showDraftStatus('⚠️ Offline - saved locally', 'warning');
+    });
+}
+
+// Calculate current total score
+function calculateCurrentTotal() {
+    const criteriaInputs = document.querySelectorAll('[data-criteria-id]');
+    let total = 0;
+    
+    criteriaInputs.forEach(input => {
+        const score = parseFloat(input.value) || 0;
+        const percentage = parseFloat(input.getAttribute('data-percentage')) || 0;
+        total += (score * percentage) / 100;
+    });
+    
+    return total;
+}
+
+// Show draft save status indicator
+function showDraftStatus(message, type) {
+    let indicator = document.getElementById('draft-status-indicator');
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'draft-status-indicator';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 9999;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        `;
+        document.body.appendChild(indicator);
+    }
+    
+    const colors = {
+        saving: '#ffc107',
+        success: '#28a745',
+        warning: '#ff9800',
+        error: '#dc3545'
+    };
+    
+    indicator.textContent = message;
+    indicator.style.background = colors[type] || colors.saving;
+    indicator.style.color = 'white';
+    indicator.style.display = 'block';
+}
+
+function hideDraftStatus() {
+    const indicator = document.getElementById('draft-status-indicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+}
+
+// Load draft from server or localStorage
+function loadDraft(judgeId, participantId, segmentId) {
+    const draftKey = `draft_${judgeId}_${participantId}_${segmentId}`;
+    
+    // Try server first
+    fetch(`https://mseufci-judgingsystem.up.railway.app/get-draft-scores/${judgeId}/${participantId}/${segmentId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.draft) {
+            applyDraftToForm(data.draft);
+            showNotification('📝 Draft loaded from server', 'info');
+        } else {
+            // Fallback to localStorage
+            const localDraft = localStorage.getItem(draftKey);
+            if (localDraft) {
+                applyDraftToForm(JSON.parse(localDraft));
+                showNotification('📝 Draft loaded from local backup', 'info');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading draft:', error);
+        // Fallback to localStorage
+        const localDraft = localStorage.getItem(draftKey);
+        if (localDraft) {
+            applyDraftToForm(JSON.parse(localDraft));
+            showNotification('📝 Draft loaded from local backup', 'warning');
+        }
+    });
+}
+
+// Apply draft data to form
+function applyDraftToForm(draft) {
+    if (!draft || !draft.scores) return;
+    
+    draft.scores.forEach(score => {
+        const input = document.getElementById(`score_${score.criteria_id}`);
+        if (input) {
+            input.value = score.score;
+        }
+        
+        const commentsField = document.getElementById(`comments_${score.criteria_id}`);
+        if (commentsField && score.comments) {
+            commentsField.value = score.comments;
+        }
+    });
+    
+    const generalComments = document.getElementById('general_comments');
+    if (generalComments && draft.general_comments) {
+        generalComments.value = draft.general_comments;
+    }
+    
+    // Recalculate total
+    calculateSegmentTotalScore();
+}
+
+// Clear draft after successful submission
+function clearDraft(judgeId, participantId, segmentId) {
+    const draftKey = `draft_${judgeId}_${participantId}_${segmentId}`;
+    localStorage.removeItem(draftKey);
+    
+    fetch(`https://mseufci-judgingsystem.up.railway.app/delete-draft-scores/${judgeId}/${participantId}/${segmentId}`, {
+        method: 'DELETE'
+    }).catch(err => console.error('Error deleting draft:', err));
 }
 
 setInterval(checkConnectionSpeed, 10000);

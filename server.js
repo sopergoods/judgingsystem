@@ -964,53 +964,7 @@ app.post('/create-pageant-segment', (req, res) => {
     });
 });
 
-// Submit pageant segment scores
-app.post('/submit-segment-scores', (req, res) => {
-    const { judge_id, participant_id, segment_id, scores } = req.body;
-    
-    if (!judge_id || !participant_id || !segment_id || !scores || scores.length === 0) {
-        return res.status(400).json({ error: 'Required fields missing' });
-    }
 
-    // Delete existing scores for this segment
-    db.query('DELETE FROM pageant_segment_scores WHERE judge_id = ? AND participant_id = ? AND segment_id = ?', 
-        [judge_id, participant_id, segment_id], (err) => {
-        if (err) {
-            console.error('Error deleting old segment scores:', err);
-            return res.status(500).json({ error: 'Error updating scores' });
-        }
-
-        // Insert new scores
-        const insertPromises = scores.map(score => {
-            return new Promise((resolve, reject) => {
-                const sql = `
-                    INSERT INTO pageant_segment_scores 
-                    (judge_id, participant_id, segment_id, criteria_id, score, weighted_score, comments) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `;
-                db.query(sql, [
-                    judge_id, participant_id, segment_id, 
-                    score.criteria_id, score.score, score.weighted_score, score.comments
-                ], (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
-                });
-            });
-        });
-
-        Promise.all(insertPromises)
-            .then(() => {
-                res.json({ 
-                    success: true, 
-                    message: 'Segment scores submitted successfully!'
-                });
-            })
-            .catch(err => {
-                console.error('Error inserting segment scores:', err);
-                res.status(500).json({ error: 'Error saving segment scores' });
-            });
-    });
-});
 // Flexible Pageant Creation Endpoint
 app.post('/create-flexible-pageant', (req, res) => {
     console.log('Received pageant data:', JSON.stringify(req.body, null, 2));
@@ -1165,51 +1119,76 @@ app.get('/pageant-segment-scores/:segmentId/:participantId/:judgeId', (req, res)
 });
 
 // Submit segment scores - FIXED VERSION
+// Submit segment scores - FIXED VERSION
 app.post('/submit-segment-scores', (req, res) => {
     const { judge_id, participant_id, segment_id, scores, general_comments, total_score } = req.body;
     
+    console.log('📥 Received segment score submission:', {
+        judge_id,
+        participant_id,
+        segment_id,
+        scores_count: scores?.length,
+        total_score
+    });
+    
+    // Validation
     if (!judge_id || !participant_id || !segment_id || !scores || scores.length === 0) {
+        console.error('❌ Validation failed:', { judge_id, participant_id, segment_id, scores });
         return res.status(400).json({ 
             success: false,
-            error: 'Required fields missing' 
+            error: 'Required fields missing. Need judge_id, participant_id, segment_id, and scores array' 
         });
     }
 
     // Start transaction
     db.beginTransaction((err) => {
         if (err) {
-            console.error('Transaction error:', err);
+            console.error('❌ Transaction start error:', err);
             return res.status(500).json({ 
                 success: false,
-                error: 'Database transaction error' 
+                error: 'Database transaction error: ' + err.message 
             });
         }
 
-        // Delete existing scores for this judge-participant-segment combination
+        console.log('🔄 Transaction started, deleting old scores...');
+
+        // Step 1: Delete existing scores for this judge-participant-segment combination
         const deleteSql = `
             DELETE FROM pageant_segment_scores 
             WHERE judge_id = ? AND participant_id = ? AND segment_id = ?
         `;
         
-        db.query(deleteSql, [judge_id, participant_id, segment_id], (err) => {
+        db.query(deleteSql, [judge_id, participant_id, segment_id], (err, deleteResult) => {
             if (err) {
                 return db.rollback(() => {
-                    console.error('Error deleting old scores:', err);
+                    console.error('❌ Error deleting old scores:', err);
                     res.status(500).json({ 
                         success: false,
-                        error: 'Error updating scores' 
+                        error: 'Error updating scores: ' + err.message 
                     });
                 });
             }
 
-            // Insert new scores
-            const insertPromises = scores.map(score => {
+            console.log('✅ Deleted old scores:', deleteResult.affectedRows, 'rows');
+            console.log('💾 Inserting', scores.length, 'new scores...');
+
+            // Step 2: Insert new scores
+            let insertedCount = 0;
+            let insertErrors = [];
+
+            const insertPromises = scores.map((score, index) => {
                 return new Promise((resolve, reject) => {
                     const sql = `
                         INSERT INTO pageant_segment_scores 
                         (judge_id, participant_id, segment_id, criteria_id, score, weighted_score, comments) 
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                     `;
+                    
+                    console.log(`  Inserting score ${index + 1}:`, {
+                        criteria_id: score.criteria_id,
+                        score: score.score,
+                        weighted_score: score.weighted_score
+                    });
                     
                     db.query(sql, [
                         judge_id, 
@@ -1220,32 +1199,45 @@ app.post('/submit-segment-scores', (req, res) => {
                         score.weighted_score, 
                         score.comments || null
                     ], (err, result) => {
-                        if (err) reject(err);
-                        else resolve(result);
+                        if (err) {
+                            console.error(`  ❌ Error inserting score ${index + 1}:`, err.message);
+                            insertErrors.push(`Score ${index + 1}: ${err.message}`);
+                            reject(err);
+                        } else {
+                            console.log(`  ✅ Inserted score ${index + 1}, insertId:`, result.insertId);
+                            insertedCount++;
+                            resolve(result);
+                        }
                     });
                 });
             });
 
             Promise.all(insertPromises)
             .then(() => {
-                // Get competition_id from segment
+                console.log('✅ All scores inserted successfully');
+                console.log('🔍 Getting competition_id from segment...');
+
+                // Step 3: Get competition_id from segment
                 const getCompSql = 'SELECT competition_id FROM pageant_segments WHERE segment_id = ?';
                 db.query(getCompSql, [segment_id], (err, result) => {
                     if (err || result.length === 0) {
                         return db.rollback(() => {
+                            console.error('❌ Error getting competition:', err || 'No segment found');
                             res.status(500).json({ 
                                 success: false,
-                                error: 'Error retrieving competition info' 
+                                error: 'Error retrieving competition info: ' + (err?.message || 'Segment not found')
                             });
                         });
                     }
 
                     const competition_id = result[0].competition_id;
+                    console.log('✅ Competition ID:', competition_id);
+                    console.log('💾 Saving overall score...');
 
-                    // Update or insert overall segment score summary
+                    // Step 4: Update or insert overall segment score summary
                     const overallSql = `
                         INSERT INTO overall_scores 
-                        (judge_id, participant_id, competition_id, total_score, general_comments, segment_id)
+                        (judge_id, participant_id, competition_id, segment_id, total_score, general_comments)
                         VALUES (?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE 
                         total_score = VALUES(total_score), 
@@ -1257,36 +1249,41 @@ app.post('/submit-segment-scores', (req, res) => {
                         judge_id, 
                         participant_id, 
                         competition_id, 
+                        segment_id,
                         total_score || 0, 
-                        general_comments || null, 
-                        segment_id
-                    ], (err) => {
+                        general_comments || null
+                    ], (err, overallResult) => {
                         if (err) {
                             return db.rollback(() => {
-                                console.error('Error saving overall score:', err);
+                                console.error('❌ Error saving overall score:', err);
                                 res.status(500).json({ 
                                     success: false,
-                                    error: 'Error saving overall score' 
+                                    error: 'Error saving overall score: ' + err.message 
                                 });
                             });
                         }
 
-                        // Commit transaction
+                        console.log('✅ Overall score saved:', overallResult.insertId || overallResult.affectedRows);
+                        console.log('🎉 Committing transaction...');
+
+                        // Step 5: Commit transaction
                         db.commit((err) => {
                             if (err) {
                                 return db.rollback(() => {
-                                    console.error('Commit error:', err);
+                                    console.error('❌ Commit error:', err);
                                     res.status(500).json({ 
                                         success: false,
-                                        error: 'Error committing scores' 
+                                        error: 'Error committing scores: ' + err.message 
                                     });
                                 });
                             }
 
+                            console.log('✅✅✅ SUCCESS! All scores saved and committed');
                             res.json({ 
                                 success: true, 
                                 message: 'Segment scores submitted successfully!',
-                                total_score: total_score
+                                total_score: total_score,
+                                scores_saved: insertedCount
                             });
                         });
                     });
@@ -1294,10 +1291,12 @@ app.post('/submit-segment-scores', (req, res) => {
             })
             .catch(err => {
                 db.rollback(() => {
-                    console.error('Error inserting segment scores:', err);
+                    console.error('❌ Error in Promise.all:', err);
+                    console.error('Insert errors:', insertErrors);
                     res.status(500).json({ 
                         success: false,
-                        error: 'Error saving segment scores' 
+                        error: 'Error saving segment scores: ' + err.message,
+                        details: insertErrors 
                     });
                 });
             });
@@ -1446,6 +1445,70 @@ app.get('/segment-criteria/:segmentId', (req, res) => {
             return res.status(500).json({ error: 'Error fetching segment criteria' });
         }
         res.json(result);
+    });
+});
+// Save draft scores
+app.post('/save-draft-scores', (req, res) => {
+    const { judge_id, participant_id, segment_id, scores, general_comments, total_score } = req.body;
+    
+    const sql = `
+        INSERT INTO draft_scores 
+        (judge_id, participant_id, segment_id, draft_data, saved_at)
+        VALUES (?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE 
+        draft_data = VALUES(draft_data),
+        saved_at = NOW()
+    `;
+    
+    const draftData = JSON.stringify({ scores, general_comments, total_score });
+    
+    db.query(sql, [judge_id, participant_id, segment_id, draftData], (err) => {
+        if (err) {
+            console.error('Draft save error:', err);
+            return res.json({ success: false, error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Get draft scores
+app.get('/get-draft-scores/:judgeId/:participantId/:segmentId', (req, res) => {
+    const { judgeId, participantId, segmentId } = req.params;
+    
+    const sql = `
+        SELECT draft_data, saved_at 
+        FROM draft_scores 
+        WHERE judge_id = ? AND participant_id = ? AND segment_id = ?
+    `;
+    
+    db.query(sql, [judgeId, participantId, segmentId], (err, result) => {
+        if (err) {
+            return res.json({ success: false, error: err.message });
+        }
+        
+        if (result.length > 0) {
+            res.json({ 
+                success: true, 
+                draft: JSON.parse(result[0].draft_data),
+                saved_at: result[0].saved_at
+            });
+        } else {
+            res.json({ success: false, message: 'No draft found' });
+        }
+    });
+});
+
+// Delete draft after submission
+app.delete('/delete-draft-scores/:judgeId/:participantId/:segmentId', (req, res) => {
+    const { judgeId, participantId, segmentId } = req.params;
+    
+    const sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND segment_id = ?';
+    
+    db.query(sql, [judgeId, participantId, segmentId], (err) => {
+        if (err) {
+            return res.json({ success: false, error: err.message });
+        }
+        res.json({ success: true });
     });
 });
 
