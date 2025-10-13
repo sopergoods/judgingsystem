@@ -1123,17 +1123,19 @@ function loadScoringResults() {
     fetch(`https://mseufci-judgingsystem.up.railway.app/overall-scores/${competitionId}`)
     .then(response => response.json())
     .then(scores => {
+        console.log('📊 Raw scores data:', scores); // DEBUG
+        
         if (scores.length === 0) {
             document.getElementById("resultsContent").innerHTML = `
                 <div class="alert alert-warning">
                     <h3>No Scores Yet</h3>
-                    <p>No scores have been submitted for this competition yet. Judges need to complete their scoring first.</p>
+                    <p>No scores have been submitted for this competition yet.</p>
                 </div>
             `;
             return;
         }
 
-        // Group scores by participant
+        // Group scores by participant - FIXED VERSION
         const participantScores = {};
         scores.forEach(score => {
             if (!participantScores[score.participant_id]) {
@@ -1145,16 +1147,30 @@ function loadScoringResults() {
                     total_scores: 0
                 };
             }
-            participantScores[score.participant_id].scores.push({
-                judge_name: score.judge_name,
-                total_score: score.total_score
-            });
+            
+            // Only add valid scores
+            const totalScore = parseFloat(score.total_score);
+            if (!isNaN(totalScore) && totalScore !== null) {
+                participantScores[score.participant_id].scores.push({
+                    judge_name: score.judge_name,
+                    total_score: totalScore
+                });
+            }
         });
 
-        // Calculate averages and sort
+        // Calculate averages and sort - FIXED VERSION
         const sortedParticipants = Object.values(participantScores).map(participant => {
             participant.total_scores = participant.scores.length;
-            participant.average = participant.scores.reduce((sum, score) => sum + score.total_score, 0) / participant.scores.length;
+            
+            if (participant.scores.length > 0) {
+                const sum = participant.scores.reduce((total, score) => total + score.total_score, 0);
+                participant.average = sum / participant.scores.length;
+            } else {
+                participant.average = 0;
+            }
+            
+            console.log('✅ Participant:', participant.participant_name, 'Average:', participant.average); // DEBUG
+            
             return participant;
         }).sort((a, b) => b.average - a.average);
 
@@ -1175,7 +1191,10 @@ function loadScoringResults() {
 
         sortedParticipants.forEach((participant, index) => {
             const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
-            const rankText = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`;
+            const rankText = index === 0 ? '🥇 1st' : index === 1 ? '🥈 2nd' : index === 2 ? '🥉 3rd' : `${index + 1}th`;
+            
+            // Format average safely
+            const avgDisplay = participant.average > 0 ? participant.average.toFixed(2) : '0.00';
             
             resultsHtml += `
                 <tr>
@@ -1185,7 +1204,7 @@ function loadScoringResults() {
                     <td><strong>${participant.participant_name}</strong></td>
                     <td>${participant.performance_title || 'N/A'}</td>
                     <td style="text-align: center; font-weight: bold; color: #800020;">
-                        ${participant.average.toFixed(2)}
+                        ${avgDisplay}
                     </td>
                     <td style="text-align: center;">${participant.total_scores}</td>
                     <td style="text-align: center;">
@@ -1205,7 +1224,7 @@ function loadScoringResults() {
             
             <div style="margin-top: 20px; text-align: center;">
                 <button onclick="exportResults(${competitionId})" class="card-button">
-                    Export Results
+                    📊 Export Results
                 </button>
             </div>
         `;
