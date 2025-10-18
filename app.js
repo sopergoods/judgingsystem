@@ -697,13 +697,7 @@ function showAddParticipantForm() {
                 <textarea id="performance_description" name="performance_description" rows="3" placeholder="Describe the performance, talent, or entry..."></textarea>
             </div>
             
-          <div id="pageantFields" class="form-section" style="display: none;">
-    <h3 style="color: #ff69b4; border-bottom: 2px solid #ff69b4; padding-bottom: 10px; margin: 30px 0 20px 0;">👑 Beauty Pageant Information</h3>
-    
-    <div style="background: #fff0f5; border: 2px solid #ff69b4; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-        <strong>📝 Additional Requirements for Beauty Pageants:</strong>
-        <p style="color: #666; margin-top: 8px;">Beauty pageant competitions require additional information for comprehensive evaluation.</p>
-    </div>
+       
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <div>
