@@ -547,11 +547,11 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
 }
 function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant) {
     let formHtml = `
-        <h2>👑 Score Segment: ${segmentName}</h2>
+        <h2>Score Segment: ${segmentName}</h2>
         <h3 style="color: #800020;">Participant: ${participantName}</h3>
         
         <div style="margin-bottom: 20px;">
-            <button onclick="showSegmentSelection(${judgeId}, ${participantId}, ${competitionId}, '${participantName.replace(/'/g, "\\'")}')" class="secondary">← Back to Segment Selection</button>
+            <button onclick="showSegmentSelection(${judgeId}, ${participantId}, ${competitionId}, '${participantName.replace(/'/g, "\\'")}')" class="secondary">Back to Segment Selection</button>
         </div>
         
         ${participant.photo_url ? `
@@ -569,7 +569,7 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
                 </div>
                 <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                     <p style="font-weight: 600; color: #800020; font-size: 20px; margin: 0;">
-                        ${participant.contestant_number ? `👑 Contestant #${participant.contestant_number}` : '👑 Contestant'} 
+                        ${participant.contestant_number ? `Contestant #${participant.contestant_number}` : 'Contestant'} 
                     </p>
                     <p style="font-size: 18px; color: #666; margin: 5px 0 0 0;">${participantName}</p>
                 </div>
@@ -577,7 +577,7 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
         ` : `
             <div style="text-align: center; margin: 20px 0; padding: 30px; background: #fff3cd; border-radius: 12px; border: 2px solid #ffc107;">
                 <p style="font-size: 18px; color: #856404;">
-                    ${participant.contestant_number ? `👑 Contestant #${participant.contestant_number} - ` : ''}${participantName}
+                    ${participant.contestant_number ? `Contestant #${participant.contestant_number} - ` : ''}${participantName}
                 </p>
                 <small style="color: #666;">No photo available</small>
             </div>
@@ -585,7 +585,7 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
         
         <form id="segmentScoreForm" class="dashboard-card" style="max-width: 900px; margin: 0 auto; text-align: left;">
             <div class="alert alert-info">
-                <strong>📊 Scoring Instructions:</strong>
+                <strong>Scoring Instructions:</strong>
                 <p>Rate each criterion from 0 to 100. Your scores will be weighted automatically based on percentages.</p>
             </div>
             
@@ -602,7 +602,7 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
                     ${criterion.description || 'Score this criterion based on the performance'}
                 </p>
                 
-                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: start;">
+                <div style="display: grid; grid-template-columns: 200px; gap: 20px; align-items: center;">
                     <div>
                         <label for="score_${criterion.criteria_id}" style="display: block; margin-bottom: 5px; font-weight: 600;">Score (0-100):</label>
                         <input type="number" 
@@ -616,13 +616,6 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
                                required
                                oninput="calculateSegmentTotalScore()"
                                style="width: 100%; padding: 12px; font-size: 18px; text-align: center; font-weight: bold; border: 2px solid #ddd; border-radius: 8px;">
-                    </div>
-                    <div>
-                        <label for="comments_${criterion.criteria_id}" style="display: block; margin-bottom: 5px; font-weight: 600;">Comments (Optional):</label>
-                        <textarea id="comments_${criterion.criteria_id}" 
-                                  rows="2" 
-                                  placeholder="Your feedback for this criterion..."
-                                  style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px;"></textarea>
                     </div>
                 </div>
             </div>
@@ -638,15 +631,25 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
                 <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">out of 100 points</p>
             </div>
             
-            <label for="general_comments" style="display: block; margin-top: 20px; font-weight: 600; color: #800020; font-size: 16px;">General Comments for ${segmentName}:</label>
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #2196F3;">
+                <strong>How Scoring Works:</strong>
+                <ul style="margin-top: 10px; color: #1976d2;">
+                    <li>Each criterion is scored from 0-100 points</li>
+                    <li>Scores are weighted by percentage (shown above each criterion)</li>
+                    <li><strong>Formula:</strong> Final Score = Sum of (Score × Percentage / 100)</li>
+                    <li>Total percentages add up to 100%</li>
+                </ul>
+            </div>
+            
+            <label for="general_comments" style="display: block; margin-top: 20px; font-weight: 600; color: #800020; font-size: 16px;">General Comments:</label>
             <textarea id="general_comments" 
                       rows="4" 
-                      placeholder="Overall feedback for this segment performance..."
+                      placeholder="Overall feedback for this performance..."
                       style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-top: 5px; font-size: 14px;"></textarea>
             
             <div style="margin-top: 30px; text-align: center;">
                 <button type="submit" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 45px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
-                    ✅ Submit Segment Score
+                    Submit Score
                 </button>
                 <button type="button" onclick="showSegmentSelection(${judgeId}, ${participantId}, ${competitionId}, '${participantName.replace(/'/g, "\\'")}')" class="secondary" style="margin-left: 15px; padding: 18px 35px; font-size: 16px;">
                     Cancel
@@ -657,8 +660,92 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
 
     document.getElementById("content").innerHTML = formHtml;
 
-    // Keep the existing form submission handler...
-    // (The rest of your existing submission code)
+    // Form submission
+    document.getElementById("segmentScoreForm").onsubmit = function(event) {
+        event.preventDefault();
+
+        const scores = [];
+        let totalWeightedScore = 0;
+        let hasError = false;
+
+        criteria.forEach(criterion => {
+            if (hasError) return;
+            
+            const scoreInput = document.getElementById(`score_${criterion.criteria_id}`);
+            const score = parseFloat(scoreInput.value);
+            const percentage = parseFloat(criterion.percentage);
+            
+            if (isNaN(score) || score < 0 || score > 100) {
+                showNotification(`Score for ${criterion.criteria_name} must be between 0 and 100`, 'error');
+                hasError = true;
+                return;
+            }
+
+            const weightedScore = (score * percentage) / 100;
+            totalWeightedScore += weightedScore;
+
+            scores.push({
+                criteria_id: criterion.criteria_id,
+                score: score,
+                weighted_score: weightedScore,
+                comments: null
+            });
+        });
+
+        if (hasError || scores.length !== criteria.length) {
+            console.error('Form validation failed');
+            return;
+        }
+
+        const submissionData = {
+            judge_id: judgeId,
+            participant_id: participantId,
+            segment_id: segmentId,
+            scores: scores,
+            general_comments: document.getElementById("general_comments").value || null,
+            total_score: totalWeightedScore
+        };
+
+        console.log('Submitting scores:', submissionData);
+
+        fetch('https://mseufci-judgingsystem.up.railway.app/submit-segment-scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(submissionData)
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            
+            if (data.success) {
+                showNotification(`Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
+                setTimeout(() => {
+                    showSegmentSelection(judgeId, participantId, competitionId, participantName);
+                }, 2000);
+            } else {
+                console.error('Submission failed:', data);
+                showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            showNotification('Error submitting segment scores: ' + error.message, 'error');
+        });
+    };
+    
+    setTimeout(() => {
+        loadDraft(judgeId, participantId, segmentId);
+        
+        const allInputs = document.querySelectorAll('#segmentScoreForm input, #segmentScoreForm textarea');
+        allInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                autoSaveDraft(judgeId, participantId, segmentId);
+            });
+        });
+    }, 500);
 }
 
 function calculateSegmentTotalScore() {
