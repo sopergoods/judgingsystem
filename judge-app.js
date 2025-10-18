@@ -339,20 +339,23 @@ function showSegmentSelection(judgeId, participantId, competitionId, participant
 // 7. SEGMENT SCORING WITH CRITERIA
 // ==========================================
 function showSegmentScoring(judgeId, participantId, competitionId, segmentId, participantName, segmentName) {
-    console.log('Loading segment-specific criteria...'); // Debug
+    console.log('Loading segment-specific criteria...');
     
-    // CHANGE: Fetch segment-specific criteria instead of all competition criteria
-    fetch(`https://mseufci-judgingsystem.up.railway.app/segment-criteria/${segmentId}`)
-    .then(response => response.json())
-    .then(criteria => {
-        console.log('Segment criteria loaded:', criteria); // Debug // Debug
+    // Fetch both participant details and segment criteria
+    Promise.all([
+        fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`).then(r => r.json()),
+        fetch(`https://mseufci-judgingsystem.up.railway.app/segment-criteria/${segmentId}`).then(r => r.json())
+    ])
+    .then(([participant, criteria]) => {
+        console.log('Participant:', participant);
+        console.log('Segment criteria loaded:', criteria);
         
         if (criteria.length === 0) {
-            showNotification('No criteria configured for this competition', 'error');
+            showNotification('No criteria configured for this segment', 'error');
             return;
         }
 
-        displaySegmentScoringForm(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria);
+        displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant);
     })
     .catch(error => {
         console.error('Error loading criteria:', error);
@@ -541,6 +544,121 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
         showNotification('Error submitting segment scores: ' + error.message, 'error');
     });
 };
+}
+function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant) {
+    let formHtml = `
+        <h2>👑 Score Segment: ${segmentName}</h2>
+        <h3 style="color: #800020;">Participant: ${participantName}</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showSegmentSelection(${judgeId}, ${participantId}, ${competitionId}, '${participantName.replace(/'/g, "\\'")}')" class="secondary">← Back to Segment Selection</button>
+        </div>
+        
+        ${participant.photo_url ? `
+            <div style="text-align: center; margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #fff0f5 0%, #ffe4e9 100%); border-radius: 12px; border: 3px solid #ff69b4;">
+                <div style="display: inline-block; position: relative;">
+                    ${participant.contestant_number ? `
+                        <div style="position: absolute; top: 10px; left: 10px; background: linear-gradient(135deg, #800020 0%, #a0002a 100%); color: white; padding: 10px 20px; border-radius: 10px; font-weight: bold; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 10;">
+                            #${participant.contestant_number}
+                        </div>
+                    ` : ''}
+                    <img src="${participant.photo_url}" 
+                         alt="${participantName}" 
+                         style="max-width: 350px; max-height: 450px; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 4px solid white;"
+                         onerror="this.src='https://via.placeholder.com/350x450/800020/ffffff?text=Photo+Not+Available'; this.style.opacity='0.6';">
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <p style="font-weight: 600; color: #800020; font-size: 20px; margin: 0;">
+                        ${participant.contestant_number ? `👑 Contestant #${participant.contestant_number}` : '👑 Contestant'} 
+                    </p>
+                    <p style="font-size: 18px; color: #666; margin: 5px 0 0 0;">${participantName}</p>
+                </div>
+            </div>
+        ` : `
+            <div style="text-align: center; margin: 20px 0; padding: 30px; background: #fff3cd; border-radius: 12px; border: 2px solid #ffc107;">
+                <p style="font-size: 18px; color: #856404;">
+                    ${participant.contestant_number ? `👑 Contestant #${participant.contestant_number} - ` : ''}${participantName}
+                </p>
+                <small style="color: #666;">No photo available</small>
+            </div>
+        `}
+        
+        <form id="segmentScoreForm" class="dashboard-card" style="max-width: 900px; margin: 0 auto; text-align: left;">
+            <div class="alert alert-info">
+                <strong>📊 Scoring Instructions:</strong>
+                <p>Rate each criterion from 0 to 100. Your scores will be weighted automatically based on percentages.</p>
+            </div>
+            
+            <div id="criteriaScores">
+    `;
+
+    criteria.forEach((criterion, index) => {
+        formHtml += `
+            <div class="criterion-item" style="margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #800020;">
+                <h4 style="color: #800020; margin-bottom: 10px;">
+                    ${index + 1}. ${criterion.criteria_name} (${criterion.percentage}%)
+                </h4>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">
+                    ${criterion.description || 'Score this criterion based on the performance'}
+                </p>
+                
+                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: start;">
+                    <div>
+                        <label for="score_${criterion.criteria_id}" style="display: block; margin-bottom: 5px; font-weight: 600;">Score (0-100):</label>
+                        <input type="number" 
+                               id="score_${criterion.criteria_id}" 
+                               data-criteria-id="${criterion.criteria_id}"
+                               data-percentage="${criterion.percentage}"
+                               data-max-score="100"
+                               min="0" 
+                               max="100" 
+                               step="0.1" 
+                               required
+                               oninput="calculateSegmentTotalScore()"
+                               style="width: 100%; padding: 12px; font-size: 18px; text-align: center; font-weight: bold; border: 2px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label for="comments_${criterion.criteria_id}" style="display: block; margin-bottom: 5px; font-weight: 600;">Comments (Optional):</label>
+                        <textarea id="comments_${criterion.criteria_id}" 
+                                  rows="2" 
+                                  placeholder="Your feedback for this criterion..."
+                                  style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px;"></textarea>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    formHtml += `
+            </div>
+            
+            <div id="totalScoreDisplay" style="background: linear-gradient(135deg, #800020 0%, #a0002a 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin: 30px 0; box-shadow: 0 4px 15px rgba(128, 0, 32, 0.3);">
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;">Total Weighted Score</h3>
+                <div style="font-size: 3.5em; font-weight: bold; margin: 15px 0;" id="totalScore">0.00</div>
+                <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">out of 100 points</p>
+            </div>
+            
+            <label for="general_comments" style="display: block; margin-top: 20px; font-weight: 600; color: #800020; font-size: 16px;">General Comments for ${segmentName}:</label>
+            <textarea id="general_comments" 
+                      rows="4" 
+                      placeholder="Overall feedback for this segment performance..."
+                      style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-top: 5px; font-size: 14px;"></textarea>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <button type="submit" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 45px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                    ✅ Submit Segment Score
+                </button>
+                <button type="button" onclick="showSegmentSelection(${judgeId}, ${participantId}, ${competitionId}, '${participantName.replace(/'/g, "\\'")}')" class="secondary" style="margin-left: 15px; padding: 18px 35px; font-size: 16px;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById("content").innerHTML = formHtml;
+
+    // Keep the existing form submission handler...
+    // (The rest of your existing submission code)
 }
 
 function calculateSegmentTotalScore() {

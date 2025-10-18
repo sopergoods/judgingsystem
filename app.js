@@ -350,6 +350,8 @@ function showCreateCompetitionForm() {
     };
 }
 
+
+
 // FIXED: Enhanced View Competitions
 function showViewCompetitions() {
     document.getElementById("content").innerHTML = `
@@ -695,28 +697,37 @@ function showAddParticipantForm() {
                 <textarea id="performance_description" name="performance_description" rows="3" placeholder="Describe the performance, talent, or entry..."></textarea>
             </div>
             
-            <div id="pageantFields" style="display: none;">
-                <div class="form-section">
-                    <h3 style="color: #e91e63;">Pageant Specific Information</h3>
-                    
-                    <div class="grid-2">
-                        <div>
-                            <label for="height">Height:</label>
-                            <input type="text" id="height" name="height" placeholder="e.g., 5'6&quot;">
-                        </div>
-                        <div>
-                            <label for="measurements">Measurements:</label>
-                            <input type="text" id="measurements" name="measurements" placeholder="e.g., 34-24-36">
-                        </div>
-                    </div>
-                    
-                    <label for="talents">Special Talents:</label>
-                    <textarea id="talents" name="talents" rows="2" placeholder="List special talents, skills, or abilities..."></textarea>
-                    
-                    <label for="special_awards">Awards & Achievements:</label>
-                    <textarea id="special_awards" name="special_awards" rows="2" placeholder="List awards, honors, achievements, positions held..."></textarea>
-                </div>
-            </div>
+          <div id="pageantFields" class="form-section" style="display: none;">
+    <h3 style="color: #ff69b4; border-bottom: 2px solid #ff69b4; padding-bottom: 10px; margin: 30px 0 20px 0;">👑 Beauty Pageant Information</h3>
+    
+    <div style="background: #fff0f5; border: 2px solid #ff69b4; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <strong>📝 Additional Requirements for Beauty Pageants:</strong>
+        <p style="color: #666; margin-top: 8px;">Beauty pageant competitions require additional information for comprehensive evaluation.</p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <label for="contestant_number">Contestant/Group Number: <span style="color: red;">*</span></label>
+            <input type="text" id="contestant_number" name="contestant_number" placeholder="e.g., 1, 2, Group A" required>
+        </div>
+        <div>
+            <label for="height">Height:</label>
+            <input type="text" id="height" name="height" placeholder="e.g., 5'6&quot; or 168cm">
+        </div>
+    </div>
+    
+    <label for="photo_url">Contestant Photo URL: <span style="color: red;">*</span></label>
+    <input type="url" id="photo_url" name="photo_url" placeholder="https://example.com/photo.jpg" required>
+    <small style="color: #666; display: block; margin-top: 5px;">
+        Upload your photo to a service like <a href="https://imgur.com" target="_blank">Imgur</a>, <a href="https://postimages.org" target="_blank">PostImages</a>, or Google Drive (public link), then paste the URL here
+    </small>
+    
+    <label for="talents">Special Talents & Skills:</label>
+    <textarea id="talents" name="talents" rows="3" placeholder="List special talents, skills, musical instruments, languages, etc..."></textarea>
+    
+    <label for="special_awards">Awards & Achievements:</label>
+    <textarea id="special_awards" name="special_awards" rows="3" placeholder="List awards, honors, achievements, leadership positions, academic honors, etc..."></textarea>
+</div>
             
             <div style="margin-top: 30px;">
                 <input type="submit" value="Add Participant" style="padding: 15px 30px; font-size: 16px;">
@@ -749,47 +760,49 @@ function showAddParticipantForm() {
         console.error('Error fetching competitions:', error);
     });
 
-    document.getElementById("addParticipantForm").onsubmit = function(event) {
-        event.preventDefault();
+   document.getElementById("addParticipantForm").onsubmit = function(event) {
+    event.preventDefault();
 
-        const participantData = {
-            participant_name: document.getElementById("participant_name").value,
-            email: document.getElementById("email").value,
-            phone: document.getElementById("phone").value,
-            age: document.getElementById("age").value,
-            gender: document.getElementById("gender").value,
-            school_organization: document.getElementById("school_organization").value,
-            performance_title: document.getElementById("performance_title").value,
-            performance_description: document.getElementById("performance_description").value,
-            competition_id: document.getElementById("competition").value,
-            status: document.getElementById("status").value,
-            height: document.getElementById("height").value,
-            measurements: document.getElementById("measurements").value,
-            talents: document.getElementById("talents").value,
-            special_awards: document.getElementById("special_awards").value
-        };
-
-        fetch('https://mseufci-judgingsystem.up.railway.app/add-participant', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(participantData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Participant added successfully!');
-                showViewParticipants();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error adding participant');
-        });
+    const participantData = {
+        participant_name: document.getElementById("participant_name").value,
+        contestant_number: document.getElementById("contestant_number")?.value || null,
+        photo_url: document.getElementById("photo_url")?.value || null,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        age: document.getElementById("age").value,
+        gender: document.getElementById("gender").value,
+        school_organization: document.getElementById("school_organization").value,
+        performance_title: document.getElementById("performance_title").value,
+        performance_description: document.getElementById("performance_description").value,
+        competition_id: document.getElementById("competition").value,
+        status: document.getElementById("status").value,
+        height: document.getElementById("height")?.value || null,
+        measurements: null, // Keep this as null for new participants
+        talents: document.getElementById("talents")?.value || null,
+        special_awards: document.getElementById("special_awards")?.value || null
     };
+
+    fetch('https://mseufci-judgingsystem.up.railway.app/add-participant', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(participantData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Participant added successfully!');
+            showViewParticipants();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding participant');
+    });
+};
 }
 
 // Enhanced View Participants with Pageant Support

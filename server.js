@@ -395,10 +395,9 @@ app.get('/participant/:id', (req, res) => {
 
 app.post('/add-participant', (req, res) => {
     const { 
-        participant_name, email, phone, age, gender, 
+        participant_name, contestant_number, photo_url, email, phone, age, gender, 
         school_organization, performance_title, performance_description, 
         competition_id, status,
-        // Pageant specific fields
         height, measurements, talents, special_awards
     } = req.body;
 
@@ -406,17 +405,29 @@ app.post('/add-participant', (req, res) => {
         return res.status(400).json({ error: 'Required fields missing' });
     }
 
-    // FIX: Remove the double comma in the SQL statement
     const sql = `INSERT INTO participants 
-                (participant_name, email, phone, age, gender, school_organization, 
+                (participant_name, contestant_number, photo_url, email, phone, age, gender, school_organization, 
                  performance_title, performance_description, competition_id, status,
                  height, measurements, talents, special_awards) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     
     db.query(sql, [
-        participant_name, email, phone, age, gender, school_organization,
-        performance_title, performance_description, competition_id, status || 'pending',
-        height, measurements, talents, special_awards
+        participant_name, 
+        contestant_number || null,
+        photo_url || null,
+        email, 
+        phone, 
+        age, 
+        gender, 
+        school_organization,
+        performance_title, 
+        performance_description, 
+        competition_id, 
+        status || 'pending',
+        height || null,
+        measurements || null, // Keep this field
+        talents || null,
+        special_awards || null
     ], (err, result) => {
         if (err) {
             console.error('Error adding participant:', err);

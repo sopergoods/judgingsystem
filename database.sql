@@ -195,6 +195,18 @@ CREATE TABLE criteria_templates (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_type_id) REFERENCES event_types(event_type_id) ON DELETE CASCADE
 );
+CREATE TABLE draft_scores (
+    draft_id INT AUTO_INCREMENT PRIMARY KEY,
+    judge_id INT NOT NULL,
+    participant_id INT NOT NULL,
+    segment_id INT NOT NULL,
+    draft_data JSON NOT NULL,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_draft (judge_id, participant_id, segment_id),
+    FOREIGN KEY (judge_id) REFERENCES judges(judge_id) ON DELETE CASCADE,
+    FOREIGN KEY (participant_id) REFERENCES participants(participant_id) ON DELETE CASCADE,
+    FOREIGN KEY (segment_id) REFERENCES pageant_segments(segment_id) ON DELETE CASCADE
+);
 
 -- ================================================
 -- INSERT SAMPLE DATA
