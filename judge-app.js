@@ -433,6 +433,11 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
 function showSegmentSelection(judgeId, participantId, competitionId, participantName) {
     console.log('Showing segment selection...'); // Debug
     
+     if (window.currentScoreData) {
+        console.log('⚠️ Active countdown detected, preserving it...');
+        // Don't interrupt the countdown
+    }
+    
     document.getElementById("content").innerHTML = `
         <h2>👑 Pageant Scoring - Select Segment</h2>
         <h3 style="color: #800020;">Participant: ${participantName}</h3>
