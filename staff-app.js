@@ -1896,35 +1896,81 @@ function startParticipantCountUpdates() {
     participantCountInterval = setInterval(updateParticipantCounts, 10000);
 }
 
-function updateParticipantCounts() {
-    fetch('https://mseufci-judgingsystem.up.railway.app/competitions')
-    .then(response => response.json())
-    .then(competitions => {
-        competitions.forEach(comp => {
-            const countElement = document.getElementById(`participant-count-${comp.competition_id}`);
-            if (countElement) {
-                const oldCount = parseInt(countElement.textContent);
-                const newCount = comp.participant_count || 0;
-                
-                if (oldCount !== newCount) {
-                    countElement.textContent = newCount;
-                    countElement.style.color = '#28a745';
-                    countElement.style.fontWeight = 'bold';
+function updateParticipantStatus(competitionId) {
+    Promise.all([
+        fetch(`https://mseufci-judgingsystem.up.railway.app/participants/${competitionId}`).then(r => r.json()),
+        fetch(`https://mseufci-judgingsystem.up.railway.app/overall-scores/${competitionId}`).then(r => r.json()),
+        fetch('https://mseufci-judgingsystem.up.railway.app/judges').then(r => r.json())
+    ])
+    .then(([participants, scores, allJudges]) => {
+        const judges = allJudges.filter(j => j.competition_id == competitionId);
+        const totalJudges = judges.length;
+        
+        // ✅ FIX: Check if element exists before updating
+        const participantStatusGrid = document.getElementById("participantStatusGrid");
+        if (!participantStatusGrid) {
+            console.warn('participantStatusGrid element not found - user may have navigated away');
+            stopParticipantStatus(); // Stop polling if element is gone
+            return;
+        }
+        
+        if (participants.length === 0) {
+            participantStatusGrid.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                    <h3>No Participants Yet</h3>
+                    <p>Add participants to this competition to track their scoring status.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">';
+        
+        participants.forEach(participant => {
+            const participantScores = scores.filter(s => s.participant_id === participant.participant_id);
+            const scoredByJudges = participantScores.length;
+            const percentage = totalJudges > 0 ? (scoredByJudges / totalJudges * 100).toFixed(0) : 0;
+            
+            const statusColor = percentage == 100 ? '#28a745' : percentage > 0 ? '#ffc107' : '#dc3545';
+            const statusText = percentage == 100 ? 'COMPLETE ✅' : percentage > 0 ? 'IN PROGRESS 🔄' : 'WAITING ⏳';
+            
+            html += `
+                <div class="participant-status-card" style="background: white; border: 3px solid ${statusColor}; padding: 20px; border-radius: 12px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                    <h4 style="margin: 0 0 15px 0; color: #800020;">${participant.participant_name}</h4>
                     
-                    // Flash animation
-                    countElement.style.animation = 'flash 1s ease-in-out';
+                    <div style="background: #f0f0f0; height: 25px; border-radius: 15px; overflow: hidden; margin: 15px 0;">
+                        <div style="background: ${statusColor}; height: 100%; width: ${percentage}%; transition: width 0.5s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
+                            ${percentage > 10 ? percentage + '%' : ''}
+                        </div>
+                    </div>
                     
-                    setTimeout(() => {
-                        countElement.style.color = '';
-                        countElement.style.fontWeight = '';
-                        countElement.style.animation = '';
-                    }, 2000);
-                }
-            }
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <small style="font-weight: bold; color: ${statusColor};">${statusText}</small>
+                        <small style="color: #666;">${scoredByJudges}/${totalJudges} judges</small>
+                    </div>
+                    
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        <small style="color: #999;">Performance: ${participant.performance_title || 'N/A'}</small>
+                    </div>
+                </div>
+            `;
         });
+        
+        html += '</div>';
+        participantStatusGrid.innerHTML = html;
     })
     .catch(error => {
-        console.error('Error updating participant counts:', error);
+        console.error('Error updating participant status:', error);
+        const participantStatusGrid = document.getElementById("participantStatusGrid");
+        if (participantStatusGrid) {
+            participantStatusGrid.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #fff3cd; border-radius: 8px;">
+                    <h3>⚠️ Error Loading Status</h3>
+                    <p>Could not load participant status. Please refresh the page.</p>
+                    <button onclick="location.reload()" class="card-button">Refresh Page</button>
+                </div>
+            `;
+        }
     });
 }
 
@@ -2272,6 +2318,14 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+function stopParticipantStatus() {
+    if (window.currentStatusInterval) {
+        clearInterval(window.currentStatusInterval);
+        window.currentStatusInterval = null;
+    }
+}
+
 
 // ==========================================
 // END OF AJAX ENHANCEMENTS FOR staff-app.js

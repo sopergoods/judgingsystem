@@ -247,6 +247,8 @@ function scoreParticipant(participantId, competitionId, participantName) {
         });
     });
 }
+
+
 function showRegularScoringWithPhoto(judgeId, participantId, competitionId, participantName, participant) {
     fetch(`https://mseufci-judgingsystem.up.railway.app/competition-criteria/${competitionId}`)
     .then(response => response.json())
@@ -356,6 +358,19 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
 
         document.getElementById("content").innerHTML = scoreForm;
 
+        // ✅ FIX: Load draft for regular scoring
+        setTimeout(() => {
+            loadRegularDraft(judgeId, participantId, competitionId);
+            
+            // ✅ FIX: Add auto-save to all input fields
+            const allInputs = document.querySelectorAll('#detailedScoreForm input, #detailedScoreForm textarea');
+            allInputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    autoSaveRegularDraft(judgeId, participantId, competitionId);
+                });
+            });
+        }, 500);
+
         document.getElementById("detailedScoreForm").onsubmit = function(event) {
             event.preventDefault();
 
@@ -405,17 +420,20 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
             })
             .then(response => response.json())
             .then(data => {
-    if (data.success) {
-        showNotification('Scores submitted successfully!', 'success');
-        
-        // START LOCK COUNTDOWN HERE
-        startLockCountdown(judgeId, participantId, competitionId, null, 'overall');
-        
-        setTimeout(() => {
-            viewCompetitionParticipants(competitionId);
-        }, 2000);
-    }
-})
+                if (data.success) {
+                    // ✅ FIX: Clear draft after successful submission
+                    clearRegularDraft(judgeId, participantId, competitionId);
+                    
+                    showNotification('Scores submitted successfully!', 'success');
+                    
+                    // ✅ FIX: START LOCK COUNTDOWN HERE
+                    startLockCountdown(judgeId, participantId, competitionId, null, 'overall');
+                    
+                    setTimeout(() => {
+                        viewCompetitionParticipants(competitionId);
+                    }, 2000);
+                }
+            })
             .catch(error => {
                 console.error('Error:', error);
                 showNotification('Error submitting scores', 'error');
@@ -427,6 +445,161 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
         showNotification('Error loading criteria', 'error');
     });
 }
+
+// ✅ ADD these NEW functions for regular draft support in judge-app.js:
+
+function autoSaveRegularDraft(judgeId, participantId, competitionId) {
+    clearTimeout(window.regularDraftTimeout);
+    
+    showDraftStatus('Saving draft...', 'saving');
+    
+    window.regularDraftTimeout = setTimeout(() => {
+        saveRegularDraftToServer(judgeId, participantId, competitionId);
+    }, 2000);
+}
+
+function saveRegularDraftToServer(judgeId, participantId, competitionId) {
+    const criteriaInputs = document.querySelectorAll('[data-criteria-id]');
+    const draftScores = [];
+    
+    criteriaInputs.forEach(input => {
+        const score = parseFloat(input.value) || 0;
+        const criteriaId = input.getAttribute('data-criteria-id');
+        const percentage = parseFloat(input.getAttribute('data-percentage')) || 0;
+        
+        draftScores.push({
+            criteria_id: criteriaId,
+            score: score,
+            weighted_score: (score * percentage) / 100
+        });
+    });
+    
+    const generalComments = document.getElementById('general_comments')?.value || '';
+    const totalScore = calculateCurrentTotal();
+    
+    const draftData = {
+        scores: draftScores,
+        general_comments: generalComments,
+        total_score: totalScore,
+        saved_at: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    const draftKey = `regular_draft_${judgeId}_${participantId}_${competitionId}`;
+    localStorage.setItem(draftKey, JSON.stringify(draftData));
+    
+    showDraftStatus('✅ Draft saved', 'success');
+    setTimeout(() => hideDraftStatus(), 3000);
+}
+
+function loadRegularDraft(judgeId, participantId, competitionId) {
+    const draftKey = `regular_draft_${judgeId}_${participantId}_${competitionId}`;
+    const localDraft = localStorage.getItem(draftKey);
+    
+    if (localDraft) {
+        const draft = JSON.parse(localDraft);
+        
+        if (draft && draft.scores) {
+            draft.scores.forEach(score => {
+                const input = document.getElementById(`score_${score.criteria_id}`);
+                if (input) {
+                    input.value = score.score;
+                }
+            });
+            
+            const generalComments = document.getElementById('general_comments');
+            if (generalComments && draft.general_comments) {
+                generalComments.value = draft.general_comments;
+            }
+            
+            calculateTotalScore();
+            showNotification('📝 Draft loaded', 'info');
+        }
+    }
+}
+
+function clearRegularDraft(judgeId, participantId, competitionId) {
+    const draftKey = `regular_draft_${judgeId}_${participantId}_${competitionId}`; // ✅ Fixed: was "competationId"
+    localStorage.removeItem(draftKey);
+}
+
+// ✅ ADD these NEW functions for regular draft support in judge-app.js:
+
+function autoSaveRegularDraft(judgeId, participantId, competitionId) {
+    clearTimeout(window.regularDraftTimeout);
+    
+    showDraftStatus('Saving draft...', 'saving');
+    
+    window.regularDraftTimeout = setTimeout(() => {
+        saveRegularDraftToServer(judgeId, participantId, competitionId);
+    }, 2000);
+}
+
+function saveRegularDraftToServer(judgeId, participantId, competitionId) {
+    const criteriaInputs = document.querySelectorAll('[data-criteria-id]');
+    const draftScores = [];
+    
+    criteriaInputs.forEach(input => {
+        const score = parseFloat(input.value) || 0;
+        const criteriaId = input.getAttribute('data-criteria-id');
+        const percentage = parseFloat(input.getAttribute('data-percentage')) || 0;
+        
+        draftScores.push({
+            criteria_id: criteriaId,
+            score: score,
+            weighted_score: (score * percentage) / 100
+        });
+    });
+    
+    const generalComments = document.getElementById('general_comments')?.value || '';
+    const totalScore = calculateCurrentTotal();
+    
+    const draftData = {
+        scores: draftScores,
+        general_comments: generalComments,
+        total_score: totalScore,
+        saved_at: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    const draftKey = `regular_draft_${judgeId}_${participantId}_${competitionId}`;
+    localStorage.setItem(draftKey, JSON.stringify(draftData));
+    
+    showDraftStatus('✅ Draft saved', 'success');
+    setTimeout(() => hideDraftStatus(), 3000);
+}
+
+function loadRegularDraft(judgeId, participantId, competitionId) {
+    const draftKey = `regular_draft_${judgeId}_${participantId}_${competitionId}`;
+    const localDraft = localStorage.getItem(draftKey);
+    
+    if (localDraft) {
+        const draft = JSON.parse(localDraft);
+        
+        if (draft && draft.scores) {
+            draft.scores.forEach(score => {
+                const input = document.getElementById(`score_${score.criteria_id}`);
+                if (input) {
+                    input.value = score.score;
+                }
+            });
+            
+            const generalComments = document.getElementById('general_comments');
+            if (generalComments && draft.general_comments) {
+                generalComments.value = draft.general_comments;
+            }
+            
+            calculateTotalScore();
+            showNotification('📝 Draft loaded', 'info');
+        }
+    }
+}
+
+function clearRegularDraft(judgeId, participantId, competitionId) {
+    const draftKey = `regular_draft_${judgeId}_${participantId}_${competitionId}`; // ✅ Fixed: was "competationId"
+    localStorage.removeItem(draftKey);
+}
+
 // ==========================================
 // 6. PAGEANT SEGMENT SELECTION
 // ==========================================
@@ -437,7 +610,7 @@ function showSegmentSelection(judgeId, participantId, competitionId, participant
         console.log('⚠️ Active countdown detected, preserving it...');
         // Don't interrupt the countdown
     }
-    
+
     document.getElementById("content").innerHTML = `
         <h2>👑 Pageant Scoring - Select Segment</h2>
         <h3 style="color: #800020;">Participant: ${participantName}</h3>
@@ -668,82 +841,8 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
 
     document.getElementById("content").innerHTML = formHtml;
 
-    // Form submission
-   document.getElementById("segmentScoreForm").onsubmit = function(event) {
-    event.preventDefault();
 
-    const scores = [];
-    let totalWeightedScore = 0;
-    let hasError = false;
 
-    criteria.forEach(criterion => {
-        if (hasError) return;
-        
-        const scoreInput = document.getElementById(`score_${criterion.criteria_id}`);
-        const score = parseFloat(scoreInput.value);
-        const comments = document.getElementById(`comments_${criterion.criteria_id}`).value;
-        const percentage = parseFloat(criterion.percentage);
-        
-        if (isNaN(score) || score < 0 || score > 100) {
-            showNotification(`Score for ${criterion.criteria_name} must be between 0 and 100`, 'error');
-            hasError = true;
-            return;
-        }
-
-        const weightedScore = (score * percentage) / 100;
-        totalWeightedScore += weightedScore;
-
-        scores.push({
-            criteria_id: criterion.criteria_id,
-            score: score,
-            weighted_score: weightedScore,
-            comments: comments || null
-        });
-    });
-
-    if (hasError || scores.length !== criteria.length) {
-        console.error('Form validation failed');
-        return;
-    }
-
-    const submissionData = {
-        judge_id: judgeId,
-        participant_id: participantId,
-        segment_id: segmentId,
-        scores: scores,
-        general_comments: document.getElementById("general_comments").value || null,
-        total_score: totalWeightedScore
-    };
-
-    console.log('📤 Submitting scores:', submissionData);
-
-    fetch('https://mseufci-judgingsystem.up.railway.app/submit-segment-scores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submissionData)
-    })
-    .then(response => {
-        console.log('📥 Response status:', response.status);
-        return response.json();
-    })
-    .then(data => {
-        console.log('📥 Response data:', data);
-        
-        if (data.success) {
-            showNotification(`✅ Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
-            setTimeout(() => {
-                showSegmentSelection(judgeId, participantId, competitionId, participantName);
-            }, 2000);
-        } else {
-            console.error('Submission failed:', data);
-            showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('❌ Fetch error:', error);
-        showNotification('Error submitting segment scores: ' + error.message, 'error');
-    });
-};
 }
 function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant) {
     let formHtml = `
@@ -941,6 +1040,7 @@ document.getElementById("segmentScoreForm").onsubmit = function(event) {
         showNotification('Error submitting segment scores: ' + error.message, 'error');
     });
 };
+
     
     setTimeout(() => {
         loadDraft(judgeId, participantId, segmentId);
