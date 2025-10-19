@@ -1615,24 +1615,52 @@ console.log('✅ Pageant Segment Scoring Endpoints Added');
 // ================================================
 
 // Check if score is locked
-app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId?', (req, res) => {
+// ✅ BEST APPROACH - Two separate routes
+// Route WITH segmentId
+app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (req, res) => {
     const { judgeId, participantId, competitionId, segmentId } = req.params;
     
     let sql = `
         SELECT is_locked, locked_at, 
                TIMESTAMPDIFF(SECOND, locked_at, NOW()) as seconds_since_lock
         FROM overall_scores
-        WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id = ?
     `;
     
-    const params = [judgeId, participantId, competitionId];
+    db.query(sql, [judgeId, participantId, competitionId, segmentId], (err, result) => {
+        if (err) {
+            console.error('Error checking lock:', err);
+            return res.status(500).json({ error: 'Error checking lock status' });
+        }
+        
+        if (result.length === 0) {
+            return res.json({ is_locked: false, can_edit: true });
+        }
+        
+        const score = result[0];
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        
+        res.json({
+            is_locked: score.is_locked,
+            locked_at: score.locked_at,
+            seconds_since_lock: score.seconds_since_lock || 0,
+            can_edit: canEdit
+        });
+    });
+});
+
+// Route WITHOUT segmentId
+app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) => {
+    const { judgeId, participantId, competitionId } = req.params;
     
-    if (segmentId && segmentId !== 'undefined') {
-        sql += ' AND segment_id = ?';
-        params.push(segmentId);
-    }
+    let sql = `
+        SELECT is_locked, locked_at, 
+               TIMESTAMPDIFF(SECOND, locked_at, NOW()) as seconds_since_lock
+        FROM overall_scores
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL
+    `;
     
-    db.query(sql, params, (err, result) => {
+    db.query(sql, [judgeId, participantId, competitionId], (err, result) => {
         if (err) {
             console.error('Error checking lock:', err);
             return res.status(500).json({ error: 'Error checking lock status' });
