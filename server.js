@@ -440,7 +440,40 @@ app.post('/add-participant', (req, res) => {
         });
     });
 });
+app.put('/update-participant/:id', (req, res) => {
+    const { id } = req.params;
+    const { 
+        participant_name, contestant_number, photo_url, email, phone, age, gender, 
+        school_organization, performance_title, performance_description, 
+        competition_id, status, height, measurements, talents, special_awards
+    } = req.body;
 
+    if (!participant_name || !email || !age || !gender || !competition_id) {
+        return res.status(400).json({ error: 'Required fields missing' });
+    }
+
+    const sql = `UPDATE participants 
+                 SET participant_name = ?, contestant_number = ?, photo_url = ?, email = ?, phone = ?, 
+                     age = ?, gender = ?, school_organization = ?, performance_title = ?, 
+                     performance_description = ?, competition_id = ?, status = ?, 
+                     height = ?, measurements = ?, talents = ?, special_awards = ?
+                 WHERE participant_id = ?`;
+    
+    db.query(sql, [
+        participant_name, contestant_number, photo_url, email, phone, age, gender, 
+        school_organization, performance_title, performance_description, 
+        competition_id, status, height, measurements, talents, special_awards, id
+    ], (err, result) => {
+        if (err) {
+            console.error('Error updating participant:', err);
+            return res.status(500).json({ error: 'Error updating participant' });
+        }
+        res.json({ 
+            success: true, 
+            message: 'Participant updated successfully!'
+        });
+    });
+});
 
 app.put('/update-participant-status/:id', (req, res) => {
     const { id } = req.params;

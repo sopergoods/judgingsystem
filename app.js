@@ -1756,8 +1756,171 @@ function viewParticipantDetails(id) {
     alert('Feature coming soon: View Participant Details');
 }
 
-function editParticipant(id) {
-    alert('Feature coming soon: Edit Participant');
+function editParticipant(participantId) {
+    // Fetch participant data
+    fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`)
+    .then(response => response.json())
+    .then(participant => {
+        document.getElementById("content").innerHTML = `
+            <h2>Edit Participant</h2>
+            
+            <form id="editParticipantForm" style="max-width: 700px;">
+                <div class="form-section">
+                    <h3>Basic Information</h3>
+                    
+                    <label for="participant_name">Participant Name:</label>
+                    <input type="text" id="participant_name" name="participant_name" value="${participant.participant_name}" required>
+                    
+                    <label for="email">Email Address:</label>
+                    <input type="email" id="email" name="email" value="${participant.email}" required>
+                    
+                    <label for="phone">Phone Number:</label>
+                    <input type="tel" id="phone" name="phone" value="${participant.phone || ''}">
+                    
+                    <div class="grid-3">
+                        <div>
+                            <label for="age">Age:</label>
+                            <input type="number" id="age" name="age" min="1" max="120" value="${participant.age}" required>
+                        </div>
+                        <div>
+                            <label for="gender">Gender:</label>
+                            <select id="gender" name="gender" required>
+                                <option value="male" ${participant.gender === 'male' ? 'selected' : ''}>Male</option>
+                                <option value="female" ${participant.gender === 'female' ? 'selected' : ''}>Female</option>
+                                <option value="other" ${participant.gender === 'other' ? 'selected' : ''}>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="status">Participant Status:</label>
+                            <select id="status" name="status" required>
+                                <option value="pending" ${participant.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="ongoing" ${participant.status === 'ongoing' ? 'selected' : ''}>Ongoing</option>
+                                <option value="done" ${participant.status === 'done' ? 'selected' : ''}>Done</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <label for="school_organization">School/Organization:</label>
+                    <input type="text" id="school_organization" name="school_organization" value="${participant.school_organization || ''}">
+                </div>
+                
+                <div class="form-section">
+                    <h3>Competition Details</h3>
+                    
+                    <label for="competition">Competition:</label>
+                    <select id="competition" name="competition" required>
+                        <option value="">Select Competition</option>
+                    </select>
+                    
+                    <label for="performance_title">Performance/Entry Title:</label>
+                    <input type="text" id="performance_title" name="performance_title" value="${participant.performance_title || ''}">
+                    
+                    <label for="performance_description">Performance Description:</label>
+                    <textarea id="performance_description" name="performance_description" rows="3">${participant.performance_description || ''}</textarea>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Contestant Information</h3>
+                    
+                    <label for="contestant_number">Contestant/Group Number: <span style="color: red;">*</span></label>
+                    <input type="text" id="contestant_number" name="contestant_number" placeholder="e.g., 1, 2, Group A" value="${participant.contestant_number || ''}" required>
+                    
+                    <label for="photo_url">Contestant Photo URL: <span style="color: red;">*</span></label>
+                    <input type="url" id="photo_url" name="photo_url" placeholder="https://example.com/photo.jpg" value="${participant.photo_url || ''}" required>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Upload your photo to a service like Imgur, PostImages, or use Google Drive direct link
+                    </small>
+                    
+                    ${participant.photo_url ? `
+                        <div style="margin: 15px 0; text-align: center;">
+                            <p><strong>Current Photo:</strong></p>
+                            <img src="${participant.photo_url}" alt="Current photo" style="max-width: 200px; max-height: 250px; border: 2px solid #ddd; border-radius: 8px; margin-top: 10px;"
+                                 onerror="this.src='https://via.placeholder.com/200x250/800020/ffffff?text=Photo+Not+Available'; this.style.opacity='0.6';">
+                        </div>
+                    ` : ''}
+                    
+                    <label for="talents">Special Talents & Skills:</label>
+                    <textarea id="talents" name="talents" rows="3">${participant.talents || ''}</textarea>
+                    
+                    <label for="special_awards">Awards & Achievements:</label>
+                    <textarea id="special_awards" name="special_awards" rows="3">${participant.special_awards || ''}</textarea>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <input type="submit" value="Update Participant" style="padding: 15px 30px; font-size: 16px;">
+                    <button type="button" onclick="showViewParticipants()" class="secondary" style="margin-left: 10px;">Cancel</button>
+                </div>
+            </form>
+        `;
+
+        // Load competitions
+        fetch('https://mseufci-judgingsystem.up.railway.app/competitions')
+        .then(response => response.json())
+        .then(competitions => {
+            const competitionSelect = document.getElementById("competition");
+            competitions.forEach(competition => {
+                const option = document.createElement("option");
+                option.value = competition.competition_id;
+                option.textContent = `${competition.competition_name} (${competition.type_name})`;
+                if (competition.competition_id === participant.competition_id) {
+                    option.selected = true;
+                }
+                competitionSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching competitions:', error);
+        });
+
+        // Form submission
+        document.getElementById("editParticipantForm").onsubmit = function(event) {
+            event.preventDefault();
+
+            const participantData = {
+                participant_name: document.getElementById("participant_name").value,
+                contestant_number: document.getElementById("contestant_number").value,
+                photo_url: document.getElementById("photo_url").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value,
+                age: document.getElementById("age").value,
+                gender: document.getElementById("gender").value,
+                school_organization: document.getElementById("school_organization").value,
+                performance_title: document.getElementById("performance_title").value,
+                performance_description: document.getElementById("performance_description").value,
+                competition_id: document.getElementById("competition").value,
+                status: document.getElementById("status").value,
+                height: null,
+                measurements: null,
+                talents: document.getElementById("talents").value || null,
+                special_awards: document.getElementById("special_awards").value || null
+            };
+
+            fetch(`https://mseufci-judgingsystem.up.railway.app/update-participant/${participantId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(participantData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Participant updated successfully!');
+                    showViewParticipants();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating participant');
+            });
+        };
+    })
+    .catch(error => {
+        console.error('Error loading participant:', error);
+        alert('Error loading participant details');
+    });
 }
 
 function deleteParticipant(id) {
