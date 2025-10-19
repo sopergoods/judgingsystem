@@ -277,29 +277,11 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
                              style="max-width: 350px; max-height: 450px; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 4px solid white;"
                              onerror="this.src='https://via.placeholder.com/350x450/800020/ffffff?text=Photo+Not+Available'; this.style.opacity='0.6';">
                     </div>
-                    <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <p style="font-weight: 600; color: #800020; font-size: 20px; margin: 0;">
-                            ${participant.contestant_number ? `Contestant #${participant.contestant_number}` : 'Contestant'} 
-                        </p>
-                        <p style="font-size: 18px; color: #666; margin: 5px 0 0 0;">${participantName}</p>
-                    </div>
                 </div>
-            ` : `
-                <div style="text-align: center; margin: 20px 0; padding: 30px; background: #fff3cd; border-radius: 12px; border: 2px solid #ffc107;">
-                    <p style="font-size: 18px; color: #856404;">
-                        ${participant.contestant_number ? `Contestant #${participant.contestant_number} - ` : ''}${participantName}
-                    </p>
-                    <small style="color: #666;">No photo available</small>
-                </div>
-            `}
+            ` : ''}
             
             <form id="detailedScoreForm" class="dashboard-card" style="max-width: 900px; margin: 0 auto; text-align: left;">
                 <h3 style="color: #800020; margin-bottom: 20px;">Score Each Criterion</h3>
-                
-                <div class="alert alert-info">
-                    <strong>Instructions:</strong>
-                    <p>Rate each criterion from 0 to 100. Scores will be weighted automatically.</p>
-                </div>
                 
                 <div id="criteriaScores">
         `;
@@ -358,19 +340,7 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
 
         document.getElementById("content").innerHTML = scoreForm;
 
-        // ✅ FIX: Load draft for regular scoring
-        setTimeout(() => {
-            loadRegularDraft(judgeId, participantId, competitionId);
-            
-            // ✅ FIX: Add auto-save to all input fields
-            const allInputs = document.querySelectorAll('#detailedScoreForm input, #detailedScoreForm textarea');
-            allInputs.forEach(input => {
-                input.addEventListener('input', () => {
-                    autoSaveRegularDraft(judgeId, participantId, competitionId);
-                });
-            });
-        }, 500);
-
+        // ✅ FIXED: Single form submission handler with countdown trigger
         document.getElementById("detailedScoreForm").onsubmit = function(event) {
             event.preventDefault();
 
@@ -421,12 +391,10 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // ✅ FIX: Clear draft after successful submission
-                    clearRegularDraft(judgeId, participantId, competitionId);
-                    
                     showNotification('Scores submitted successfully!', 'success');
                     
-                    // ✅ FIX: START LOCK COUNTDOWN HERE
+                    // ✅ FIXED: START LOCK COUNTDOWN HERE FOR REGULAR SCORING
+                    console.log('🔒 Starting countdown for regular scoring');
                     startLockCountdown(judgeId, participantId, competitionId, null, 'overall');
                     
                     setTimeout(() => {
@@ -1272,17 +1240,64 @@ function calculateTotalScore() {
     criteriaInputs.forEach(input => {
         const score = parseFloat(input.value) || 0;
         const percentage = parseFloat(input.getAttribute('data-percentage')) || 0;
-        const maxScore = parseFloat(input.getAttribute('data-max-score')) || 100;
-        
-        const normalizedScore = (score / maxScore) * percentage;
-        totalWeightedScore += normalizedScore;
+        const weightedScore = (score * percentage) / 100;
+        totalWeightedScore += weightedScore;
     });
 
     const totalScoreElement = document.getElementById('totalScore');
     if (totalScoreElement) {
         totalScoreElement.textContent = totalWeightedScore.toFixed(2);
+        
+        const displayDiv = document.getElementById('totalScoreDisplay');
+        if (totalWeightedScore >= 90) {
+            displayDiv.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+        } else if (totalWeightedScore >= 75) {
+            displayDiv.style.background = 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)';
+        } else if (totalWeightedScore >= 60) {
+            displayDiv.style.background = 'linear-gradient(135deg, #ffc107 0%, #ff9800 100%)';
+        } else {
+            displayDiv.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+        }
     }
 }
+
+// ==========================================
+// Notification System
+// ==========================================
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 350px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    `;
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    notification.style.background = colors[type] || colors.info;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+console.log('✅ FIXED: Lock Countdown System Loaded');
 
 // ==========================================
 // 9. SCORING HISTORY
@@ -1726,6 +1741,13 @@ function clearDraft(judgeId, participantId, segmentId) {
 
 // Start lock countdown after score submission
 function startLockCountdown(judgeId, participantId, competitionId, segmentId, scoreType) {
+    console.log('⏱️ Starting lock countdown:', { judgeId, participantId, competitionId, segmentId, scoreType });
+    
+    // Clear any existing timer
+    if (lockTimer) {
+        clearInterval(lockTimer);
+    }
+    
     lockCountdown = 45;
     currentScoreData = { judgeId, participantId, competitionId, segmentId, scoreType };
     
@@ -1776,6 +1798,26 @@ function showLockCountdown() {
     countdownDiv.style.display = 'block';
 }
 
+// ==========================================
+// FIXED: Update countdown display
+// ==========================================
+function updateLockCountdown() {
+    const countdownNumber = document.getElementById('countdown-number');
+    const countdownDiv = document.getElementById('lock-countdown');
+    
+    if (countdownNumber && countdownDiv) {
+        countdownNumber.textContent = lockCountdown;
+        
+        // Change color as time runs out
+        if (lockCountdown <= 10) {
+            countdownDiv.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            countdownNumber.style.animation = 'pulse 0.5s ease-in-out';
+        } else if (lockCountdown <= 20) {
+            countdownDiv.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
+        }
+    }
+}
+
 // Update countdown display
 function updateLockCountdown() {
     const countdownNumber = document.getElementById('countdown-number');
@@ -1796,7 +1838,12 @@ function updateLockCountdown() {
 
 // Auto-lock score after countdown
 function autoLockScore() {
-    if (!currentScoreData) return;
+    if (!currentScoreData) {
+        console.warn('No score data to lock');
+        return;
+    }
+    
+    console.log('🔒 Auto-locking score:', currentScoreData);
     
     const countdownDiv = document.getElementById('lock-countdown');
     if (countdownDiv) {
@@ -1812,12 +1859,13 @@ function autoLockScore() {
             judge_id: currentScoreData.judgeId,
             participant_id: currentScoreData.participantId,
             competition_id: currentScoreData.competitionId,
-            segment_id: currentScoreData.segmentId,
+            segment_id: currentScoreData.segmentId || null,
             score_type: currentScoreData.scoreType
         })
     })
     .then(response => response.json())
     .then(data => {
+        console.log('✅ Lock response:', data);
         if (data.success) {
             if (countdownDiv) {
                 countdownDiv.innerHTML = `
@@ -1834,9 +1882,12 @@ function autoLockScore() {
         }
     })
     .catch(error => {
-        console.error('Auto-lock error:', error);
+        console.error('❌ Auto-lock error:', error);
         if (countdownDiv) {
-            countdownDiv.style.display = 'none';
+            countdownDiv.innerHTML = `
+                <div style="font-size: 14px;">⚠️ Lock Failed</div>
+                <div style="font-size: 12px; margin-top: 5px;">Please refresh page</div>
+            `;
         }
     });
     
