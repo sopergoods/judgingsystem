@@ -1657,9 +1657,7 @@ function editParticipant(participantId) {
 }
 
 // Initialize dashboard on load
-document.addEventListener('DOMContentLoaded', function() {
-    showDashboard();
-});
+
 
 // ==========================================
 // AJAX ENHANCEMENTS FOR STAFF DASHBOARD
