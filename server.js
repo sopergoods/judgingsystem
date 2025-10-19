@@ -1686,13 +1686,13 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
     });
 });
 
-// Auto-lock scores after 45 seconds
+
+
 app.post('/auto-lock-score', (req, res) => {
     const { judge_id, participant_id, competition_id, segment_id, score_type } = req.body;
     
     console.log('🔒 Auto-locking score:', { judge_id, participant_id, competition_id, segment_id, score_type });
     
-    let table = 'overall_scores';
     let sql = `
         UPDATE overall_scores
         SET is_locked = TRUE, locked_at = NOW()
@@ -1718,21 +1718,56 @@ app.post('/auto-lock-score', (req, res) => {
         
         console.log('✅ Score locked, affected rows:', result.affectedRows);
         
-        // Log the auto-lock in history
-        const historySql = `
-            INSERT INTO score_edit_history 
-            (judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_at)
-            VALUES (?, ?, ?, ?, ?, 'auto_lock', NOW())
+        // ✅ FIXED: Get the score_id before logging history
+        const getScoreIdSql = `
+            SELECT score_id FROM overall_scores
+            WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+            ${segment_id && segment_id !== 'null' ? 'AND segment_id = ?' : 'AND segment_id IS NULL'}
         `;
         
-        db.query(historySql, [judge_id, participant_id, competition_id, segment_id || null, score_type || 'overall'], (err) => {
-            if (err) console.error('Error logging auto-lock:', err);
-        });
+        const scoreParams = [judge_id, participant_id, competition_id];
+        if (segment_id && segment_id !== 'null') {
+            scoreParams.push(segment_id);
+        }
         
-        res.json({ 
-            success: true, 
-            message: 'Score locked successfully',
-            affected_rows: result.affectedRows
+        db.query(getScoreIdSql, scoreParams, (err, scoreResult) => {
+            if (err || scoreResult.length === 0) {
+                console.error('Error getting score_id:', err);
+                // Still return success since the lock worked
+                return res.json({ 
+                    success: true, 
+                    message: 'Score locked successfully',
+                    affected_rows: result.affectedRows
+                });
+            }
+            
+            const score_id = scoreResult[0].score_id;
+            
+            // ✅ NOW log the auto-lock with score_id
+            const historySql = `
+                INSERT INTO score_edit_history 
+                (score_id, judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'auto_lock', NOW())
+            `;
+            
+            db.query(historySql, [
+                score_id,
+                judge_id, 
+                participant_id, 
+                competition_id, 
+                segment_id || null, 
+                score_type || 'overall'
+            ], (err) => {
+                if (err) {
+                    console.error('Error logging auto-lock:', err);
+                }
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Score locked successfully',
+                    affected_rows: result.affectedRows
+                });
+            });
         });
     });
 });
