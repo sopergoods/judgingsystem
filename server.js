@@ -1687,7 +1687,80 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
 });
 
 
+app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (req, res) => {
+    const { judgeId, participantId, competitionId, segmentId } = req.params;
+    
+    let sql = `
+        SELECT is_locked, locked_at, 
+               TIMESTAMPDIFF(SECOND, locked_at, NOW()) as seconds_since_lock
+        FROM overall_scores
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id = ?
+    `;
+    
+    db.query(sql, [judgeId, participantId, competitionId, segmentId], (err, result) => {
+        if (err) {
+            console.error('Error checking lock:', err);
+            return res.status(500).json({ error: 'Error checking lock status' });
+        }
+        
+        if (result.length === 0) {
+            // No score exists yet - not locked
+            return res.json({ is_locked: false, can_edit: true });
+        }
+        
+        const score = result[0];
+        
+        // Can edit if: NOT locked OR locked less than 45 seconds ago
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        
+        res.json({
+            is_locked: score.is_locked,
+            locked_at: score.locked_at,
+            seconds_since_lock: score.seconds_since_lock || 0,
+            can_edit: canEdit,
+            score_exists: true
+        });
+    });
+});
 
+// Check score lock status - WITHOUT segmentId (regular competition)
+app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) => {
+    const { judgeId, participantId, competitionId } = req.params;
+    
+    let sql = `
+        SELECT is_locked, locked_at, 
+               TIMESTAMPDIFF(SECOND, locked_at, NOW()) as seconds_since_lock
+        FROM overall_scores
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL
+    `;
+    
+    db.query(sql, [judgeId, participantId, competitionId], (err, result) => {
+        if (err) {
+            console.error('Error checking lock:', err);
+            return res.status(500).json({ error: 'Error checking lock status' });
+        }
+        
+        if (result.length === 0) {
+            // No score exists yet - not locked
+            return res.json({ is_locked: false, can_edit: true });
+        }
+        
+        const score = result[0];
+        
+        // Can edit if: NOT locked OR locked less than 45 seconds ago
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        
+        res.json({
+            is_locked: score.is_locked,
+            locked_at: score.locked_at,
+            seconds_since_lock: score.seconds_since_lock || 0,
+            can_edit: canEdit,
+            score_exists: true
+        });
+    });
+});
+
+console.log('Check lock endpoints added');
 app.post('/auto-lock-score', (req, res) => {
     const { judge_id, participant_id, competition_id, segment_id, score_type } = req.body;
     

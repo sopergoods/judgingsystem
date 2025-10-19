@@ -204,6 +204,12 @@ function startScoring(competitionId) {
 // ==========================================
 // 5. MAIN SCORING FUNCTION
 // ==========================================
+// ================================================
+// ADD TO judge-app.js
+// Check if score is locked before allowing scoring
+// ================================================
+
+// REPLACE the scoreParticipant function (around line 180-220)
 function scoreParticipant(participantId, competitionId, participantName) {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
@@ -217,36 +223,138 @@ function scoreParticipant(participantId, competitionId, participantName) {
             return;
         }
 
-        // First, get participant details
-        fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`)
-        .then(response => response.json())
-        .then(participant => {
-            // Check if this is a pageant competition
-            fetch(`https://mseufci-judgingsystem.up.railway.app/competition/${competitionId}`)
+        // ✅ CHECK IF ALREADY SCORED AND LOCKED
+        checkIfScoreLocked(currentJudge.judge_id, participantId, competitionId, null, (isLocked, lockInfo) => {
+            if (isLocked) {
+                // Score is locked - show unlock request option
+                showLockedScoreMessage(currentJudge.judge_id, participantId, competitionId, null, participantName, lockInfo);
+                return;
+            }
+            
+            // Not locked - proceed with normal scoring flow
+            fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`)
             .then(response => response.json())
-            .then(competition => {
-                console.log('Competition:', competition);
-                console.log('Is Pageant:', competition.is_pageant);
-                
-                if (competition.is_pageant) {
-                    // Show segment selection for pageants
-                    showSegmentSelection(currentJudge.judge_id, participantId, competitionId, participantName);
-                } else {
-                    // Show regular scoring with photo for non-pageants
-                    showRegularScoringWithPhoto(currentJudge.judge_id, participantId, competitionId, participantName, participant);
-                }
+            .then(participant => {
+                fetch(`https://mseufci-judgingsystem.up.railway.app/competition/${competitionId}`)
+                .then(response => response.json())
+                .then(competition => {
+                    if (competition.is_pageant) {
+                        showSegmentSelection(currentJudge.judge_id, participantId, competitionId, participantName);
+                    } else {
+                        showRegularScoringWithPhoto(currentJudge.judge_id, participantId, competitionId, participantName, participant);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching competition:', error);
+                    showNotification('Error loading competition details', 'error');
+                });
             })
             .catch(error => {
-                console.error('Error fetching competition:', error);
-                showNotification('Error loading competition details', 'error');
+                console.error('Error fetching participant:', error);
+                showNotification('Error loading participant details', 'error');
             });
-        })
-        .catch(error => {
-            console.error('Error fetching participant:', error);
-            showNotification('Error loading participant details', 'error');
         });
     });
 }
+
+// ✅ NEW FUNCTION: Check if score is locked
+function checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, callback) {
+    let url = `https://mseufci-judgingsystem.up.railway.app/check-score-lock/${judgeId}/${participantId}/${competitionId}`;
+    
+    if (segmentId) {
+        url += `/${segmentId}`;
+    }
+    
+    fetch(url)
+    .then(response => response.json())
+    .then(data => {
+        console.log('Lock check result:', data);
+        
+        // If locked and past edit window (45 seconds)
+        if (data.is_locked && data.seconds_since_lock > 45) {
+            callback(true, data);
+        } else {
+            callback(false, data);
+        }
+    })
+    .catch(error => {
+        console.error('Error checking lock:', error);
+        // If error, allow scoring (fail-open)
+        callback(false, null);
+    });
+}
+
+// ✅ NEW FUNCTION: Show locked score message
+function showLockedScoreMessage(judgeId, participantId, competitionId, segmentId, participantName, lockInfo) {
+    const minutesLocked = Math.floor(lockInfo.seconds_since_lock / 60);
+    
+    document.getElementById("content").innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div style="font-size: 80px; margin-bottom: 20px;">🔒</div>
+            <h2>Score Already Submitted & Locked</h2>
+            <h3 style="color: #800020;">${participantName}</h3>
+            
+            <div style="max-width: 600px; margin: 30px auto; padding: 20px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+                <p style="font-size: 16px; margin-bottom: 15px;">
+                    ✅ You submitted a score for this participant <strong>${minutesLocked} minutes ago</strong>
+                </p>
+                <p style="font-size: 14px; color: #666;">
+                    Scores are automatically locked 45 seconds after submission to ensure fairness and prevent score manipulation.
+                </p>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <h4>Need to Edit Your Score?</h4>
+                <p style="color: #666; margin: 15px 0;">
+                    You can request the administrator to unlock this score for editing.
+                </p>
+                <button onclick="requestUnlock(${judgeId}, ${participantId}, ${competitionId}, ${segmentId}, '${participantName.replace(/'/g, "\\'")}', '${segmentId ? 'segment' : 'overall'}')" 
+                        class="card-button" 
+                        style="font-size: 16px; padding: 15px 30px;">
+                    📨 Request Unlock from Admin
+                </button>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button onclick="viewCompetitionParticipants(${competitionId})" class="secondary">
+                    ← Back to Participants
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// ✅ UPDATE: Also check lock status for segment scoring
+function showSegmentScoring(judgeId, participantId, competitionId, segmentId, participantName, segmentName) {
+    console.log('Loading segment-specific criteria...');
+    
+    // ✅ CHECK IF THIS SEGMENT IS LOCKED
+    checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, (isLocked, lockInfo) => {
+        if (isLocked) {
+            showLockedScoreMessage(judgeId, participantId, competitionId, segmentId, `${participantName} - ${segmentName}`, lockInfo);
+            return;
+        }
+        
+        // Not locked - proceed with normal scoring
+        Promise.all([
+            fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`).then(r => r.json()),
+            fetch(`https://mseufci-judgingsystem.up.railway.app/segment-criteria/${segmentId}`).then(r => r.json())
+        ])
+        .then(([participant, criteria]) => {
+            if (criteria.length === 0) {
+                showNotification('No criteria configured for this segment', 'error');
+                return;
+            }
+            displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant);
+        })
+        .catch(error => {
+            console.error('Error loading criteria:', error);
+            showNotification('Error loading scoring criteria', 'error');
+        });
+    });
+}
+
+console.log('Lock checking added to scoring functions');
 
 
 function showRegularScoringWithPhoto(judgeId, participantId, competitionId, participantName, participant) {
