@@ -1608,3 +1608,321 @@ app.post('/assign-segment-criteria', (req, res) => {
     });
 });
 console.log('✅ Pageant Segment Scoring Endpoints Added');
+
+// ================================================
+// SCORE LOCKING & UNLOCK REQUEST ENDPOINTS
+// NEW CODE - ADD THIS ENTIRE SECTION
+// ================================================
+
+// Check if score is locked
+app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId?', (req, res) => {
+    const { judgeId, participantId, competitionId, segmentId } = req.params;
+    
+    let sql = `
+        SELECT is_locked, locked_at, 
+               TIMESTAMPDIFF(SECOND, locked_at, NOW()) as seconds_since_lock
+        FROM overall_scores
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+    `;
+    
+    const params = [judgeId, participantId, competitionId];
+    
+    if (segmentId && segmentId !== 'undefined') {
+        sql += ' AND segment_id = ?';
+        params.push(segmentId);
+    }
+    
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            console.error('Error checking lock:', err);
+            return res.status(500).json({ error: 'Error checking lock status' });
+        }
+        
+        if (result.length === 0) {
+            return res.json({ is_locked: false, can_edit: true });
+        }
+        
+        const score = result[0];
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        
+        res.json({
+            is_locked: score.is_locked,
+            locked_at: score.locked_at,
+            seconds_since_lock: score.seconds_since_lock || 0,
+            can_edit: canEdit
+        });
+    });
+});
+
+// Auto-lock scores after 45 seconds
+app.post('/auto-lock-score', (req, res) => {
+    const { judge_id, participant_id, competition_id, segment_id, score_type } = req.body;
+    
+    console.log('🔒 Auto-locking score:', { judge_id, participant_id, competition_id, segment_id, score_type });
+    
+    let table = 'overall_scores';
+    let sql = `
+        UPDATE overall_scores
+        SET is_locked = TRUE, locked_at = NOW()
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+    `;
+    
+    const params = [judge_id, participant_id, competition_id];
+    
+    if (segment_id && segment_id !== 'null') {
+        sql += ' AND segment_id = ?';
+        params.push(segment_id);
+    } else {
+        sql += ' AND segment_id IS NULL';
+    }
+    
+    sql += ' AND is_locked = FALSE';
+    
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            console.error('Auto-lock error:', err);
+            return res.status(500).json({ error: 'Error locking score' });
+        }
+        
+        console.log('✅ Score locked, affected rows:', result.affectedRows);
+        
+        // Log the auto-lock in history
+        const historySql = `
+            INSERT INTO score_edit_history 
+            (judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_at)
+            VALUES (?, ?, ?, ?, ?, 'auto_lock', NOW())
+        `;
+        
+        db.query(historySql, [judge_id, participant_id, competition_id, segment_id || null, score_type || 'overall'], (err) => {
+            if (err) console.error('Error logging auto-lock:', err);
+        });
+        
+        res.json({ 
+            success: true, 
+            message: 'Score locked successfully',
+            affected_rows: result.affectedRows
+        });
+    });
+});
+
+// Submit unlock request
+app.post('/request-unlock', (req, res) => {
+    const { judge_id, participant_id, segment_id, competition_id, reason, score_type } = req.body;
+    
+    console.log('📝 Unlock request received:', { judge_id, participant_id, competition_id, segment_id, score_type });
+    
+    if (!judge_id || !participant_id || !competition_id || !reason) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // Check if there's already a pending request
+    const checkSql = `
+        SELECT * FROM unlock_requests 
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+        AND (segment_id = ? OR (segment_id IS NULL AND ? IS NULL))
+        AND status = 'pending'
+    `;
+    
+    db.query(checkSql, [judge_id, participant_id, competition_id, segment_id || null, segment_id || null], (err, existing) => {
+        if (err) {
+            console.error('Error checking existing requests:', err);
+            return res.status(500).json({ error: 'Error checking existing requests' });
+        }
+        
+        if (existing.length > 0) {
+            return res.status(400).json({ 
+                error: 'You already have a pending unlock request for this score' 
+            });
+        }
+        
+        // Create unlock request
+        const sql = `
+            INSERT INTO unlock_requests 
+            (judge_id, participant_id, segment_id, competition_id, score_type, reason, status, requested_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
+        `;
+        
+        db.query(sql, [
+            judge_id, 
+            participant_id, 
+            segment_id || null, 
+            competition_id, 
+            score_type || 'overall', 
+            reason
+        ], (err, result) => {
+            if (err) {
+                console.error('Error creating unlock request:', err);
+                return res.status(500).json({ error: 'Error submitting unlock request' });
+            }
+            
+            console.log('✅ Unlock request created, ID:', result.insertId);
+            
+            res.json({ 
+                success: true, 
+                message: 'Unlock request submitted successfully! Admin will review it shortly.',
+                request_id: result.insertId
+            });
+        });
+    });
+});
+
+// Get all unlock requests (for admin)
+app.get('/unlock-requests', (req, res) => {
+    const sql = `
+        SELECT 
+            ur.*,
+            j.judge_name,
+            p.participant_name,
+            c.competition_name,
+            ps.segment_name,
+            u.username as reviewed_by_username,
+            TIMESTAMPDIFF(HOUR, ur.requested_at, NOW()) as hours_pending
+        FROM unlock_requests ur
+        JOIN judges j ON ur.judge_id = j.judge_id
+        JOIN participants p ON ur.participant_id = p.participant_id
+        JOIN competitions c ON ur.competition_id = c.competition_id
+        LEFT JOIN pageant_segments ps ON ur.segment_id = ps.segment_id
+        LEFT JOIN users u ON ur.reviewed_by_user_id = u.user_id
+        ORDER BY 
+            CASE ur.status 
+                WHEN 'pending' THEN 1 
+                WHEN 'approved' THEN 2 
+                WHEN 'rejected' THEN 3 
+            END,
+            ur.requested_at DESC
+    `;
+    
+    db.query(sql, (err, result) => {
+        if (err) {
+            console.error('Error fetching unlock requests:', err);
+            return res.status(500).json({ error: 'Error fetching unlock requests' });
+        }
+        res.json(result);
+    });
+});
+
+// Get unlock requests for a specific judge
+app.get('/unlock-requests/judge/:judgeId', (req, res) => {
+    const { judgeId } = req.params;
+    
+    const sql = `
+        SELECT 
+            ur.*,
+            p.participant_name,
+            c.competition_name,
+            ps.segment_name,
+            u.username as reviewed_by_username
+        FROM unlock_requests ur
+        JOIN participants p ON ur.participant_id = p.participant_id
+        JOIN competitions c ON ur.competition_id = c.competition_id
+        LEFT JOIN pageant_segments ps ON ur.segment_id = ps.segment_id
+        LEFT JOIN users u ON ur.reviewed_by_user_id = u.user_id
+        WHERE ur.judge_id = ?
+        ORDER BY ur.requested_at DESC
+    `;
+    
+    db.query(sql, [judgeId], (err, result) => {
+        if (err) {
+            console.error('Error fetching judge unlock requests:', err);
+            return res.status(500).json({ error: 'Error fetching unlock requests' });
+        }
+        res.json(result);
+    });
+});
+
+// Approve or reject unlock request (admin only)
+app.post('/review-unlock-request/:requestId', (req, res) => {
+    const { requestId } = req.params;
+    const { action, admin_notes, admin_user_id } = req.body;
+    
+    console.log('👨‍💼 Admin reviewing request:', requestId, 'Action:', action);
+    
+    if (!action || (action !== 'approve' && action !== 'reject')) {
+        return res.status(400).json({ error: 'Invalid action' });
+    }
+    
+    // Get request details first
+    db.query('SELECT * FROM unlock_requests WHERE request_id = ?', [requestId], (err, requests) => {
+        if (err || requests.length === 0) {
+            return res.status(500).json({ error: 'Unlock request not found' });
+        }
+        
+        const request = requests[0];
+        
+        // Update unlock request status
+        const updateRequestSql = `
+            UPDATE unlock_requests 
+            SET status = ?, reviewed_by_user_id = ?, reviewed_at = NOW(), admin_notes = ?
+            WHERE request_id = ?
+        `;
+        
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        
+        db.query(updateRequestSql, [newStatus, admin_user_id, admin_notes, requestId], (err) => {
+            if (err) {
+                console.error('Error updating unlock request:', err);
+                return res.status(500).json({ error: 'Error updating unlock request' });
+            }
+            
+            console.log('✅ Request status updated to:', newStatus);
+            
+            // If approved, unlock the score
+            if (action === 'approve') {
+                let unlockSql = `
+                    UPDATE overall_scores
+                    SET is_locked = FALSE, locked_at = NULL
+                    WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+                `;
+                
+                const unlockParams = [request.judge_id, request.participant_id, request.competition_id];
+                
+                if (request.segment_id) {
+                    unlockSql += ' AND segment_id = ?';
+                    unlockParams.push(request.segment_id);
+                } else {
+                    unlockSql += ' AND segment_id IS NULL';
+                }
+                
+                db.query(unlockSql, unlockParams, (err, unlockResult) => {
+                    if (err) {
+                        console.error('Error unlocking score:', err);
+                        return res.status(500).json({ error: 'Error unlocking score' });
+                    }
+                    
+                    console.log('🔓 Score unlocked, affected rows:', unlockResult.affectedRows);
+                    
+                    // Log the admin unlock
+                    const historySql = `
+                        INSERT INTO score_edit_history 
+                        (judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_by_user_id, edit_reason, edited_at)
+                        VALUES (?, ?, ?, ?, ?, 'admin_unlock', ?, ?, NOW())
+                    `;
+                    
+                    db.query(historySql, [
+                        request.judge_id, 
+                        request.participant_id, 
+                        request.competition_id,
+                        request.segment_id,
+                        request.score_type,
+                        admin_user_id,
+                        admin_notes || 'Admin approved unlock request'
+                    ]);
+                    
+                    res.json({ 
+                        success: true, 
+                        message: 'Unlock request approved! Judge can now edit the score.',
+                        action: 'approved'
+                    });
+                });
+            } else {
+                res.json({ 
+                    success: true, 
+                    message: 'Unlock request rejected.',
+                    action: 'rejected'
+                });
+            }
+        });
+    });
+});
+
+console.log('✅ Score Locking & Unlock Request Endpoints Added');

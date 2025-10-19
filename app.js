@@ -49,6 +49,11 @@ function showDashboard() {
                 <p>Manage custom event categories</p>
                 <button onclick="showEventTypes()" class="card-button">Manage Event Types</button>
             </div>
+            <div class="dashboard-card">
+    <h3>🔓 Unlock Requests</h3>
+    <p>Review judge unlock requests</p>
+    <button onclick="viewUnlockRequests()" class="card-button">View Requests</button>
+</div>
             
             <div class="dashboard-card">
                 <h3>Criteria Templates</h3>
@@ -84,6 +89,10 @@ function showDashboard() {
             </div>
         </div>
     `;
+    // Check for pending unlock requests
+setTimeout(() => {
+    showUnlockRequestsBadge();
+}, 500);
 }
 
 // ================================================
@@ -2365,6 +2374,222 @@ function viewPageantSegments(competitionId, competitionName) {
         `;
     });
 }
+// ==========================================
+// UNLOCK REQUEST MANAGEMENT (ADMIN)
+// ==========================================
 
+// View unlock requests
+function viewUnlockRequests() {
+    document.getElementById("content").innerHTML = `
+        <h2>🔓 Unlock Requests Management</h2>
+        
+        <div style="background: #e7f3ff; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <strong>ℹ️ About Unlock Requests:</strong>
+            <ul style="margin-top: 10px; color: #1976d2;">
+                <li>Judges can edit scores for 45 seconds after submission</li>
+                <li>After 45 seconds, scores are automatically locked</li>
+                <li>Judges must request unlock permission for locked scores</li>
+                <li>You can approve or reject unlock requests below</li>
+            </ul>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showDashboard()" class="secondary">← Back to Dashboard</button>
+        </div>
+        
+        <div id="unlockRequestsList">
+            <div class="loading">Loading unlock requests...</div>
+        </div>
+    `;
+    
+    loadUnlockRequests();
+}
+
+function loadUnlockRequests() {
+    fetch('https://mseufci-judgingsystem.up.railway.app/unlock-requests')
+    .then(response => response.json())
+    .then(requests => {
+        let html = '';
+        
+        if (requests.length === 0) {
+            html = `
+                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                    <h3>✅ No Unlock Requests</h3>
+                    <p>All judges are working within their edit windows.</p>
+                </div>
+            `;
+        } else {
+            // Group by status
+            const pending = requests.filter(r => r.status === 'pending');
+            const approved = requests.filter(r => r.status === 'approved');
+            const rejected = requests.filter(r => r.status === 'rejected');
+            
+            // Pending requests (priority)
+            if (pending.length > 0) {
+                html += `
+                    <h3 style="color: #ffc107;">⏳ Pending Requests (${pending.length})</h3>
+                    <div style="display: grid; gap: 15px; margin-bottom: 30px;">
+                `;
+                
+                pending.forEach(request => {
+                    html += renderUnlockRequestCard(request, true);
+                });
+                
+                html += '</div>';
+            }
+            
+            // Approved requests
+            if (approved.length > 0) {
+                html += `
+                    <h3 style="color: #28a745;">✅ Approved Requests (${approved.length})</h3>
+                    <div style="display: grid; gap: 15px; margin-bottom: 30px;">
+                `;
+                
+                approved.forEach(request => {
+                    html += renderUnlockRequestCard(request, false);
+                });
+                
+                html += '</div>';
+            }
+            
+            // Rejected requests
+            if (rejected.length > 0) {
+                html += `
+                    <h3 style="color: #dc3545;">❌ Rejected Requests (${rejected.length})</h3>
+                    <div style="display: grid; gap: 15px;">
+                `;
+                
+                rejected.forEach(request => {
+                    html += renderUnlockRequestCard(request, false);
+                });
+                
+                html += '</div>';
+            }
+        }
+        
+        document.getElementById("unlockRequestsList").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error loading unlock requests:', error);
+        document.getElementById("unlockRequestsList").innerHTML = '<p class="alert alert-error">Error loading unlock requests.</p>';
+    });
+}
+
+function renderUnlockRequestCard(request, showActions) {
+    const statusColor = request.status === 'approved' ? '#28a745' : 
+                       request.status === 'rejected' ? '#dc3545' : '#ffc107';
+    const statusIcon = request.status === 'approved' ? '✅' : 
+                      request.status === 'rejected' ? '❌' : '⏳';
+    
+    return `
+        <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${statusColor};">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4>Judge: ${request.judge_name}</h4>
+                <span style="padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; background: ${statusColor}; color: white;">
+                    ${statusIcon} ${request.status.toUpperCase()}
+                </span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <p><strong>Participant:</strong> ${request.participant_name}</p>
+                    <p><strong>Competition:</strong> ${request.competition_name}</p>
+                    ${request.segment_name ? `<p><strong>Segment:</strong> ${request.segment_name}</p>` : ''}
+                </div>
+                <div>
+                    <p><strong>Requested:</strong> ${new Date(request.requested_at).toLocaleString()}</p>
+                    <p><strong>Waiting:</strong> ${request.hours_pending} hours</p>
+                    <p><strong>Score Type:</strong> ${request.score_type}</p>
+                </div>
+            </div>
+            
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ffc107;">
+                <strong>📝 Judge's Reason:</strong>
+                <p style="margin-top: 8px; color: #666;">${request.reason}</p>
+            </div>
+            
+            ${!showActions && request.status !== 'pending' ? `
+                <div style="background: ${request.status === 'approved' ? '#d4edda' : '#f8d7da'}; padding: 15px; border-radius: 8px; border-left: 4px solid ${statusColor};">
+                    <strong>Admin Response:</strong>
+                    <p style="margin-top: 8px; color: #666;">${request.admin_notes || 'No additional notes provided'}</p>
+                    <small style="color: #999;">Reviewed by ${request.reviewed_by_username || 'Admin'} on ${new Date(request.reviewed_at).toLocaleString()}</small>
+                </div>
+            ` : ''}
+            
+            ${showActions ? `
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button onclick="reviewUnlockRequest(${request.request_id}, 'approve', '${request.judge_name}', '${request.participant_name}')" 
+                            style="flex: 1; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        ✅ Approve & Unlock
+                    </button>
+                    <button onclick="reviewUnlockRequest(${request.request_id}, 'reject', '${request.judge_name}', '${request.participant_name}')" 
+                            style="flex: 1; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        ❌ Reject Request
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function reviewUnlockRequest(requestId, action, judgeName, participantName) {
+    const actionText = action === 'approve' ? 'approve' : 'reject';
+    const confirmMsg = action === 'approve' ? 
+        `Approve unlock request?\n\nJudge ${judgeName} will be able to edit the score for ${participantName}.` :
+        `Reject unlock request?\n\nJudge ${judgeName} will NOT be able to edit the score for ${participantName}.`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const adminNotes = prompt(`${action === 'approve' ? '✅ Approving' : '❌ Rejecting'} unlock request\n\nOptional notes for the judge:`);
+    
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    
+    fetch(`https://mseufci-judgingsystem.up.railway.app/review-unlock-request/${requestId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: action,
+            admin_notes: adminNotes || null,
+            admin_user_id: user ? user.user_id : null
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadUnlockRequests(); // Reload the list
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error reviewing unlock request:', error);
+        alert('Error processing unlock request');
+    });
+}
+
+// Add unlock requests count to dashboard
+function showUnlockRequestsBadge() {
+    fetch('https://mseufci-judgingsystem.up.railway.app/unlock-requests')
+    .then(response => response.json())
+    .then(requests => {
+        const pendingCount = requests.filter(r => r.status === 'pending').length;
+        
+        if (pendingCount > 0) {
+            // Find the dashboard and add a badge
+            const unlockButton = document.querySelector('[onclick="viewUnlockRequests()"]');
+            if (unlockButton) {
+                unlockButton.innerHTML = `View Unlock Requests <span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 5px;">${pendingCount}</span>`;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading unlock request count:', error);
+    });
+}
+
+console.log('✅ Unlock Request Management Added to Admin Dashboard');
 console.log('✅ Segment Criteria Management Functions Added');
 console.log('✅ Admin Dashboard Loaded Successfully');

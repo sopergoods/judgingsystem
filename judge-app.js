@@ -9,6 +9,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     checkAuthentication();
 });
+let lockTimer = null;
+let lockCountdown = 45; // 45 seconds to edit
+let currentScoreData = null;
 
 function checkAuthentication() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -46,7 +49,11 @@ function showDashboard() {
                     <p>View competitions assigned to you</p>
                     <button onclick="showMyCompetitions()" class="card-button">View Assignments</button>
                 </div>
-                
+                <div class="dashboard-card">
+    <h3>🔓 Unlock Requests</h3>
+    <p>View status of your unlock requests</p>
+    <button onclick="viewMyUnlockRequests()" class="card-button">View Requests</button>
+</div>
                 <div class="dashboard-card">
                     <h3>⭐ Score Participants</h3>
                     <p>Rate and score participant performances</p>
@@ -398,13 +405,17 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    showNotification('Scores submitted successfully!', 'success');
-                    viewCompetitionParticipants(competitionId);
-                } else {
-                    showNotification('Error: ' + data.error, 'error');
-                }
-            })
+    if (data.success) {
+        showNotification('Scores submitted successfully!', 'success');
+        
+        // START LOCK COUNTDOWN HERE
+        startLockCountdown(judgeId, participantId, competitionId, null, 'overall');
+        
+        setTimeout(() => {
+            viewCompetitionParticipants(competitionId);
+        }, 2000);
+    }
+})
             .catch(error => {
                 console.error('Error:', error);
                 showNotification('Error submitting scores', 'error');
@@ -1120,13 +1131,17 @@ function showDetailedScoreForm(judgeId, participantId, competitionId, participan
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    showNotification('Scores submitted successfully!', 'success');
-                    viewCompetitionParticipants(competitionId);
-                } else {
-                    showNotification('Error: ' + data.error, 'error');
-                }
-            })
+    if (data.success) {
+        showNotification(`Segment "${segmentName}" scored successfully!`, 'success');
+        
+        // START LOCK COUNTDOWN HERE
+        startLockCountdown(judgeId, participantId, competitionId, segmentId, 'segment');
+        
+        setTimeout(() => {
+            showSegmentSelection(judgeId, participantId, competitionId, participantName);
+        }, 2000);
+    }
+})
             .catch(error => {
                 console.error('Error:', error);
                 showNotification('Error submitting scores', 'error');
@@ -1594,7 +1609,265 @@ function clearDraft(judgeId, participantId, segmentId) {
         method: 'DELETE'
     }).catch(err => console.error('Error deleting draft:', err));
 }
+// ==========================================
+// SCORE LOCKING FUNCTIONS
+// ==========================================
 
+// Start lock countdown after score submission
+function startLockCountdown(judgeId, participantId, competitionId, segmentId, scoreType) {
+    lockCountdown = 45;
+    currentScoreData = { judgeId, participantId, competitionId, segmentId, scoreType };
+    
+    // Show countdown UI
+    showLockCountdown();
+    
+    // Start countdown
+    lockTimer = setInterval(() => {
+        lockCountdown--;
+        updateLockCountdown();
+        
+        if (lockCountdown <= 0) {
+            clearInterval(lockTimer);
+            autoLockScore();
+        }
+    }, 1000);
+}
+
+// Show countdown timer UI
+function showLockCountdown() {
+    let countdownDiv = document.getElementById('lock-countdown');
+    
+    if (!countdownDiv) {
+        countdownDiv = document.createElement('div');
+        countdownDiv.id = 'lock-countdown';
+        countdownDiv.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 9999;
+            font-weight: bold;
+            text-align: center;
+            min-width: 200px;
+        `;
+        document.body.appendChild(countdownDiv);
+    }
+    
+    countdownDiv.innerHTML = `
+        <div style="font-size: 14px; margin-bottom: 5px;">⏱️ Edit Window</div>
+        <div style="font-size: 28px;" id="countdown-number">${lockCountdown}</div>
+        <div style="font-size: 12px; margin-top: 5px;">seconds remaining</div>
+    `;
+    countdownDiv.style.display = 'block';
+}
+
+// Update countdown display
+function updateLockCountdown() {
+    const countdownNumber = document.getElementById('countdown-number');
+    const countdownDiv = document.getElementById('lock-countdown');
+    
+    if (countdownNumber) {
+        countdownNumber.textContent = lockCountdown;
+        
+        // Change color as time runs out
+        if (lockCountdown <= 10) {
+            countdownDiv.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            countdownNumber.style.animation = 'pulse 0.5s ease-in-out';
+        } else if (lockCountdown <= 20) {
+            countdownDiv.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
+        }
+    }
+}
+
+// Auto-lock score after countdown
+function autoLockScore() {
+    if (!currentScoreData) return;
+    
+    const countdownDiv = document.getElementById('lock-countdown');
+    if (countdownDiv) {
+        countdownDiv.innerHTML = `
+            <div style="font-size: 14px;">🔒 Locking Score...</div>
+        `;
+    }
+    
+    fetch('https://mseufci-judgingsystem.up.railway.app/auto-lock-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            judge_id: currentScoreData.judgeId,
+            participant_id: currentScoreData.participantId,
+            competition_id: currentScoreData.competitionId,
+            segment_id: currentScoreData.segmentId,
+            score_type: currentScoreData.scoreType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (countdownDiv) {
+                countdownDiv.innerHTML = `
+                    <div style="font-size: 14px;">🔒 Score Locked</div>
+                    <div style="font-size: 12px; margin-top: 5px;">Contact admin to edit</div>
+                `;
+                
+                setTimeout(() => {
+                    countdownDiv.style.display = 'none';
+                }, 3000);
+            }
+            
+            showNotification('Score locked successfully', 'info');
+        }
+    })
+    .catch(error => {
+        console.error('Auto-lock error:', error);
+        if (countdownDiv) {
+            countdownDiv.style.display = 'none';
+        }
+    });
+    
+    currentScoreData = null;
+}
+
+// Cancel lock countdown (if judge leaves page)
+function cancelLockCountdown() {
+    if (lockTimer) {
+        clearInterval(lockTimer);
+        lockTimer = null;
+    }
+    
+    const countdownDiv = document.getElementById('lock-countdown');
+    if (countdownDiv) {
+        countdownDiv.style.display = 'none';
+    }
+}
+
+// Request unlock from admin
+function requestUnlock(judgeId, participantId, competitionId, segmentId, participantName, scoreType) {
+    const reason = prompt(`Request unlock for ${participantName}?\n\nPlease explain why you need to edit this score:`);
+    
+    if (!reason || reason.trim() === '') {
+        showNotification('Unlock request cancelled - reason required', 'warning');
+        return;
+    }
+    
+    fetch('https://mseufci-judgingsystem.up.railway.app/request-unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            judge_id: judgeId,
+            participant_id: participantId,
+            competition_id: competitionId,
+            segment_id: segmentId,
+            score_type: scoreType || 'overall',
+            reason: reason.trim()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Request unlock error:', error);
+        showNotification('Error submitting unlock request', 'error');
+    });
+}
+
+// View my unlock requests
+function viewMyUnlockRequests() {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (!user) return;
+
+    fetch('https://mseufci-judgingsystem.up.railway.app/judges')
+    .then(response => response.json())
+    .then(judges => {
+        const currentJudge = judges.find(j => j.user_id === user.user_id);
+        if (!currentJudge) {
+            showNotification('Judge profile not found', 'error');
+            return;
+        }
+
+        fetch(`https://mseufci-judgingsystem.up.railway.app/unlock-requests/judge/${currentJudge.judge_id}`)
+        .then(response => response.json())
+        .then(requests => {
+            displayUnlockRequests(requests);
+        })
+        .catch(error => {
+            console.error('Error loading unlock requests:', error);
+            showNotification('Error loading unlock requests', 'error');
+        });
+    });
+}
+
+// Display unlock requests
+function displayUnlockRequests(requests) {
+    let html = `
+        <h2>📋 My Unlock Requests</h2>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showMyCompetitions()" class="secondary">← Back to Competitions</button>
+        </div>
+    `;
+    
+    if (requests.length === 0) {
+        html += `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>No Unlock Requests</h3>
+                <p>You haven't submitted any unlock requests yet.</p>
+            </div>
+        `;
+    } else {
+        html += '<div style="display: grid; gap: 15px;">';
+        
+        requests.forEach(request => {
+            const statusColor = request.status === 'approved' ? '#28a745' : 
+                              request.status === 'rejected' ? '#dc3545' : '#ffc107';
+            const statusIcon = request.status === 'approved' ? '✅' : 
+                             request.status === 'rejected' ? '❌' : '⏳';
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${statusColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4>${request.participant_name}</h4>
+                        <span style="padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; background: ${statusColor}; color: white;">
+                            ${statusIcon} ${request.status.toUpperCase()}
+                        </span>
+                    </div>
+                    
+                    <p><strong>Competition:</strong> ${request.competition_name}</p>
+                    ${request.segment_name ? `<p><strong>Segment:</strong> ${request.segment_name}</p>` : ''}
+                    <p><strong>Requested:</strong> ${new Date(request.requested_at).toLocaleString()}</p>
+                    
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Reason:</strong><br>
+                        ${request.reason}
+                    </div>
+                    
+                    ${request.status !== 'pending' ? `
+                        <div style="background: ${request.status === 'approved' ? '#d4edda' : '#f8d7da'}; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                            <strong>Admin Response:</strong><br>
+                            ${request.admin_notes || 'No additional notes'}
+                            <br><small>Reviewed: ${new Date(request.reviewed_at).toLocaleString()}</small>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    document.getElementById("content").innerHTML = html;
+}
+
+console.log('✅ Score Locking Functions Added to Judge Dashboard');
 setInterval(checkConnectionSpeed, 10000);
 checkConnectionSpeed();
 
