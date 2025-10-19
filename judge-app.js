@@ -856,80 +856,86 @@ function displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionI
     document.getElementById("content").innerHTML = formHtml;
 
     // Form submission
-    document.getElementById("segmentScoreForm").onsubmit = function(event) {
-        event.preventDefault();
+  // Form submission - INSIDE displaySegmentScoringFormWithPhoto function
+document.getElementById("segmentScoreForm").onsubmit = function(event) {
+    event.preventDefault();
 
-        const scores = [];
-        let totalWeightedScore = 0;
-        let hasError = false;
+    const scores = [];
+    let totalWeightedScore = 0;
+    let hasError = false;
 
-        criteria.forEach(criterion => {
-            if (hasError) return;
-            
-            const scoreInput = document.getElementById(`score_${criterion.criteria_id}`);
-            const score = parseFloat(scoreInput.value);
-            const percentage = parseFloat(criterion.percentage);
-            
-            if (isNaN(score) || score < 0 || score > 100) {
-                showNotification(`Score for ${criterion.criteria_name} must be between 0 and 100`, 'error');
-                hasError = true;
-                return;
-            }
-
-            const weightedScore = (score * percentage) / 100;
-            totalWeightedScore += weightedScore;
-
-            scores.push({
-                criteria_id: criterion.criteria_id,
-                score: score,
-                weighted_score: weightedScore,
-                comments: null
-            });
-        });
-
-        if (hasError || scores.length !== criteria.length) {
-            console.error('Form validation failed');
+    criteria.forEach(criterion => {
+        if (hasError) return;
+        
+        const scoreInput = document.getElementById(`score_${criterion.criteria_id}`);
+        const score = parseFloat(scoreInput.value);
+        const percentage = parseFloat(criterion.percentage);
+        
+        if (isNaN(score) || score < 0 || score > 100) {
+            showNotification(`Score for ${criterion.criteria_name} must be between 0 and 100`, 'error');
+            hasError = true;
             return;
         }
 
-        const submissionData = {
-            judge_id: judgeId,
-            participant_id: participantId,
-            segment_id: segmentId,
-            scores: scores,
-            general_comments: document.getElementById("general_comments").value || null,
-            total_score: totalWeightedScore
-        };
+        const weightedScore = (score * percentage) / 100;
+        totalWeightedScore += weightedScore;
 
-        console.log('Submitting scores:', submissionData);
-
-        fetch('https://mseufci-judgingsystem.up.railway.app/submit-segment-scores', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submissionData)
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Response data:', data);
-            
-            if (data.success) {
-                showNotification(`Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
-                setTimeout(() => {
-                    showSegmentSelection(judgeId, participantId, competitionId, participantName);
-                }, 2000);
-            } else {
-                console.error('Submission failed:', data);
-                showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            showNotification('Error submitting segment scores: ' + error.message, 'error');
+        scores.push({
+            criteria_id: criterion.criteria_id,
+            score: score,
+            weighted_score: weightedScore,
+            comments: null
         });
+    });
+
+    if (hasError || scores.length !== criteria.length) {
+        console.error('Form validation failed');
+        return;
+    }
+
+    const submissionData = {
+        judge_id: judgeId,
+        participant_id: participantId,
+        segment_id: segmentId,
+        scores: scores,
+        general_comments: document.getElementById("general_comments").value || null,
+        total_score: totalWeightedScore
     };
+
+    console.log('📤 Submitting segment scores:', submissionData);
+
+    fetch('https://mseufci-judgingsystem.up.railway.app/submit-segment-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📥 Response data:', data);
+        
+        if (data.success) {
+            showNotification(`✅ Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
+            
+            // ✅ START LOCK COUNTDOWN HERE (CRITICAL FIX)
+            if (data.should_start_countdown) {
+                console.log('🔒 Starting lock countdown for segment score...');
+                startLockCountdown(judgeId, participantId, competitionId, segmentId, 'segment');
+            }
+            
+            // Delay navigation to allow countdown to start
+            setTimeout(() => {
+                showSegmentSelection(judgeId, participantId, competitionId, participantName);
+            }, 2000);
+        } else {
+            console.error('Submission failed:', data);
+            showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Fetch error:', error);
+        showNotification('Error submitting segment scores: ' + error.message, 'error');
+    });
+};
     
     setTimeout(() => {
         loadDraft(judgeId, participantId, segmentId);

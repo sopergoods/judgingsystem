@@ -731,6 +731,7 @@ app.post('/submit-detailed-scores', (req, res) => {
                     else resolve(result);
                 });
             });
+            
         });
 
         Promise.all(insertPromises)
@@ -1162,8 +1163,8 @@ app.get('/pageant-segment-scores/:segmentId/:participantId/:judgeId', (req, res)
     });
 });
 
-// Submit segment scores - FIXED VERSION
-// Submit segment scores - FIXED VERSION
+
+// Submit segment scores - FIXED VERSION WITH LOCK COUNTDOWN
 app.post('/submit-segment-scores', (req, res) => {
     const { judge_id, participant_id, segment_id, scores, general_comments, total_score } = req.body;
     
@@ -1278,14 +1279,16 @@ app.post('/submit-segment-scores', (req, res) => {
                     console.log('✅ Competition ID:', competition_id);
                     console.log('💾 Saving overall score...');
 
-                    // Step 4: Update or insert overall segment score summary
+                    // Step 4: Update or insert overall segment score summary WITH LOCK STATUS
                     const overallSql = `
                         INSERT INTO overall_scores 
-                        (judge_id, participant_id, competition_id, segment_id, total_score, general_comments)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (judge_id, participant_id, competition_id, segment_id, total_score, general_comments, is_locked, locked_at)
+                        VALUES (?, ?, ?, ?, ?, ?, FALSE, NOW())
                         ON DUPLICATE KEY UPDATE 
                         total_score = VALUES(total_score), 
                         general_comments = VALUES(general_comments),
+                        is_locked = FALSE,
+                        locked_at = NOW(),
                         updated_at = CURRENT_TIMESTAMP
                     `;
                     
@@ -1327,7 +1330,8 @@ app.post('/submit-segment-scores', (req, res) => {
                                 success: true, 
                                 message: 'Segment scores submitted successfully!',
                                 total_score: total_score,
-                                scores_saved: insertedCount
+                                scores_saved: insertedCount,
+                                should_start_countdown: true // ✅ TRIGGER COUNTDOWN ON FRONTEND
                             });
                         });
                     });
