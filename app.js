@@ -50,7 +50,7 @@ function showDashboard() {
                 <button onclick="showEventTypes()" class="card-button">Manage Event Types</button>
             </div>
             <div class="dashboard-card">
-    <h3>🔓 Unlock Requests</h3>
+    <h3> Unlock Requests</h3>
     <p>Review judge unlock requests</p>
     <button onclick="viewUnlockRequests()" class="card-button">View Requests</button>
 </div>
@@ -2148,11 +2148,11 @@ function cleanupIntervals() {
 
 function manageSegmentCriteria(segmentId, segmentName, competitionId) {
     document.getElementById("content").innerHTML = `
-        <h2>📋 Assign Criteria to Segment</h2>
+        <h2> Assign Criteria to Segment</h2>
         <h3 style="color: #ff69b4;">Segment: ${segmentName}</h3>
         
         <div class="alert alert-info">
-            <strong>ℹ️ How It Works:</strong>
+            <strong> How It Works:</strong>
             <p>Select which criteria judges will use to score THIS specific segment only.</p>
             <p>For example, "Long Gown" might use Beauty, Poise, and Stage Presence, while "Q&A" uses Intelligence and Communication.</p>
         </div>
@@ -2343,7 +2343,7 @@ function viewPageantSegments(competitionId, competitionName) {
                             <div style="display: flex; gap: 10px;">
                                 <button onclick="manageSegmentCriteria(${segment.segment_id}, '${segment.segment_name.replace(/'/g, "\\'")}', ${competitionId})" 
                                         style="background: #6f42c1; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">
-                                    📋 Set Criteria
+                                     Set Criteria
                                 </button>
                                 <button onclick="deletePageantSegment(${segment.segment_id}, ${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
                                         style="background: #dc3545; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer;">
@@ -2381,10 +2381,10 @@ function viewPageantSegments(competitionId, competitionName) {
 // View unlock requests
 function viewUnlockRequests() {
     document.getElementById("content").innerHTML = `
-        <h2>🔓 Unlock Requests Management</h2>
+        <h2> Unlock Requests Management</h2>
         
         <div style="background: #e7f3ff; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin: 20px 0;">
-            <strong>ℹ️ About Unlock Requests:</strong>
+            <strong> About Unlock Requests:</strong>
             <ul style="margin-top: 10px; color: #1976d2;">
                 <li>Judges can edit scores for 45 seconds after submission</li>
                 <li>After 45 seconds, scores are automatically locked</li>
@@ -2504,7 +2504,7 @@ function renderUnlockRequestCard(request, showActions) {
             </div>
             
             <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ffc107;">
-                <strong>📝 Judge's Reason:</strong>
+                <strong> Judge's Reason:</strong>
                 <p style="margin-top: 8px; color: #666;">${request.reason}</p>
             </div>
             

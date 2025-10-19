@@ -1776,7 +1776,7 @@ app.post('/auto-lock-score', (req, res) => {
 app.post('/request-unlock', (req, res) => {
     const { judge_id, participant_id, segment_id, competition_id, reason, score_type } = req.body;
     
-    console.log('📝 Unlock request received:', { judge_id, participant_id, competition_id, segment_id, score_type });
+    console.log(' Unlock request received:', { judge_id, participant_id, competition_id, segment_id, score_type });
     
     if (!judge_id || !participant_id || !competition_id || !reason) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -1956,7 +1956,7 @@ app.post('/review-unlock-request/:requestId', (req, res) => {
                         return res.status(500).json({ error: 'Error unlocking score' });
                     }
                     
-                    console.log('🔓 Score unlocked, affected rows:', unlockResult.affectedRows);
+                    console.log('Score unlocked, affected rows:', unlockResult.affectedRows);
                     
                     // Log the admin unlock
                     const historySql = `

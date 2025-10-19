@@ -258,7 +258,7 @@ function loadCompetitions(eventTypeFilter = '') {
                         
                         <div style="margin-top: 20px;">
                             <button onclick="viewCompetitionDetails(${competition.competition_id})" style="margin: 2px; padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">👁️ View Details</button>
-                            <button onclick="viewCompetitionCriteria(${competition.competition_id}, '${competition.competition_name}')" style="margin: 2px; padding: 8px 16px; background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">📋 View Criteria</button>
+                            <button onclick="viewCompetitionCriteria(${competition.competition_id}, '${competition.competition_name}')" style="margin: 2px; padding: 8px 16px; background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); color: white; border: none; border-radius: 4px; cursor: pointer;"> View Criteria</button>
                             <button onclick="registerParticipantForCompetition(${competition.competition_id})" style="margin: 2px; padding: 8px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">➕ Add Participant</button>
                         </div>
                     </div>
@@ -383,7 +383,7 @@ function viewCompetitionDetails(competitionId) {
             
             <div style="text-align: center; margin-top: 30px;">
                 <button onclick="showViewCompetitions()" style="padding: 12px 20px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; margin-right: 10px;">← Back to Competitions</button>
-                <button onclick="viewCompetitionCriteria(${competitionId}, '${competition.competition_name.replace(/'/g, "\\'")}')" class="card-button">📋 View Scoring Criteria</button>
+                <button onclick="viewCompetitionCriteria(${competitionId}, '${competition.competition_name.replace(/'/g, "\\'")}')" class="card-button"> View Scoring Criteria</button>
             </div>
         `;
         
@@ -398,11 +398,11 @@ function viewCompetitionDetails(competitionId) {
 // View Competition Criteria (Staff can view but not edit)
 function viewCompetitionCriteria(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
-        <h2>📋 Competition Scoring Criteria</h2>
+        <h2> Competition Scoring Criteria</h2>
         <h3 style="color: #800020;">${competitionName}</h3>
         
         <div style="background: #e7f3ff; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin: 20px 0;">
-            <strong>ℹ️ Information for Staff:</strong>
+            <strong>ℹ Information for Staff:</strong>
             <ul style="margin-top: 10px; color: #1976d2;">
                 <li>These criteria determine how judges evaluate participants</li>
                 <li>Each criterion has a specific percentage weight in the final score</li>
@@ -560,7 +560,7 @@ function showAddParticipantForm(preselectedCompetitionId = null) {
     <h3 style="color: #ff69b4; border-bottom: 2px solid #ff69b4; padding-bottom: 10px; margin: 30px 0 20px 0;">👑 Beauty Pageant Information</h3>
     
     <div style="background: #fff0f5; border: 2px solid #ff69b4; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-        <strong>📝 Additional Requirements for Beauty Pageants:</strong>
+        <strong> Additional Requirements for Beauty Pageants:</strong>
         <p style="color: #666; margin-top: 8px;">Beauty pageant competitions require additional information for comprehensive evaluation.</p>
     </div>
     
@@ -610,7 +610,7 @@ function showAddParticipantForm(preselectedCompetitionId = null) {
             option.setAttribute('data-is-pageant', competition.is_pageant);
             option.setAttribute('data-type-name', competition.type_name);
             option.setAttribute('data-description', competition.event_description || '');
-            const eventIcon = competition.is_pageant ? '👑' : '🎪';
+            const eventIcon = competition.is_pageant ? '' : '';
             option.textContent = `${competition.competition_name} (${competition.type_name}) ${eventIcon}`;
             competitionSelect.appendChild(option);
         });
@@ -1298,7 +1298,7 @@ function exportReportData() {
 // Scoring Overview Function
 function showScoringOverview() {
     document.getElementById("content").innerHTML = `
-        <h2>📋 Competition Scoring Overview</h2>
+        <h2> Competition Scoring Overview</h2>
         
         <div style="margin-bottom: 30px;">
             <label for="scoringCompetition" style="font-weight: 600; color: #800020; margin-right: 10px;">Select Competition:</label>
@@ -1309,7 +1309,7 @@ function showScoringOverview() {
         
         <div id="scoringContent">
             <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
-                <div style="font-size: 48px; margin-bottom: 20px;">📋</div>
+                <div style="font-size: 48px; margin-bottom: 20px;"></div>
                 <h3>Select a Competition</h3>
                 <p>Choose a competition to view scoring progress and judge assignments.</p>
             </div>
@@ -1338,7 +1338,7 @@ function loadScoringOverview() {
     if (!competitionId) {
         document.getElementById("scoringContent").innerHTML = `
             <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
-                <div style="font-size: 48px; margin-bottom: 20px;">📋</div>
+                <div style="font-size: 48px; margin-bottom: 20px;"></div>
                 <h3>Select a Competition</h3>
                 <p>Choose a competition to view scoring progress.</p>
             </div>
@@ -1457,7 +1457,7 @@ function loadScoringOverview() {
             </div>
             
             <div style="text-align: center; margin-top: 30px;">
-                <button onclick="viewCompetitionCriteria(${competitionId}, '${competition.competition_name.replace(/'/g, "\\'")}')" class="card-button" style="margin-right: 10px;">📋 View Criteria</button>
+                <button onclick="viewCompetitionCriteria(${competitionId}, '${competition.competition_name.replace(/'/g, "\\'")}')" class="card-button" style="margin-right: 10px;"> View Criteria</button>
                 <button onclick="showDashboard()" class="secondary">← Back to Dashboard</button>
             </div>
         `;

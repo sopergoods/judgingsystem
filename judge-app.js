@@ -45,29 +45,29 @@ function showDashboard() {
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
                 <div class="dashboard-card">
-                    <h3>📋 My Competitions</h3>
+                    <h3> My Competitions</h3>
                     <p>View competitions assigned to you</p>
                     <button onclick="showMyCompetitions()" class="card-button">View Assignments</button>
                 </div>
                 <div class="dashboard-card">
-    <h3>🔓 Unlock Requests</h3>
+    <h3> Unlock Requests</h3>
     <p>View status of your unlock requests</p>
     <button onclick="viewMyUnlockRequests()" class="card-button">View Requests</button>
 </div>
                 <div class="dashboard-card">
-                    <h3>⭐ Score Participants</h3>
+                    <h3> Score Participants</h3>
                     <p>Rate and score participant performances</p>
                     <button onclick="showMyCompetitions()" class="card-button">Start Scoring</button>
                 </div>
                 
                 <div class="dashboard-card">
-                    <h3>📝 Scoring History</h3>
+                    <h3> Scoring History</h3>
                     <p>Review your previous scores and comments</p>
                     <button onclick="showScoringHistory()" class="card-button">View History</button>
                 </div>
                 
                 <div class="dashboard-card">
-                    <h3>👤 My Profile</h3>
+                    <h3> My Profile</h3>
                     <p>View your judge profile and credentials</p>
                     <button onclick="showProfile()" class="card-button">View Profile</button>
                 </div>
@@ -481,7 +481,7 @@ function loadRegularDraft(judgeId, participantId, competitionId) {
             }
             
             calculateTotalScore();
-            showNotification('📝 Draft loaded', 'info');
+            showNotification(' Draft loaded', 'info');
         }
     }
 }
@@ -558,7 +558,7 @@ function loadRegularDraft(judgeId, participantId, competitionId) {
             }
             
             calculateTotalScore();
-            showNotification('📝 Draft loaded', 'info');
+            showNotification(' Draft loaded', 'info');
         }
     }
 }
@@ -588,7 +588,7 @@ function showSegmentSelection(judgeId, participantId, competitionId, participant
         </div>
         
         <div class="alert alert-info">
-            <strong>📋 Multi-Segment Pageant Scoring:</strong>
+            <strong> Multi-Segment Pageant Scoring:</strong>
             <p>This pageant has multiple segments (days). Select which segment you want to score for this participant.</p>
         </div>
         
@@ -1680,13 +1680,13 @@ function loadDraft(judgeId, participantId, segmentId) {
     .then(data => {
         if (data.success && data.draft) {
             applyDraftToForm(data.draft);
-            showNotification('📝 Draft loaded from server', 'info');
+            showNotification(' Draft loaded from server', 'info');
         } else {
             // Fallback to localStorage
             const localDraft = localStorage.getItem(draftKey);
             if (localDraft) {
                 applyDraftToForm(JSON.parse(localDraft));
-                showNotification('📝 Draft loaded from local backup', 'info');
+                showNotification(' Draft loaded from local backup', 'info');
             }
         }
     })
@@ -1696,7 +1696,7 @@ function loadDraft(judgeId, participantId, segmentId) {
         const localDraft = localStorage.getItem(draftKey);
         if (localDraft) {
             applyDraftToForm(JSON.parse(localDraft));
-            showNotification('📝 Draft loaded from local backup', 'warning');
+            showNotification(' Draft loaded from local backup', 'warning');
         }
     });
 }
@@ -1971,7 +1971,7 @@ function viewMyUnlockRequests() {
 // Display unlock requests
 function displayUnlockRequests(requests) {
     let html = `
-        <h2>📋 My Unlock Requests</h2>
+        <h2> My Unlock Requests</h2>
         
         <div style="margin-bottom: 20px;">
             <button onclick="showMyCompetitions()" class="secondary">← Back to Competitions</button>
