@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAuthentication();
 });
 let lockTimer = null;
-let lockCountdown = 10;
+let lockCountdown = 20;
 let currentScoreData = null;
 
 function checkAuthentication() {
@@ -1863,7 +1863,7 @@ function startLockCountdown(judgeId, participantId, competitionId, segmentId, sc
         clearInterval(lockTimer);
     }
     
-    lockCountdown = 10;
+    lockCountdown = 20;
     currentScoreData = { judgeId, participantId, competitionId, segmentId, scoreType };
     
     // Show countdown UI
