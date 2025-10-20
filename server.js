@@ -1560,25 +1560,21 @@ app.post('/save-draft-scores', (req, res) => {
 });
 
 // Get draft scores
-app.get('/get-draft-scores/:judgeId/:participantId/:competitionId/:segmentId?', (req, res) => {
+// ================================================
+// FIXED: Get draft scores - TWO ROUTES (no optional params)
+// ================================================
+
+// Get draft WITH segmentId
+app.get('/get-draft-scores/:judgeId/:participantId/:competitionId/:segmentId', (req, res) => {
     const { judgeId, participantId, competitionId, segmentId } = req.params;
     
     let sql = `
         SELECT draft_data, saved_at 
         FROM draft_scores 
-        WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id = ?
     `;
     
-    const params = [judgeId, participantId, competitionId];
-    
-    if (segmentId && segmentId !== 'undefined' && segmentId !== 'null') {
-        sql += ' AND segment_id = ?';
-        params.push(segmentId);
-    } else {
-        sql += ' AND segment_id IS NULL';
-    }
-    
-    db.query(sql, params, (err, result) => {
+    db.query(sql, [judgeId, participantId, competitionId, segmentId], (err, result) => {
         if (err) {
             console.error('❌ Error getting draft:', err);
             return res.status(500).json({ 
@@ -1610,21 +1606,59 @@ app.get('/get-draft-scores/:judgeId/:participantId/:competitionId/:segmentId?', 
     });
 });
 
-// Delete draft
-app.delete('/delete-draft-scores/:judgeId/:participantId/:competitionId/:segmentId?', (req, res) => {
+// Get draft WITHOUT segmentId (regular competition)
+app.get('/get-draft-scores/:judgeId/:participantId/:competitionId', (req, res) => {
+    const { judgeId, participantId, competitionId } = req.params;
+    
+    let sql = `
+        SELECT draft_data, saved_at 
+        FROM draft_scores 
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL
+    `;
+    
+    db.query(sql, [judgeId, participantId, competitionId], (err, result) => {
+        if (err) {
+            console.error('❌ Error getting draft:', err);
+            return res.status(500).json({ 
+                success: false, 
+                error: err.message 
+            });
+        }
+        
+        if (result.length > 0) {
+            try {
+                const draft = JSON.parse(result[0].draft_data);
+                res.json({ 
+                    success: true, 
+                    draft: draft,
+                    saved_at: result[0].saved_at
+                });
+            } catch (parseError) {
+                res.json({ 
+                    success: false, 
+                    message: 'Draft data corrupted' 
+                });
+            }
+        } else {
+            res.json({ 
+                success: false, 
+                message: 'No draft found' 
+            });
+        }
+    });
+});
+
+// ================================================
+// FIXED: Delete draft - TWO ROUTES (no optional params)
+// ================================================
+
+// Delete draft WITH segmentId
+app.delete('/delete-draft-scores/:judgeId/:participantId/:competitionId/:segmentId', (req, res) => {
     const { judgeId, participantId, competitionId, segmentId } = req.params;
     
-    let sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND competition_id = ?';
-    const params = [judgeId, participantId, competitionId];
+    let sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id = ?';
     
-    if (segmentId && segmentId !== 'undefined' && segmentId !== 'null') {
-        sql += ' AND segment_id = ?';
-        params.push(segmentId);
-    } else {
-        sql += ' AND segment_id IS NULL';
-    }
-    
-    db.query(sql, params, (err, result) => {
+    db.query(sql, [judgeId, participantId, competitionId, segmentId], (err, result) => {
         if (err) {
             return res.status(500).json({ 
                 success: false, 
@@ -1638,6 +1672,29 @@ app.delete('/delete-draft-scores/:judgeId/:participantId/:competitionId/:segment
         });
     });
 });
+
+// Delete draft WITHOUT segmentId (regular competition)
+app.delete('/delete-draft-scores/:judgeId/:participantId/:competitionId', (req, res) => {
+    const { judgeId, participantId, competitionId } = req.params;
+    
+    let sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL';
+    
+    db.query(sql, [judgeId, participantId, competitionId], (err, result) => {
+        if (err) {
+            return res.status(500).json({ 
+                success: false, 
+                error: err.message 
+            });
+        }
+        
+        res.json({ 
+            success: true,
+            deleted: result.affectedRows > 0
+        });
+    });
+});
+
+console.log('✅ Fixed draft endpoints loaded (4 routes total)');
 
 console.log('✅ Fixed draft endpoints loaded');
 
