@@ -64,13 +64,7 @@ console.log('  Port:', process.env.MYSQLPORT || process.env.DB_PORT || '3306');
 
 
 // Connect to database
-db.connect((err) => {
-    if (err) {
-        console.error('Database connection failed:', err);
-        return;
-    }
-    console.log('Connected to Enhanced MySQL database');
-});
+
 
 // Generate random password
 function generatePassword(length = 8) {
