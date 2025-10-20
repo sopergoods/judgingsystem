@@ -448,7 +448,19 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
 
         document.getElementById("content").innerHTML = scoreForm;
 
-        // ✅ FIXED: Single form submission handler with countdown trigger
+        // ✅ Load draft and add auto-save
+        setTimeout(() => {
+            loadRegularDraft(judgeId, participantId, competitionId);
+            
+            const allInputs = document.querySelectorAll('#detailedScoreForm input, #detailedScoreForm textarea');
+            allInputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    autoSaveRegularDraft(judgeId, participantId, competitionId);
+                });
+            });
+        }, 500);
+
+        // ✅ Form submission with lock countdown
         document.getElementById("detailedScoreForm").onsubmit = function(event) {
             event.preventDefault();
 
@@ -501,9 +513,12 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
                 if (data.success) {
                     showNotification('Scores submitted successfully!', 'success');
                     
-                    // ✅ FIXED: START LOCK COUNTDOWN HERE FOR REGULAR SCORING
+                    // ✅ START COUNTDOWN
                     console.log('🔒 Starting countdown for regular scoring');
                     startLockCountdown(judgeId, participantId, competitionId, null, 'overall');
+                    
+                    // ✅ Clear draft
+                    clearRegularDraft(judgeId, participantId, competitionId);
                     
                     setTimeout(() => {
                         viewCompetitionParticipants(competitionId);
@@ -524,15 +539,7 @@ function showRegularScoringWithPhoto(judgeId, participantId, competitionId, part
 
 // ✅ ADD these NEW functions for regular draft support in judge-app.js:
 
-function autoSaveRegularDraft(judgeId, participantId, competitionId) {
-    clearTimeout(window.regularDraftTimeout);
-    
-    showDraftStatus('Saving draft...', 'saving');
-    
-    window.regularDraftTimeout = setTimeout(() => {
-        saveRegularDraftToServer(judgeId, participantId, competitionId);
-    }, 2000);
-}
+
 
 function saveRegularDraftToServer(judgeId, participantId, competitionId) {
     const criteriaInputs = document.querySelectorAll('[data-criteria-id]');
