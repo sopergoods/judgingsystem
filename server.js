@@ -25,12 +25,16 @@ app.use(express.static(path.join(__dirname, '')));
 
 
 // Database connection
-const db = mysql.createConnection({
+
+const db = mysql.createPool({
     host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
     user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
     password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
     database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system',
     port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
     connectTimeout: 30000
 });
 
@@ -41,14 +45,23 @@ console.log('  User:', process.env.MYSQLUSER || process.env.DB_USER || 'root');
 console.log('  Database:', process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system');
 console.log('  Port:', process.env.MYSQLPORT || process.env.DB_PORT || '3306');
 
-// Connect to database
-db.connect((err) => {
+// Test the pool connection
+db.getConnection((err, connection) => {
     if (err) {
         console.error('❌ Database connection failed:', err.message);
         return;
     }
-    console.log('✅ Connected to MySQL database');
+    console.log('✅ Connected to MySQL database pool');
+    connection.release(); // Return connection to pool
 });
+// Debug what we're actually using
+console.log('🔧 Attempting connection with:');
+console.log('  Host:', process.env.MYSQLHOST || process.env.DB_HOST || 'localhost');
+console.log('  User:', process.env.MYSQLUSER || process.env.DB_USER || 'root');
+console.log('  Database:', process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'judging_system');
+console.log('  Port:', process.env.MYSQLPORT || process.env.DB_PORT || '3306');
+
+
 
 // Connect to database
 db.connect((err) => {
