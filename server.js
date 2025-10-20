@@ -1784,7 +1784,7 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (
             return res.json({ 
                 is_locked: false, 
                 can_edit: true,
-                seconds_remaining: 45
+                seconds_remaining: 10
             });
         }
         
@@ -1827,7 +1827,7 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
             return res.json({ 
                 is_locked: false, 
                 can_edit: true,
-                seconds_remaining: 45
+                seconds_remaining: 10
             });
         }
         
@@ -1835,7 +1835,7 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
         const secondsSinceLock = score.seconds_since_lock || 0;
         
        const canEdit = !score.is_locked || secondsSinceLock < 10;
-        const secondsRemaining = Math.max(0, 10 - secondsSinceLock);
+    const secondsRemaining = Math.max(0, 10 - secondsSinceLock);
         
         res.json({
             is_locked: score.is_locked,
@@ -1871,7 +1871,7 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
         }
         
         const score = result[0];
-        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 10);
         
         res.json({
             is_locked: score.is_locked,
@@ -1907,7 +1907,7 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (
         const score = result[0];
         
         // Can edit if: NOT locked OR locked less than 45 seconds ago
-        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 10);
         
         res.json({
             is_locked: score.is_locked,
@@ -1944,7 +1944,7 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
         const score = result[0];
         
         // Can edit if: NOT locked OR locked less than 45 seconds ago
-        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 10);
         
         res.json({
             is_locked: score.is_locked,

@@ -271,7 +271,7 @@ function checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, ca
         console.log('Lock check result:', data);
         
         // If locked and past edit window (45 seconds)
-        if (data.is_locked && data.seconds_since_lock > 45) {
+        if (data.is_locked && data.seconds_since_lock > 10) {
             callback(true, data);
         } else {
             callback(false, data);
@@ -299,7 +299,7 @@ function showLockedScoreMessage(judgeId, participantId, competitionId, segmentId
                     ✅ You submitted a score for this participant <strong>${minutesLocked} minutes ago</strong>
                 </p>
                 <p style="font-size: 14px; color: #666;">
-                    Scores are automatically locked 45 seconds after submission to ensure fairness and prevent score manipulation.
+                    Scores are automatically locked 10 seconds after submission to ensure fairness and prevent score manipulation.
                 </p>
             </div>
             
@@ -1863,7 +1863,7 @@ function startLockCountdown(judgeId, participantId, competitionId, segmentId, sc
         clearInterval(lockTimer);
     }
     
-    lockCountdown = 45;
+    lockCountdown = 10;
     currentScoreData = { judgeId, participantId, competitionId, segmentId, scoreType };
     
     // Show countdown UI
