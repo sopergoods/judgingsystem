@@ -1288,9 +1288,9 @@ app.post('/submit-segment-scores', (req, res) => {
 
                     // Step 4: Update or insert overall segment score summary WITH LOCK STATUS
                     const overallSql = `
-                        INSERT INTO overall_scores 
-                        (judge_id, participant_id, competition_id, segment_id, total_score, general_comments, is_locked, locked_at)
-                        VALUES (?, ?, ?, ?, ?, ?, FALSE, NOW())
+    INSERT INTO overall_scores 
+    (judge_id, participant_id, competition_id, segment_id, total_score, general_comments, is_locked, locked_at)
+    VALUES (?, ?, ?, ?, ?, ?, FALSE, NULL)
                         ON DUPLICATE KEY UPDATE 
                         total_score = VALUES(total_score), 
                         general_comments = VALUES(general_comments),
@@ -1965,6 +1965,7 @@ app.post('/auto-lock-score', (req, res) => {
     
     console.log('🔒 Auto-locking score:', { judge_id, participant_id, competition_id, segment_id, score_type });
     
+    // ✅ FIXED: Force lock immediately, don't check time
     let sql = `
         UPDATE overall_scores
         SET is_locked = TRUE, locked_at = NOW()
@@ -1980,7 +1981,7 @@ app.post('/auto-lock-score', (req, res) => {
         sql += ' AND segment_id IS NULL';
     }
     
-    sql += ' AND (is_locked = FALSE OR is_locked IS NULL)';
+    // ✅ REMOVED: No longer checking if already locked - just force it
     
     db.query(sql, params, (err, result) => {
         if (err) {
@@ -1991,66 +1992,18 @@ app.post('/auto-lock-score', (req, res) => {
             });
         }
         
-        console.log('✅ Auto-lock result, affected rows:', result.affectedRows);
+        console.log('✅ Score locked immediately, affected rows:', result.affectedRows);
         
-        if (result.affectedRows === 0) {
-            return res.json({ 
-                success: true, 
-                message: 'Score already locked',
-                already_locked: true
-            });
-        }
-        
-        const getScoreIdSql = `
-            SELECT overall_score_id FROM overall_scores
-            WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
-            ${segment_id && segment_id !== 'null' && segment_id !== 'undefined' ? 'AND segment_id = ?' : 'AND segment_id IS NULL'}
-        `;
-
-        const scoreParams = [judge_id, participant_id, competition_id];
-        if (segment_id && segment_id !== 'null' && segment_id !== 'undefined') {
-            scoreParams.push(segment_id);
-        }
-
-        db.query(getScoreIdSql, scoreParams, (err, scoreResult) => {
-            if (err || scoreResult.length === 0) {
-                return res.json({ 
-                    success: true, 
-                    message: 'Score locked successfully',
-                    affected_rows: result.affectedRows
-                });
-            }
-            
-            const overall_score_id = scoreResult[0].overall_score_id;
-            
-            const historySql = `
-                INSERT INTO score_edit_history 
-                (score_id, judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'auto_lock', NOW())
-            `;
-            
-            db.query(historySql, [
-                overall_score_id,
-                judge_id, 
-                participant_id, 
-                competition_id, 
-                segment_id || null, 
-                score_type || 'overall'
-            ], (err) => {
-                if (err) {
-                    console.error('⚠️ Error logging history:', err);
-                }
-                
-                res.json({ 
-                    success: true, 
-                    message: 'Score locked successfully',
-                    affected_rows: result.affectedRows,
-                    locked_at: new Date().toISOString()
-                });
-            });
+        res.json({ 
+            success: true, 
+            message: 'Score locked successfully',
+            affected_rows: result.affectedRows,
+            locked_at: new Date().toISOString()
         });
     });
 });
+
+console.log('✅ Fixed auto-lock endpoint - locks immediately');
 
 console.log('✅ Fixed auto-lock endpoint loaded');
 
