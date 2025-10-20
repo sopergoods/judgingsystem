@@ -1503,69 +1503,143 @@ app.get('/segment-criteria/:segmentId', (req, res) => {
     });
 });
 // Save draft scores
+// ================================================
+// FIXED DRAFT ENDPOINTS
+// ================================================
+
+// Save draft scores
 app.post('/save-draft-scores', (req, res) => {
-    const { judge_id, participant_id, segment_id, scores, general_comments, total_score } = req.body;
+    const { judge_id, participant_id, segment_id, competition_id, scores, general_comments, total_score } = req.body;
+    
+    console.log('💾 Saving draft:', { judge_id, participant_id, segment_id, competition_id });
+    
+    if (!judge_id || !participant_id || !competition_id) {
+        return res.status(400).json({ 
+            success: false, 
+            error: 'Missing required fields' 
+        });
+    }
+    
+    const draftData = JSON.stringify({ 
+        scores: scores || [], 
+        general_comments: general_comments || '', 
+        total_score: total_score || 0 
+    });
     
     const sql = `
         INSERT INTO draft_scores 
-        (judge_id, participant_id, segment_id, draft_data, saved_at)
-        VALUES (?, ?, ?, ?, NOW())
+        (judge_id, participant_id, segment_id, competition_id, draft_data, saved_at)
+        VALUES (?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE 
         draft_data = VALUES(draft_data),
         saved_at = NOW()
     `;
     
-    const draftData = JSON.stringify({ scores, general_comments, total_score });
-    
-    db.query(sql, [judge_id, participant_id, segment_id, draftData], (err) => {
+    db.query(sql, [
+        judge_id, 
+        participant_id, 
+        segment_id || null, 
+        competition_id,
+        draftData
+    ], (err, result) => {
         if (err) {
-            console.error('Draft save error:', err);
-            return res.json({ success: false, error: err.message });
+            console.error('❌ Draft save error:', err);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Database error: ' + err.message 
+            });
         }
-        res.json({ success: true });
+        
+        console.log('✅ Draft saved');
+        res.json({ 
+            success: true,
+            message: 'Draft saved',
+            saved_at: new Date().toISOString()
+        });
     });
 });
 
 // Get draft scores
-app.get('/get-draft-scores/:judgeId/:participantId/:segmentId', (req, res) => {
-    const { judgeId, participantId, segmentId } = req.params;
+app.get('/get-draft-scores/:judgeId/:participantId/:competitionId/:segmentId?', (req, res) => {
+    const { judgeId, participantId, competitionId, segmentId } = req.params;
     
-    const sql = `
+    let sql = `
         SELECT draft_data, saved_at 
         FROM draft_scores 
-        WHERE judge_id = ? AND participant_id = ? AND segment_id = ?
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
     `;
     
-    db.query(sql, [judgeId, participantId, segmentId], (err, result) => {
+    const params = [judgeId, participantId, competitionId];
+    
+    if (segmentId && segmentId !== 'undefined' && segmentId !== 'null') {
+        sql += ' AND segment_id = ?';
+        params.push(segmentId);
+    } else {
+        sql += ' AND segment_id IS NULL';
+    }
+    
+    db.query(sql, params, (err, result) => {
         if (err) {
-            return res.json({ success: false, error: err.message });
+            console.error('❌ Error getting draft:', err);
+            return res.status(500).json({ 
+                success: false, 
+                error: err.message 
+            });
         }
         
         if (result.length > 0) {
-            res.json({ 
-                success: true, 
-                draft: JSON.parse(result[0].draft_data),
-                saved_at: result[0].saved_at
-            });
+            try {
+                const draft = JSON.parse(result[0].draft_data);
+                res.json({ 
+                    success: true, 
+                    draft: draft,
+                    saved_at: result[0].saved_at
+                });
+            } catch (parseError) {
+                res.json({ 
+                    success: false, 
+                    message: 'Draft data corrupted' 
+                });
+            }
         } else {
-            res.json({ success: false, message: 'No draft found' });
+            res.json({ 
+                success: false, 
+                message: 'No draft found' 
+            });
         }
     });
 });
 
-// Delete draft after submission
-app.delete('/delete-draft-scores/:judgeId/:participantId/:segmentId', (req, res) => {
-    const { judgeId, participantId, segmentId } = req.params;
+// Delete draft
+app.delete('/delete-draft-scores/:judgeId/:participantId/:competitionId/:segmentId?', (req, res) => {
+    const { judgeId, participantId, competitionId, segmentId } = req.params;
     
-    const sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND segment_id = ?';
+    let sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND competition_id = ?';
+    const params = [judgeId, participantId, competitionId];
     
-    db.query(sql, [judgeId, participantId, segmentId], (err) => {
+    if (segmentId && segmentId !== 'undefined' && segmentId !== 'null') {
+        sql += ' AND segment_id = ?';
+        params.push(segmentId);
+    } else {
+        sql += ' AND segment_id IS NULL';
+    }
+    
+    db.query(sql, params, (err, result) => {
         if (err) {
-            return res.json({ success: false, error: err.message });
+            return res.status(500).json({ 
+                success: false, 
+                error: err.message 
+            });
         }
-        res.json({ success: true });
+        
+        res.json({ 
+            success: true,
+            deleted: result.affectedRows > 0
+        });
     });
 });
+
+console.log('✅ Fixed draft endpoints loaded');
 
 // Assign criteria to a segment
 app.post('/assign-segment-criteria', (req, res) => {
@@ -1628,6 +1702,11 @@ console.log('✅ Pageant Segment Scoring Endpoints Added');
 // Check if score is locked
 // ✅ BEST APPROACH - Two separate routes
 // Route WITH segmentId
+// ================================================
+// FIXED SCORE LOCKING ENDPOINTS
+// ================================================
+
+// Check if score is locked - WITH segmentId
 app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (req, res) => {
     const { judgeId, participantId, competitionId, segmentId } = req.params;
     
@@ -1645,20 +1724,74 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (
         }
         
         if (result.length === 0) {
-            return res.json({ is_locked: false, can_edit: true });
+            return res.json({ 
+                is_locked: false, 
+                can_edit: true,
+                seconds_remaining: 45
+            });
         }
         
         const score = result[0];
-        const canEdit = !score.is_locked || (score.seconds_since_lock && score.seconds_since_lock < 45);
+        const secondsSinceLock = score.seconds_since_lock || 0;
+        
+        // ✅ FIXED: Strict 45-second window
+        const canEdit = !score.is_locked || secondsSinceLock < 45;
+        const secondsRemaining = Math.max(0, 45 - secondsSinceLock);
+        
+        console.log(`🔍 Lock check: locked=${score.is_locked}, seconds=${secondsSinceLock}, can_edit=${canEdit}`);
         
         res.json({
             is_locked: score.is_locked,
             locked_at: score.locked_at,
-            seconds_since_lock: score.seconds_since_lock || 0,
-            can_edit: canEdit
+            seconds_since_lock: secondsSinceLock,
+            can_edit: canEdit,
+            seconds_remaining: secondsRemaining
         });
     });
 });
+
+// Check if score is locked - WITHOUT segmentId
+app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) => {
+    const { judgeId, participantId, competitionId } = req.params;
+    
+    let sql = `
+        SELECT is_locked, locked_at, 
+               TIMESTAMPDIFF(SECOND, locked_at, NOW()) as seconds_since_lock
+        FROM overall_scores
+        WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL
+    `;
+    
+    db.query(sql, [judgeId, participantId, competitionId], (err, result) => {
+        if (err) {
+            console.error('Error checking lock:', err);
+            return res.status(500).json({ error: 'Error checking lock status' });
+        }
+        
+        if (result.length === 0) {
+            return res.json({ 
+                is_locked: false, 
+                can_edit: true,
+                seconds_remaining: 45
+            });
+        }
+        
+        const score = result[0];
+        const secondsSinceLock = score.seconds_since_lock || 0;
+        
+        const canEdit = !score.is_locked || secondsSinceLock < 45;
+        const secondsRemaining = Math.max(0, 45 - secondsSinceLock);
+        
+        res.json({
+            is_locked: score.is_locked,
+            locked_at: score.locked_at,
+            seconds_since_lock: secondsSinceLock,
+            can_edit: canEdit,
+            seconds_remaining: secondsRemaining
+        });
+    });
+});
+
+console.log('✅ Fixed lock check endpoints loaded');
 
 // Route WITHOUT segmentId
 app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) => {
@@ -1768,6 +1901,9 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
 });
 
 console.log('Check lock endpoints added');
+// ================================================
+// FIXED AUTO-LOCK ENDPOINT
+// ================================================
 app.post('/auto-lock-score', (req, res) => {
     const { judge_id, participant_id, competition_id, segment_id, score_type } = req.body;
     
@@ -1781,75 +1917,86 @@ app.post('/auto-lock-score', (req, res) => {
     
     const params = [judge_id, participant_id, competition_id];
     
-    if (segment_id && segment_id !== 'null') {
+    if (segment_id && segment_id !== 'null' && segment_id !== 'undefined') {
         sql += ' AND segment_id = ?';
         params.push(segment_id);
     } else {
         sql += ' AND segment_id IS NULL';
     }
     
-    sql += ' AND is_locked = FALSE';
+    sql += ' AND (is_locked = FALSE OR is_locked IS NULL)';
     
     db.query(sql, params, (err, result) => {
         if (err) {
-            console.error('Auto-lock error:', err);
-            return res.status(500).json({ error: 'Error locking score' });
+            console.error('❌ Auto-lock error:', err);
+            return res.status(500).json({ 
+                success: false,
+                error: 'Error locking score' 
+            });
         }
         
-        console.log('✅ Score locked, affected rows:', result.affectedRows);
+        console.log('✅ Auto-lock result, affected rows:', result.affectedRows);
         
-        // ✅ FIXED: Get the score_id before logging history
-      // ✅ FIXED: Use overall_score_id
-const getScoreIdSql = `
-    SELECT overall_score_id FROM overall_scores
-    WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
-    ${segment_id && segment_id !== 'null' ? 'AND segment_id = ?' : 'AND segment_id IS NULL'}
-`;
-
-const scoreParams = [judge_id, participant_id, competition_id];
-if (segment_id && segment_id !== 'null') {
-    scoreParams.push(segment_id);
-}
-
-db.query(getScoreIdSql, scoreParams, (err, scoreResult) => {
-    if (err || scoreResult.length === 0) {
-        console.error('Error getting overall_score_id:', err);
-        return res.json({ 
-            success: true, 
-            message: 'Score locked successfully',
-            affected_rows: result.affectedRows
-        });
-    }
-    
-    const overall_score_id = scoreResult[0].overall_score_id; // ✅ CHANGED
-    
-    const historySql = `
-        INSERT INTO score_edit_history 
-        (score_id, judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'auto_lock', NOW())
-    `;
-    
-    db.query(historySql, [
-        overall_score_id,  // ✅ CHANGED
-        judge_id, 
-        participant_id, 
-        competition_id, 
-        segment_id || null, 
-        score_type || 'overall'
-    ], (err) => {
-        if (err) {
-            console.error('Error logging auto-lock:', err);
+        if (result.affectedRows === 0) {
+            return res.json({ 
+                success: true, 
+                message: 'Score already locked',
+                already_locked: true
+            });
         }
         
-        res.json({ 
-            success: true, 
-            message: 'Score locked successfully',
-            affected_rows: result.affectedRows
+        const getScoreIdSql = `
+            SELECT overall_score_id FROM overall_scores
+            WHERE judge_id = ? AND participant_id = ? AND competition_id = ?
+            ${segment_id && segment_id !== 'null' && segment_id !== 'undefined' ? 'AND segment_id = ?' : 'AND segment_id IS NULL'}
+        `;
+
+        const scoreParams = [judge_id, participant_id, competition_id];
+        if (segment_id && segment_id !== 'null' && segment_id !== 'undefined') {
+            scoreParams.push(segment_id);
+        }
+
+        db.query(getScoreIdSql, scoreParams, (err, scoreResult) => {
+            if (err || scoreResult.length === 0) {
+                return res.json({ 
+                    success: true, 
+                    message: 'Score locked successfully',
+                    affected_rows: result.affectedRows
+                });
+            }
+            
+            const overall_score_id = scoreResult[0].overall_score_id;
+            
+            const historySql = `
+                INSERT INTO score_edit_history 
+                (score_id, judge_id, participant_id, competition_id, segment_id, score_type, edit_type, edited_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'auto_lock', NOW())
+            `;
+            
+            db.query(historySql, [
+                overall_score_id,
+                judge_id, 
+                participant_id, 
+                competition_id, 
+                segment_id || null, 
+                score_type || 'overall'
+            ], (err) => {
+                if (err) {
+                    console.error('⚠️ Error logging history:', err);
+                }
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Score locked successfully',
+                    affected_rows: result.affectedRows,
+                    locked_at: new Date().toISOString()
+                });
+            });
         });
     });
 });
-    });
-});
+
+console.log('✅ Fixed auto-lock endpoint loaded');
 
 // Submit unlock request
 app.post('/request-unlock', (req, res) => {
