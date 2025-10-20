@@ -1791,9 +1791,8 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (
         const score = result[0];
         const secondsSinceLock = score.seconds_since_lock || 0;
         
-        // ✅ FIXED: Strict 45-second window
-        const canEdit = !score.is_locked || secondsSinceLock < 45;
-        const secondsRemaining = Math.max(0, 45 - secondsSinceLock);
+       const canEdit = !score.is_locked || secondsSinceLock < 10;
+        const secondsRemaining = Math.max(0, 10 - secondsSinceLock);
         
         console.log(`🔍 Lock check: locked=${score.is_locked}, seconds=${secondsSinceLock}, can_edit=${canEdit}`);
         
@@ -1835,8 +1834,8 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
         const score = result[0];
         const secondsSinceLock = score.seconds_since_lock || 0;
         
-        const canEdit = !score.is_locked || secondsSinceLock < 45;
-        const secondsRemaining = Math.max(0, 45 - secondsSinceLock);
+       const canEdit = !score.is_locked || secondsSinceLock < 10;
+        const secondsRemaining = Math.max(0, 10 - secondsSinceLock);
         
         res.json({
             is_locked: score.is_locked,
