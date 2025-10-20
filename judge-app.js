@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAuthentication();
 });
 let lockTimer = null;
-let lockCountdown = 45; // 45 seconds to edit
+let lockCountdown = 10;
 let currentScoreData = null;
 
 function checkAuthentication() {
