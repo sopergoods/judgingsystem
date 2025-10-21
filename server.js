@@ -7,7 +7,7 @@ const mysql = require('mysql2');
 const path = require('path');
 const cors = require('cors');
 const app = express();
-
+const PORT = process.env.PORT || 8080;
 
 
 // Enable CORS
@@ -2022,4 +2022,4 @@ console.log('✅ Complete scoring system loaded - Pageants & Regular competition
 
 app.listen(PORT, '0.0.0.0', () => {  // ✅ Use the PORT from line 11
   console.log(`🚀 Server running on port ${PORT}`);
-});console.log('✅ Score Locking & Unlock Request Endpoints Added');
+});
