@@ -1324,16 +1324,26 @@ function showDetailedScoreForm(judgeId, participantId, competitionId, participan
                 body: JSON.stringify(submissionData)
             })
             .then(response => response.json())
-            .then(data => {
+   .then(data => {
+    console.log('📥 Response data:', data);
+    
     if (data.success) {
-        showNotification(`Segment "${segmentName}" scored successfully!`, 'success');
+        showNotification(`✅ Segment "${segmentName}" scored successfully! Total: ${totalWeightedScore.toFixed(2)}/100`, 'success');
         
-        // START LOCK COUNTDOWN HERE
+        // ✅ ALWAYS START COUNTDOWN FOR SEGMENT SCORES
+        console.log('🔒 Starting lock countdown for segment score...');
         startLockCountdown(judgeId, participantId, competitionId, segmentId, 'segment');
         
+        // Clear draft
+        clearDraft(judgeId, participantId, segmentId);
+        
+        // Delay navigation
         setTimeout(() => {
             showSegmentSelection(judgeId, participantId, competitionId, participantName);
         }, 2000);
+    } else {
+        console.error('Submission failed:', data);
+        showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
     }
 })
             .catch(error => {
