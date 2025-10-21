@@ -791,31 +791,40 @@ function showSegmentSelection(judgeId, participantId, competitionId, participant
     });
 }
 
+
 // ==========================================
 // 7. SEGMENT SCORING WITH CRITERIA
 // ==========================================
 function showSegmentScoring(judgeId, participantId, competitionId, segmentId, participantName, segmentName) {
     console.log('Loading segment-specific criteria...');
     
-    // Fetch both participant details and segment criteria
-    Promise.all([
-        fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`).then(r => r.json()),
-        fetch(`https://mseufci-judgingsystem.up.railway.app/segment-criteria/${segmentId}`).then(r => r.json())
-    ])
-    .then(([participant, criteria]) => {
-        console.log('Participant:', participant);
-        console.log('Segment criteria loaded:', criteria);
-        
-        if (criteria.length === 0) {
-            showNotification('No criteria configured for this segment', 'error');
+    // ✅ CHECK IF THIS SEGMENT IS LOCKED FIRST
+    checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, (isLocked, lockInfo) => {
+        if (isLocked) {
+            showLockedScoreMessage(judgeId, participantId, competitionId, segmentId, `${participantName} - ${segmentName}`, lockInfo);
             return;
         }
+        
+        // Not locked - proceed with loading criteria and form
+        Promise.all([
+            fetch(`https://mseufci-judgingsystem.up.railway.app/participant/${participantId}`).then(r => r.json()),
+            fetch(`https://mseufci-judgingsystem.up.railway.app/segment-criteria/${segmentId}`).then(r => r.json())
+        ])
+        .then(([participant, criteria]) => {
+            console.log('Participant:', participant);
+            console.log('Segment criteria loaded:', criteria);
+            
+            if (criteria.length === 0) {
+                showNotification('No criteria configured for this segment', 'error');
+                return;
+            }
 
-        displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant);
-    })
-    .catch(error => {
-        console.error('Error loading criteria:', error);
-        showNotification('Error loading scoring criteria', 'error');
+            displaySegmentScoringFormWithPhoto(judgeId, participantId, competitionId, segmentId, participantName, segmentName, criteria, participant);
+        })
+        .catch(error => {
+            console.error('Error loading criteria:', error);
+            showNotification('Error loading scoring criteria', 'error');
+        });
     });
 }
 
