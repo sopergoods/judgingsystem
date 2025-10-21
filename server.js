@@ -1645,23 +1645,30 @@ app.get('/get-draft-scores/:judgeId/:participantId', (req, res) => {
     });
 });
 
-// Delete draft (works for both)
-app.delete('/delete-draft-scores/:judgeId/:participantId/:segmentId?', (req, res) => {
+app.delete('/delete-draft-scores/:judgeId/:participantId/:segmentId', (req, res) => {
     const { judgeId, participantId, segmentId } = req.params;
     
-    let sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ?';
-    const params = [judgeId, participantId];
+    console.log('🗑️ Deleting PAGEANT draft');
     
-    if (segmentId && segmentId !== 'null' && segmentId !== 'undefined') {
-        sql += ' AND segment_id = ?';
-        params.push(segmentId);
-        console.log('🗑️ Deleting PAGEANT draft');
-    } else {
-        sql += ' AND segment_id IS NULL';
-        console.log('🗑️ Deleting REGULAR draft');
-    }
+    const sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND segment_id = ?';
     
-    db.query(sql, params, (err, result) => {
+    db.query(sql, [judgeId, participantId, segmentId], (err, result) => {
+        if (err) {
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        res.json({ success: true, deleted: result.affectedRows > 0 });
+    });
+});
+
+// Delete draft - FOR REGULAR (without segmentId)
+app.delete('/delete-draft-scores/:judgeId/:participantId', (req, res) => {
+    const { judgeId, participantId } = req.params;
+    
+    console.log('🗑️ Deleting REGULAR draft');
+    
+    const sql = 'DELETE FROM draft_scores WHERE judge_id = ? AND participant_id = ? AND segment_id IS NULL';
+    
+    db.query(sql, [judgeId, participantId], (err, result) => {
         if (err) {
             return res.status(500).json({ success: false, error: err.message });
         }
