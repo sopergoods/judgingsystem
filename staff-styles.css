@@ -544,35 +544,3 @@ a:focus {
         border-width: 3px;
     }
 }
-
-/* Dark Mode Support - Maintaining Maroon Theme */
-@media (prefers-color-scheme: dark) {
-    body::before {
-        background: rgba(20, 20, 20, 0.85);
-    }
-    
-    section {
-        background: #1a1a1a;
-        color: #fff;
-    }
-    
-    .dashboard-card {
-        background: #2a2a2a;
-        color: #fff;
-    }
-    
-    table td {
-        color: #fff;
-    }
-    
-    form {
-        background: #1a1a1a;
-        color: #fff;
-    }
-    
-    input, select, textarea {
-        background: #2a2a2a;
-        color: #fff;
-        border-color: #444;
-    }
-}
