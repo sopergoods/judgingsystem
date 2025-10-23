@@ -1,6 +1,5 @@
-/* Clean Maroon and White Theme for School Judging System */
+/* Clean Maroon and White Theme - Judging System */
 
-/* Basic reset and body styling */
 * {
     margin: 0;
     padding: 0;
@@ -9,16 +8,13 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* Background image placeholder - replace 'college-bg.jpg' with your college image */
     background: url('backgroundschool.jpg') center center fixed;
     background-size: cover;
-    /* Fallback background with overlay */
     background-color: #800020;
     position: relative;
     min-height: 100vh;
 }
 
-/* Background overlay for better text readability */
 body::before {
     content: '';
     position: fixed;
@@ -39,7 +35,7 @@ body::before {
     z-index: 1;
 }
 
-/* Header styling with logo space */
+/* Header */
 header {
     background: #800020;
     color: white;
@@ -59,7 +55,6 @@ header {
     gap: 20px;
 }
 
-/* Logo placeholder */
 .logo {
     width: 60px;
     height: 60px;
@@ -68,14 +63,8 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    color: #800020;
-    font-size: 12px;
-    text-align: center;
-    line-height: 1.2;
 }
 
-/* When you add your logo image, use this class */
 .logo img {
     width: 100%;
     height: 100%;
@@ -100,7 +89,7 @@ header {
     color: white;
 }
 
-/* Navigation styling */
+/* Navigation */
 nav {
     margin: 20px 0;
     background: white;
@@ -145,7 +134,7 @@ nav a:hover {
     transform: translateY(-2px);
 }
 
-/* Content section */
+/* Content Section */
 section {
     margin-top: 20px;
     background: white;
@@ -186,6 +175,7 @@ section {
     line-height: 1.5;
 }
 
+/* Buttons */
 .card-button {
     background: #800020;
     color: white;
@@ -205,7 +195,34 @@ section {
     box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
 }
 
-/* Form styling */
+button {
+    background: #800020;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 5px;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: #a0002a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+}
+
+button.secondary {
+    background: #666;
+    color: white;
+}
+
+button.secondary:hover {
+    background: #888;
+}
+
+/* Forms */
 form {
     background-color: white;
     padding: 30px;
@@ -245,6 +262,8 @@ form input[type="email"],
 form input[type="tel"], 
 form input[type="number"], 
 form input[type="date"], 
+form input[type="time"],
+form input[type="url"],
 form input[type="password"],
 form select, 
 form textarea {
@@ -286,35 +305,7 @@ form button[type="submit"]:hover {
     box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
 }
 
-/* Button styling */
-button {
-    background: #800020;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    margin: 5px;
-    transition: all 0.3s ease;
-}
-
-button:hover {
-    background: #a0002a;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
-}
-
-button.secondary {
-    background: #666;
-    color: white;
-}
-
-button.secondary:hover {
-    background: #888;
-}
-
-/* Table styling */
+/* Tables */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -348,7 +339,97 @@ table tr:hover {
     background-color: #f0f0f0;
 }
 
-/* Responsive design */
+/* Grid Layouts */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+/* Alerts */
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-weight: 600;
+    border: 2px solid;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.alert ul {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+/* Criteria Items */
+.criterion-item {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.criterion-item:hover {
+    border-color: #800020;
+    box-shadow: 0 2px 10px rgba(128, 0, 32, 0.1);
+}
+
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #800020;
+    font-size: 18px;
+}
+
+.loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #800020;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
     .container {
         width: 95%;
@@ -382,9 +463,27 @@ table tr:hover {
     .dashboard-card {
         margin-bottom: 20px;
     }
+    
+    .grid-2,
+    .grid-3 {
+        grid-template-columns: 1fr;
+    }
 }
 
-/* Status indicators */
+/* Segment Input Styles */
+.segment-input {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 2px solid #dee2e6;
+}
+
+.segment-input:hover {
+    border-color: #800020;
+}
+
+/* Status Colors */
 .status-paid {
     color: #28a745;
     font-weight: 600;
@@ -400,258 +499,22 @@ table tr:hover {
     font-weight: 600;
 }
 
-/* Score display */
-.score-display {
-    background: #800020;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-    display: inline-block;
-    margin: 2px;
-}
-
-/* Alert messages */
-.alert {
-    padding: 15px;
-    border-radius: 8px;
-    margin: 15px 0;
-    font-weight: 600;
-    border: 2px solid;
-}
-
-.alert-success {
-    background-color: #d4edda;
-    border-color: #c3e6cb;
-    color: #155724;
-}
-
-.alert-error {
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
-    color: #721c24;
-}
-
-.alert-warning {
-    background-color: #fff3cd;
-    border-color: #ffeaa7;
-    color: #856404;
-}
-
-.alert-info {
-    background-color: #d1ecf1;
-    border-color: #bee5eb;
-    color: #0c5460;
-}
-
-/* Enhanced features sections */
-.feature-highlight {
-    background: #f8f9fa;
-    border: 2px solid #800020;
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px 0;
-}
-
-.feature-highlight h3 {
+/* Clean and Professional Look */
+h2 {
     color: #800020;
-    margin-bottom: 15px;
-}
-
-.feature-highlight ul {
-    color: #666;
-    line-height: 1.8;
-}
-
-.feature-highlight li {
-    margin: 8px 0;
-}
-
-/* Criteria management styles */
-.criterion-item {
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 15px;
-    transition: all 0.3s ease;
-}
-
-.criterion-item:hover {
-    border-color: #800020;
-    box-shadow: 0 2px 10px rgba(128, 0, 32, 0.1);
-}
-
-/* Form sections */
-.form-section {
-    margin: 30px 0;
-}
-
-.form-section h3 {
-    color: #800020;
+    font-weight: 600;
+    margin-bottom: 20px;
     border-bottom: 2px solid #800020;
     padding-bottom: 10px;
-    margin-bottom: 20px;
 }
 
-/* Grid layouts */
-.grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-}
-
-@media (max-width: 768px) {
-    .grid-2,
-    .grid-3 {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Loading states */
-.loading {
-    text-align: center;
-    padding: 40px;
+h3 {
     color: #800020;
-    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
 }
 
-.loading::after {
-    content: '';
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #800020;
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 1s ease-in-out infinite;
-    margin-left: 10px;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ==========================================
-   AJAX ANIMATION STYLES - ADD AT BOTTOM
-   ========================================== */
-
-@keyframes slideIn {
-    from {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOut {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-}
-
-.score-updated {
-    animation: scoreFlash 1s ease-in-out;
-}
-
-@keyframes scoreFlash {
-    0%, 100% { background-color: transparent; }
-    50% { background-color: #ffd700; }
-}
-
-.notification {
-    animation: slideIn 0.3s ease-out;
-}
-
-.loading {
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-/* ==========================================
-   LOCK COUNTDOWN ANIMATIONS
-   ========================================== */
-
-@keyframes pulse {
-    0%, 100% { 
-        transform: scale(1); 
-        opacity: 1;
-    }
-    50% { 
-        transform: scale(1.1); 
-        opacity: 0.8;
-    }
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-}
-
-#lock-countdown {
-    animation: slideInRight 0.3s ease-out;
-}
-
-#lock-countdown.hiding {
-    animation: slideOutRight 0.3s ease-out;
-}
-
-/* Locked score indicator */
-.score-locked {
-    position: relative;
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.score-locked::after {
-    content: '🔒 LOCKED';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(220, 53, 69, 0.95);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: bold;
-    z-index: 10;
-}
-
-/* Unlock request status badges */
-.unlock-badge-pending {
-    animation: pulse 2s ease-in-out infinite;
+/* Smooth Transitions */
+* {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
