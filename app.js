@@ -769,8 +769,18 @@ function viewPageantSegments(competitionId, competitionName) {
         <h3 style="color: #800020;">${competitionName}</h3>
         
         <div style="margin-bottom: 20px;">
-            <button onclick="showViewCompetitions()" class="secondary">Back to Competitions</button>
-        </div>
+    <button onclick="manageSegmentWeights(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
+            style="background: #28a745; margin-right: 10px;">
+        Set Segment Weights
+    </button>
+    <button onclick="viewWeightedLeaderboard(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
+            style="background: #ffc107; color: #000; margin-right: 10px;">
+        View Grand Total
+    </button>
+    <button onclick="showViewCompetitions()" class="secondary">
+        Back to Competitions
+    </button>
+</div>
         
         <div id="segmentsDisplay"><div class="loading">Loading schedule...</div></div>
     `;
@@ -1876,3 +1886,278 @@ function showUnlockRequestsBadge() {
 }
 
 console.log('✅ Clean Admin Dashboard Loaded - Maroon & White Theme');
+function manageSegmentWeights(competitionId, competitionName) {
+    document.getElementById("content").innerHTML = `
+        <h2>Manage Segment Weights</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div class="alert alert-info">
+            <strong>📊 About Segment Weights:</strong>
+            <p>Assign a percentage weight to each segment to calculate the weighted grand total.</p>
+            <p><strong>Example:</strong> If "Evening Gown" is weighted 40% and a contestant scores 90, 
+            their contribution to the grand total is 90 × 0.40 = 36 points.</p>
+            <ul style="margin-top: 10px;">
+                <li>Total weights must equal <strong>100%</strong></li>
+                <li>More important segments get higher weights</li>
+                <li>Final score = Sum of (segment_average × segment_weight)</li>
+            </ul>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="viewPageantSegments(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" class="secondary">
+                Back to Segments
+            </button>
+        </div>
+        
+        <div id="weightsList"><div class="loading">Loading segments...</div></div>
+        
+        <div id="submitSection" style="display: none; margin-top: 30px;">
+            <div id="weightTotal" style="padding: 20px; background: #fff3cd; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+                <strong style="font-size: 18px;">Total Weight: <span id="totalWeight">0</span>%</strong>
+            </div>
+            <button onclick="saveSegmentWeights(${competitionId})" class="card-button">
+                💾 Save Segment Weights
+            </button>
+        </div>
+    `;
+    
+    fetch(`${API_URL}/segment-weights/${competitionId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.segments.length === 0) {
+            document.getElementById("weightsList").innerHTML = `
+                <div class="alert alert-warning">
+                    <h3>No Segments Found</h3>
+                    <p>Please create pageant segments first.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        displaySegmentWeights(data.segments);
+        updateWeightTotal();
+        document.getElementById('submitSection').style.display = 'block';
+    });
+}
+
+function displaySegmentWeights(segments) {
+    const segmentsByDay = {};
+    segments.forEach(seg => {
+        if (!segmentsByDay[seg.day_number]) {
+            segmentsByDay[seg.day_number] = [];
+        }
+        segmentsByDay[seg.day_number].push(seg);
+    });
+    
+    let html = '';
+    
+    Object.keys(segmentsByDay).sort((a, b) => a - b).forEach(dayNumber => {
+        const daySegments = segmentsByDay[dayNumber];
+        
+        html += `
+            <div class="dashboard-card" style="text-align: left; margin-bottom: 20px; border-left: 5px solid #800020;">
+                <h3>Day ${dayNumber}</h3>
+                <div style="display: grid; gap: 15px; margin-top: 15px;">
+        `;
+        
+        daySegments.forEach(segment => {
+            html += `
+                <div class="segment-weight-item" style="background: #f8f9fa; padding: 20px; border-radius: 8px; display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center;">
+                    <div>
+                        <strong style="font-size: 16px; color: #800020;">${segment.segment_name}</strong>
+                        <p style="margin-top: 5px; color: #666; font-size: 14px;">Segment ${segment.order_number}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <label style="display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold;">Weight %</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input 
+                                type="number" 
+                                class="segment-weight-input" 
+                                data-segment-id="${segment.segment_id}"
+                                value="${segment.segment_weight || 0}" 
+                                min="0" 
+                                max="100" 
+                                step="0.1" 
+                                style="width: 100px; text-align: center; font-size: 16px; font-weight: bold; padding: 10px;"
+                                onchange="updateWeightTotal()">
+                            <span style="font-size: 18px; font-weight: bold;">%</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    document.getElementById("weightsList").innerHTML = html;
+}
+
+function updateWeightTotal() {
+    const inputs = document.querySelectorAll('.segment-weight-input');
+    let total = 0;
+    
+    inputs.forEach(input => {
+        total += parseFloat(input.value) || 0;
+    });
+    
+    const span = document.getElementById('totalWeight');
+    const container = document.getElementById('weightTotal');
+    
+    if (span && container) {
+        span.textContent = total.toFixed(1);
+        
+        if (Math.abs(total - 100) < 0.1) {
+            container.style.background = '#d4edda';
+            container.style.border = '2px solid #28a745';
+            container.innerHTML = `<strong style="font-size: 18px; color: #155724;">✅ Total Weight: ${total.toFixed(1)}% (Perfect!)</strong>`;
+        } else if (total > 100) {
+            container.style.background = '#f8d7da';
+            container.style.border = '2px solid #dc3545';
+            container.innerHTML = `<strong style="font-size: 18px; color: #721c24;">❌ Total Weight: ${total.toFixed(1)}% (Too High!)</strong>`;
+        } else {
+            container.style.background = '#fff3cd';
+            container.style.border = '2px solid #ffc107';
+            container.innerHTML = `<strong style="font-size: 18px; color: #856404;">⚠️ Total Weight: ${total.toFixed(1)}% (Need ${(100 - total).toFixed(1)}% more)</strong>`;
+        }
+    }
+}
+
+function saveSegmentWeights(competitionId) {
+    const inputs = document.querySelectorAll('.segment-weight-input');
+    const segments = [];
+    let total = 0;
+    
+    inputs.forEach(input => {
+        const weight = parseFloat(input.value) || 0;
+        total += weight;
+        
+        segments.push({
+            segment_id: input.getAttribute('data-segment-id'),
+            weight: weight
+        });
+    });
+    
+    if (Math.abs(total - 100) > 0.1) {
+        alert(`❌ Total weight must equal 100%!\n\nCurrent total: ${total.toFixed(1)}%\n\nPlease adjust the weights so they add up to exactly 100%.`);
+        return;
+    }
+    
+    if (!confirm(`Save these segment weights?\n\nTotal: ${total.toFixed(1)}%\n\nThis will affect how the grand total is calculated.`)) {
+        return;
+    }
+    
+    fetch(`${API_URL}/update-segment-weights`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            competition_id: competitionId,
+            segments: segments
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Segment weights saved successfully!\n\nGrand totals will now be calculated using these weights.');
+            showViewCompetitions();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('❌ Error saving weights: ' + error.message);
+    });
+}
+
+// View weighted grand total leaderboard
+function viewWeightedLeaderboard(competitionId, competitionName) {
+    document.getElementById("content").innerHTML = `
+        <h2>🏆 Weighted Grand Total Leaderboard</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div class="alert alert-info">
+            <strong>How It Works:</strong>
+            <p>Each segment's average score is multiplied by its weight percentage to calculate the weighted grand total.</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showViewCompetitions()" class="secondary">Back to Competitions</button>
+        </div>
+        
+        <div id="leaderboardDisplay"><div class="loading">Calculating weighted scores...</div></div>
+    `;
+    
+    fetch(`${API_URL}/pageant-grand-total/${competitionId}`)
+    .then(response => response.json())
+    .then(leaderboard => {
+        if (leaderboard.length === 0) {
+            document.getElementById("leaderboardDisplay").innerHTML = `
+                <div class="alert alert-warning">
+                    <h3>No Scores Yet</h3>
+                    <p>No scores have been submitted for this competition.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        
+        leaderboard.forEach((contestant, index) => {
+            const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
+            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+            const rankText = index === 0 ? '1st Place' : index === 1 ? '2nd Place' : index === 2 ? '3rd Place' : `${index + 1}th Place`;
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left; margin-bottom: 20px; border-left: 5px solid ${rankColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div>
+                            <h3 style="margin: 0;">${rankEmoji} ${contestant.participant_name}</h3>
+                            <p style="margin: 5px 0 0 0; color: #666;">Contestant #${contestant.contestant_number || 'N/A'}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 32px; font-weight: bold; color: ${rankColor};">${contestant.weighted_grand_total}</div>
+                            <div style="font-size: 14px; color: #666;">${rankText}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-top: 0; color: #800020;">Segment Breakdown:</h4>
+                        <div style="display: grid; gap: 10px;">
+            `;
+            
+            contestant.segments.forEach(seg => {
+                html += `
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; align-items: center; padding: 10px; background: white; border-radius: 5px;">
+                        <div><strong>${seg.name}</strong></div>
+                        <div style="text-align: center;">Avg: <strong>${seg.average_score}</strong></div>
+                        <div style="text-align: center;">Weight: <strong>${seg.weight}%</strong></div>
+                        <div style="text-align: right; color: #800020; font-weight: bold;">= ${seg.weighted_contribution}</div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; font-size: 14px; color: #666;">
+                        <strong>Judges:</strong> ${contestant.judge_count} | 
+                        <strong>Segments Completed:</strong> ${contestant.segments_completed}
+                    </div>
+                </div>
+            `;
+        });
+        
+        document.getElementById("leaderboardDisplay").innerHTML = html;
+    })
+    .catch(error => {
+        document.getElementById("leaderboardDisplay").innerHTML = `
+            <div class="alert alert-error">
+                <strong>Error loading leaderboard:</strong> ${error.message}
+            </div>
+        `;
+    });
+}

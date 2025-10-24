@@ -2040,6 +2040,209 @@ app.post('/review-unlock-request/:requestId', (req, res) => {
     });
 });
 
+
+app.get('/segment-weights/:competitionId', (req, res) => {
+    const { competitionId } = req.params;
+    
+    const sql = `
+        SELECT segment_id, segment_name, segment_weight, day_number, order_number
+        FROM pageant_segments
+        WHERE competition_id = ? AND is_active = TRUE
+        ORDER BY day_number, order_number
+    `;
+    
+    db.query(sql, [competitionId], (err, result) => {
+        if (err) {
+            console.error('Error fetching segment weights:', err);
+            return res.status(500).json({ error: 'Error fetching segment weights' });
+        }
+        
+        // Calculate total weight
+        const totalWeight = result.reduce((sum, seg) => sum + parseFloat(seg.segment_weight || 0), 0);
+        
+        res.json({
+            segments: result,
+            total_weight: totalWeight,
+            is_valid: Math.abs(totalWeight - 100) < 0.1
+        });
+    });
+});
+
+// Update segment weights
+app.post('/update-segment-weights', (req, res) => {
+    const { competition_id, segments } = req.body;
+    
+    if (!competition_id || !segments || segments.length === 0) {
+        return res.status(400).json({ error: 'Competition ID and segments required' });
+    }
+    
+    // Validate total weight equals 100%
+    const totalWeight = segments.reduce((sum, seg) => sum + parseFloat(seg.weight || 0), 0);
+    
+    if (Math.abs(totalWeight - 100) > 0.1) {
+        return res.status(400).json({ 
+            error: `Total weight must equal 100%. Current total: ${totalWeight.toFixed(2)}%` 
+        });
+    }
+    
+    // Update each segment weight
+    const updatePromises = segments.map(segment => {
+        return new Promise((resolve, reject) => {
+            const sql = 'UPDATE pageant_segments SET segment_weight = ? WHERE segment_id = ?';
+            db.query(sql, [segment.weight, segment.segment_id], (err, result) => {
+                if (err) reject(err);
+                else resolve(result);
+            });
+        });
+    });
+    
+    Promise.all(updatePromises)
+        .then(() => {
+            res.json({ 
+                success: true, 
+                message: 'Segment weights updated successfully!',
+                total_weight: totalWeight
+            });
+        })
+        .catch(err => {
+            console.error('Error updating segment weights:', err);
+            res.status(500).json({ error: 'Error updating segment weights' });
+        });
+});
+
+// Get weighted grand total for pageant leaderboard
+app.get('/pageant-grand-total/:competitionId', (req, res) => {
+    const { competitionId } = req.params;
+    
+    const sql = `
+        SELECT 
+            p.participant_id,
+            p.participant_name,
+            p.contestant_number,
+            p.photo_url,
+            GROUP_CONCAT(
+                DISTINCT CONCAT(
+                    ps.segment_name, ':', 
+                    ROUND(AVG(os.total_score), 2), ':', 
+                    ps.segment_weight
+                ) 
+                ORDER BY ps.day_number, ps.order_number
+                SEPARATOR '|'
+            ) as segment_breakdown,
+            SUM(
+                (AVG(os.total_score) * ps.segment_weight / 100)
+            ) as weighted_grand_total,
+            COUNT(DISTINCT ps.segment_id) as segments_completed,
+            COUNT(DISTINCT os.judge_id) as judge_count
+        FROM participants p
+        JOIN overall_scores os ON p.participant_id = os.participant_id
+        JOIN pageant_segments ps ON os.segment_id = ps.segment_id
+        WHERE ps.competition_id = ? AND ps.is_active = TRUE
+        GROUP BY p.participant_id, p.participant_name, p.contestant_number, p.photo_url
+        HAVING segments_completed > 0
+        ORDER BY weighted_grand_total DESC
+    `;
+    
+    db.query(sql, [competitionId], (err, result) => {
+        if (err) {
+            console.error('Error fetching grand total:', err);
+            return res.status(500).json({ error: 'Error fetching grand total' });
+        }
+        
+        // Parse segment breakdown
+        const leaderboard = result.map(row => {
+            const segments = [];
+            if (row.segment_breakdown) {
+                row.segment_breakdown.split('|').forEach(seg => {
+                    const [name, score, weight] = seg.split(':');
+                    segments.push({
+                        name,
+                        average_score: parseFloat(score),
+                        weight: parseFloat(weight),
+                        weighted_contribution: (parseFloat(score) * parseFloat(weight) / 100).toFixed(2)
+                    });
+                });
+            }
+            
+            return {
+                ...row,
+                segments: segments,
+                weighted_grand_total: parseFloat(row.weighted_grand_total || 0).toFixed(2)
+            };
+        });
+        
+        res.json(leaderboard);
+    });
+});
+
+// Get individual participant's weighted score breakdown
+app.get('/participant-weighted-breakdown/:participantId/:competitionId', (req, res) => {
+    const { participantId, competitionId } = req.params;
+    
+    const sql = `
+        SELECT 
+            p.participant_name,
+            p.contestant_number,
+            ps.segment_name,
+            ps.segment_weight,
+            ps.day_number,
+            j.judge_name,
+            os.total_score,
+            (os.total_score * ps.segment_weight / 100) as weighted_contribution
+        FROM overall_scores os
+        JOIN pageant_segments ps ON os.segment_id = ps.segment_id
+        JOIN participants p ON os.participant_id = p.participant_id
+        JOIN judges j ON os.judge_id = j.judge_id
+        WHERE os.participant_id = ? AND ps.competition_id = ?
+        ORDER BY ps.day_number, ps.order_number, j.judge_name
+    `;
+    
+    db.query(sql, [participantId, competitionId], (err, result) => {
+        if (err) {
+            console.error('Error fetching participant breakdown:', err);
+            return res.status(500).json({ error: 'Error fetching breakdown' });
+        }
+        
+        // Group by segment
+        const segmentMap = {};
+        result.forEach(row => {
+            if (!segmentMap[row.segment_name]) {
+                segmentMap[row.segment_name] = {
+                    segment_name: row.segment_name,
+                    segment_weight: row.segment_weight,
+                    day_number: row.day_number,
+                    judge_scores: [],
+                    average_score: 0,
+                    weighted_contribution: 0
+                };
+            }
+            
+            segmentMap[row.segment_name].judge_scores.push({
+                judge_name: row.judge_name,
+                score: row.total_score
+            });
+        });
+        
+        // Calculate averages
+        const segments = Object.values(segmentMap).map(seg => {
+            const sum = seg.judge_scores.reduce((acc, j) => acc + j.score, 0);
+            seg.average_score = (sum / seg.judge_scores.length).toFixed(2);
+            seg.weighted_contribution = (seg.average_score * seg.segment_weight / 100).toFixed(2);
+            return seg;
+        });
+        
+        const grand_total = segments.reduce((sum, seg) => sum + parseFloat(seg.weighted_contribution), 0);
+        
+        res.json({
+            participant_name: result[0]?.participant_name || 'Unknown',
+            contestant_number: result[0]?.contestant_number || 'N/A',
+            segments: segments,
+            weighted_grand_total: grand_total.toFixed(2)
+        });
+    });
+});
+
+
 console.log('✅ Complete scoring system loaded - Pageants & Regular competitions');
 
 
