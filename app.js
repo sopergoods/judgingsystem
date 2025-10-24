@@ -294,7 +294,10 @@ function showViewCompetitions() {
                     </div>
                     <div style="margin-top: 20px;">
                         <button onclick="manageCriteria(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">Manage Criteria</button>
-                        ${comp.is_pageant ? `<button onclick="setupPageant(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">Setup Pageant</button>` : ''}
+                        ${comp.is_pageant ? `
+                        <button onclick="setupPageant(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">Setup Pageant</button>
+                        <button onclick="viewPageantSegments(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">View Schedule</button>
+                        ` : ''}
                         <button onclick="deleteCompetition(${comp.competition_id})" style="background: #dc3545;">Delete</button>
                     </div>
                 </div>
@@ -754,6 +757,279 @@ function submitPageantSetup(competitionId, totalDays) {
             alert('Error: ' + data.error);
         }
     });
+}
+
+// ================================================
+// VIEW AND MANAGE PAGEANT SEGMENTS
+// ================================================
+
+function viewPageantSegments(competitionId, competitionName) {
+    document.getElementById("content").innerHTML = `
+        <h2>Pageant Schedule</h2>
+        <h3 style="color: #800020;">${competitionName}</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="showViewCompetitions()" class="secondary">Back to Competitions</button>
+        </div>
+        
+        <div id="segmentsDisplay"><div class="loading">Loading schedule...</div></div>
+    `;
+    
+    fetch(`${API_URL}/pageant-segments/${competitionId}`)
+    .then(response => response.json())
+    .then(segments => {
+        if (segments.length === 0) {
+            document.getElementById("segmentsDisplay").innerHTML = `
+                <div class="alert alert-warning">
+                    <h3>No Pageant Schedule Set</h3>
+                    <p>This pageant doesn't have a schedule yet.</p>
+                    <button onclick="setupPageant(${competitionId}, '${competitionName.replace(/'/g, "\\'")}')">Setup Schedule</button>
+                </div>
+            `;
+            return;
+        }
+        
+        const segmentsByDay = {};
+        segments.forEach(segment => {
+            const day = segment.day_number || 1;
+            if (!segmentsByDay[day]) {
+                segmentsByDay[day] = [];
+            }
+            segmentsByDay[day].push(segment);
+        });
+        
+        let html = `
+            <div class="alert alert-success">
+                <strong>Schedule Created!</strong>
+                <p>This pageant has <strong>${Object.keys(segmentsByDay).length} days</strong> with <strong>${segments.length} segments</strong></p>
+            </div>
+        `;
+        
+        Object.keys(segmentsByDay).sort((a, b) => a - b).forEach(dayNumber => {
+            const daySegments = segmentsByDay[dayNumber];
+            const firstSegment = daySegments[0];
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left; margin-bottom: 20px; border-left: 5px solid #800020;">
+                    <h3>Day ${dayNumber} - ${new Date(firstSegment.segment_date).toLocaleDateString()}</h3>
+                    <p><strong>Time:</strong> ${firstSegment.segment_time || '18:00'}</p>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4 style="color: #800020;">Segments:</h4>
+                        <div style="display: grid; gap: 10px; margin-top: 10px;">
+            `;
+            
+            daySegments.forEach((segment, index) => {
+                html += `
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 3px solid #800020;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <strong>${index + 1}. ${segment.segment_name}</strong>
+                                ${segment.description ? `<br><small style="color: #666;">${segment.description}</small>` : ''}
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="manageSegmentCriteria(${segment.segment_id}, '${segment.segment_name.replace(/'/g, "\\'")}', ${competitionId})" 
+                                        style="background: #800020; white-space: nowrap;">
+                                    Set Criteria
+                                </button>
+                                <button onclick="deletePageantSegment(${segment.segment_id}, ${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
+                                        style="background: #dc3545;">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        document.getElementById("segmentsDisplay").innerHTML = html;
+    });
+}
+
+function deletePageantSegment(segmentId, competitionId, competitionName) {
+    if (!confirm('Delete this segment?')) {
+        return;
+    }
+    
+    fetch(`${API_URL}/delete-pageant-segment/${segmentId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Segment deleted!');
+            viewPageantSegments(competitionId, competitionName);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+// ================================================
+// SEGMENT CRITERIA MANAGEMENT
+// ================================================
+
+function manageSegmentCriteria(segmentId, segmentName, competitionId) {
+    document.getElementById("content").innerHTML = `
+        <h2>Assign Criteria to Segment</h2>
+        <h3 style="color: #800020;">Segment: ${segmentName}</h3>
+        
+        <div class="alert alert-info">
+            <strong>How It Works:</strong>
+            <p>Select which criteria judges will use to score THIS specific segment only.</p>
+            <p>Example: "Long Gown" might use Beauty, Poise, and Stage Presence, while "Q&A" uses Intelligence and Communication.</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="viewPageantSegments(${competitionId}, 'Competition')" class="secondary">Back to Segments</button>
+        </div>
+        
+        <form id="segmentCriteriaForm" style="max-width: 800px;">
+            <div id="availableCriteria"><div class="loading">Loading criteria...</div></div>
+            
+            <div style="margin-top: 30px;">
+                <button type="submit" class="card-button">Save Criteria Assignment</button>
+            </div>
+            
+            <div id="criteriaPercentageInfo" style="margin-top: 20px; padding: 15px; background: #d1ecf1; border-radius: 8px;">
+                <strong>Selected Criteria Total: <span id="selectedPercentage">0</span>%</strong>
+                <p style="margin-top: 10px; font-size: 14px;">Note: The total percentage should equal 100% for proper scoring.</p>
+            </div>
+        </form>
+    `;
+    
+    Promise.all([
+        fetch(`${API_URL}/competition-criteria/${competitionId}`).then(r => r.json()),
+        fetch(`${API_URL}/segment-criteria/${segmentId}`).then(r => r.json()).catch(() => [])
+    ])
+    .then(([allCriteria, assignedCriteria]) => {
+        if (allCriteria.length === 0) {
+            document.getElementById("availableCriteria").innerHTML = `
+                <div class="alert alert-warning">
+                    <h3>No Criteria Available</h3>
+                    <p>Please set up competition criteria first.</p>
+                    <button onclick="manageCriteria(${competitionId}, 'Competition')">Setup Criteria</button>
+                </div>
+            `;
+            return;
+        }
+        
+        const assignedIds = assignedCriteria.map(c => c.criteria_id);
+        
+        let html = `
+            <h4 style="color: #800020; margin-bottom: 15px;">Select Criteria for "${segmentName}":</h4>
+            <p style="color: #666; margin-bottom: 20px;">Check the criteria that judges will score for this segment:</p>
+        `;
+        
+        allCriteria.forEach(criterion => {
+            const isChecked = assignedIds.includes(criterion.criteria_id);
+            html += `
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 2px solid ${isChecked ? '#800020' : '#ddd'};">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" 
+                               name="criteria[]" 
+                               value="${criterion.criteria_id}" 
+                               data-percentage="${criterion.percentage}"
+                               ${isChecked ? 'checked' : ''}
+                               style="width: 20px; height: 20px; margin-right: 15px; cursor: pointer;"
+                               onchange="updateSegmentCriteriaSelection(this)">
+                        <div style="flex: 1;">
+                            <strong style="color: #800020; font-size: 16px;">${criterion.criteria_name}</strong>
+                            <span style="margin-left: 10px; background: #800020; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                ${criterion.percentage}%
+                            </span>
+                            <p style="color: #666; margin-top: 5px; font-size: 14px;">${criterion.description || 'No description'}</p>
+                        </div>
+                    </label>
+                </div>
+            `;
+        });
+        
+        document.getElementById("availableCriteria").innerHTML = html;
+        updateSegmentCriteriaTotal();
+    });
+    
+    document.getElementById("segmentCriteriaForm").onsubmit = function(e) {
+        e.preventDefault();
+        
+        const checkboxes = document.querySelectorAll('input[name="criteria[]"]:checked');
+        const criteriaIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        if (criteriaIds.length === 0) {
+            alert('Please select at least one criterion for this segment.');
+            return;
+        }
+        
+        // Check if total percentage equals 100%
+        const total = parseFloat(document.getElementById('selectedPercentage').textContent);
+        if (Math.abs(total - 100) > 0.1) {
+            if (!confirm(`Warning: Selected criteria total is ${total.toFixed(1)}%, not 100%. Continue anyway?`)) {
+                return;
+            }
+        }
+        
+        fetch(`${API_URL}/assign-segment-criteria`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                segment_id: segmentId,
+                criteria_ids: criteriaIds
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ ${criteriaIds.length} criteria assigned to "${segmentName}"!`);
+                viewPageantSegments(competitionId, 'Competition');
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    };
+}
+
+function updateSegmentCriteriaSelection(checkbox) {
+    const parent = checkbox.closest('div[style*="background: #f8f9fa"]');
+    if (checkbox.checked) {
+        parent.style.borderColor = '#800020';
+    } else {
+        parent.style.borderColor = '#ddd';
+    }
+    updateSegmentCriteriaTotal();
+}
+
+function updateSegmentCriteriaTotal() {
+    const checkboxes = document.querySelectorAll('input[name="criteria[]"]:checked');
+    let total = 0;
+    checkboxes.forEach(cb => {
+        total += parseFloat(cb.getAttribute('data-percentage')) || 0;
+    });
+    
+    const span = document.getElementById('selectedPercentage');
+    if (span) {
+        span.textContent = total.toFixed(1);
+        const container = document.getElementById('criteriaPercentageInfo');
+        if (Math.abs(total - 100) < 0.1) {
+            container.style.background = '#d4edda';
+            container.style.border = '2px solid #28a745';
+            container.style.color = '#155724';
+        } else if (total > 100) {
+            container.style.background = '#f8d7da';
+            container.style.border = '2px solid #dc3545';
+            container.style.color = '#721c24';
+        } else {
+            container.style.background = '#fff3cd';
+            container.style.border = '2px solid #ffc107';
+            container.style.color = '#856404';
+        }
+    }
 }
 
 // ================================================
@@ -1218,6 +1494,7 @@ function showViewJudges() {
                             </div>
                         </div>
                         <div style="margin-top: 20px;">
+                            <button onclick="editJudge(${j.judge_id})">Edit</button>
                             <button onclick="deleteJudge(${j.judge_id})" style="background: #dc3545;">Delete</button>
                         </div>
                     </div>
@@ -1228,6 +1505,85 @@ function showViewJudges() {
         }
 
         document.getElementById("judgesList").innerHTML = html;
+    });
+}
+
+function editJudge(id) {
+    fetch(`${API_URL}/judge/${id}`)
+    .then(response => response.json())
+    .then(j => {
+        document.getElementById("content").innerHTML = `
+            <h2>Edit Judge</h2>
+            <form id="editJudgeForm" style="max-width: 700px;">
+                <label>Judge Name:</label>
+                <input type="text" id="judge_name" value="${j.judge_name}" required>
+                
+                <label>Email:</label>
+                <input type="email" id="email" value="${j.email}" required>
+                
+                <label>Phone:</label>
+                <input type="tel" id="phone" value="${j.phone || ''}">
+                
+                <label>Area of Expertise:</label>
+                <textarea id="expertise" rows="2" required>${j.expertise}</textarea>
+                
+                <label>Years of Experience:</label>
+                <input type="number" id="experience_years" value="${j.experience_years}" min="0" required>
+                
+                <label>Credentials:</label>
+                <textarea id="credentials" rows="4">${j.credentials || ''}</textarea>
+                
+                <label>Assign to Competition:</label>
+                <select id="competition">
+                    <option value="">Select Competition (Optional)</option>
+                </select>
+                
+                <input type="submit" value="Update Judge">
+                <button type="button" onclick="showViewJudges()" class="secondary">Cancel</button>
+            </form>
+        `;
+
+        fetch(`${API_URL}/competitions`)
+        .then(response => response.json())
+        .then(competitions => {
+            const select = document.getElementById("competition");
+            competitions.forEach(comp => {
+                const option = document.createElement("option");
+                option.value = comp.competition_id;
+                option.textContent = `${comp.competition_name}`;
+                if (comp.competition_id === j.competition_id) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        });
+
+        document.getElementById("editJudgeForm").onsubmit = function(e) {
+            e.preventDefault();
+
+            fetch(`${API_URL}/update-judge/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    judge_name: document.getElementById("judge_name").value,
+                    email: document.getElementById("email").value,
+                    phone: document.getElementById("phone").value,
+                    expertise: document.getElementById("expertise").value,
+                    experience_years: document.getElementById("experience_years").value,
+                    credentials: document.getElementById("credentials").value,
+                    competition_id: document.getElementById("competition").value || null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Judge updated!');
+                    showViewJudges();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+        };
     });
 }
 
