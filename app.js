@@ -19,15 +19,19 @@ function checkAuthentication() {
         return;
     }
     
-    document.getElementById('userInfo').innerHTML = `
-        <div style="color: white; text-align: right;">
-            <div style="font-weight: 600;">${user.username}</div>
-            <div style="font-size: 12px; opacity: 0.9;">Administrator</div>
-            <button onclick="logout()" style="margin-top: 10px; padding: 8px 16px; background: white; color: #800020; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
-                Logout
-            </button>
-        </div>
-    `;
+    // Check if userInfo element exists before trying to update it
+    const userInfoElement = document.getElementById('userInfo');
+    if (userInfoElement) {
+        userInfoElement.innerHTML = `
+            <div style="color: white; text-align: right;">
+                <div style="font-weight: 600;">${user.username}</div>
+                <div style="font-size: 12px; opacity: 0.9;">Administrator</div>
+                <button onclick="logout()" style="margin-top: 10px; padding: 8px 16px; background: white; color: #800020; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                    Logout
+                </button>
+            </div>
+        `;
+    }
 }
 
 function logout() {
@@ -132,6 +136,31 @@ function showEventTypes() {
     .catch(error => {
         document.getElementById("eventTypesList").innerHTML = '<p class="alert alert-error">Error loading event types.</p>';
     });
+}
+
+// ================================================
+// CRITERIA TEMPLATES (Placeholder)
+// ================================================
+
+function showCriteriaTemplates() {
+    document.getElementById("content").innerHTML = `
+        <h2>Criteria Templates Management</h2>
+        
+        <div class="alert alert-info">
+            <strong>Note:</strong> This feature allows you to create reusable criteria templates.
+            For now, please manage criteria directly within each competition.
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
+        </div>
+        
+        <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 30px;">
+            <h3>Feature Coming Soon</h3>
+            <p>The Criteria Templates feature is under development.</p>
+            <p>You can still create custom criteria for each competition individually.</p>
+        </div>
+    `;
 }
 
 function showCreateEventTypeForm() {

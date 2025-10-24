@@ -2111,65 +2111,110 @@ app.post('/update-segment-weights', (req, res) => {
 });
 
 // Get weighted grand total for pageant leaderboard
+// Get weighted grand total for pageant leaderboard
 app.get('/pageant-grand-total/:competitionId', (req, res) => {
     const { competitionId } = req.params;
     
+    // First, get all segment scores with weights
     const sql = `
         SELECT 
             p.participant_id,
             p.participant_name,
             p.contestant_number,
             p.photo_url,
-            GROUP_CONCAT(
-                DISTINCT CONCAT(
-                    ps.segment_name, ':', 
-                    ROUND(AVG(os.total_score), 2), ':', 
-                    ps.segment_weight
-                ) 
-                ORDER BY ps.day_number, ps.order_number
-                SEPARATOR '|'
-            ) as segment_breakdown,
-            SUM(
-                (AVG(os.total_score) * ps.segment_weight / 100)
-            ) as weighted_grand_total,
-            COUNT(DISTINCT ps.segment_id) as segments_completed,
-            COUNT(DISTINCT os.judge_id) as judge_count
+            ps.segment_id,
+            ps.segment_name,
+            ps.segment_weight,
+            ps.day_number,
+            ps.order_number,
+            os.judge_id,
+            os.total_score
         FROM participants p
         JOIN overall_scores os ON p.participant_id = os.participant_id
         JOIN pageant_segments ps ON os.segment_id = ps.segment_id
         WHERE ps.competition_id = ? AND ps.is_active = TRUE
-        GROUP BY p.participant_id, p.participant_name, p.contestant_number, p.photo_url
-        HAVING segments_completed > 0
-        ORDER BY weighted_grand_total DESC
+        ORDER BY p.participant_id, ps.day_number, ps.order_number, os.judge_id
     `;
     
     db.query(sql, [competitionId], (err, result) => {
         if (err) {
             console.error('Error fetching grand total:', err);
-            return res.status(500).json({ error: 'Error fetching grand total' });
+            return res.status(500).json({ error: 'Error fetching grand total: ' + err.message });
         }
         
-        // Parse segment breakdown
-        const leaderboard = result.map(row => {
-            const segments = [];
-            if (row.segment_breakdown) {
-                row.segment_breakdown.split('|').forEach(seg => {
-                    const [name, score, weight] = seg.split(':');
-                    segments.push({
-                        name,
-                        average_score: parseFloat(score),
-                        weight: parseFloat(weight),
-                        weighted_contribution: (parseFloat(score) * parseFloat(weight) / 100).toFixed(2)
-                    });
-                });
+        if (result.length === 0) {
+            return res.json([]);
+        }
+        
+        // Process results in JavaScript
+        const participantMap = {};
+        
+        result.forEach(row => {
+            if (!participantMap[row.participant_id]) {
+                participantMap[row.participant_id] = {
+                    participant_id: row.participant_id,
+                    participant_name: row.participant_name,
+                    contestant_number: row.contestant_number,
+                    photo_url: row.photo_url,
+                    segments: {},
+                    judges: new Set(),
+                    segments_completed: new Set()
+                };
             }
             
+            const participant = participantMap[row.participant_id];
+            
+            // Track unique segments and judges
+            participant.segments_completed.add(row.segment_id);
+            participant.judges.add(row.judge_id);
+            
+            // Group scores by segment
+            if (!participant.segments[row.segment_id]) {
+                participant.segments[row.segment_id] = {
+                    name: row.segment_name,
+                    weight: row.segment_weight,
+                    scores: []
+                };
+            }
+            
+            participant.segments[row.segment_id].scores.push(row.total_score);
+        });
+        
+        // Calculate averages and weighted totals
+        const leaderboard = Object.values(participantMap).map(participant => {
+            let weighted_grand_total = 0;
+            const segments = [];
+            
+            Object.values(participant.segments).forEach(segment => {
+                // Calculate average score for this segment
+                const sum = segment.scores.reduce((acc, score) => acc + score, 0);
+                const average_score = sum / segment.scores.length;
+                const weighted_contribution = (average_score * segment.weight) / 100;
+                
+                weighted_grand_total += weighted_contribution;
+                
+                segments.push({
+                    name: segment.name,
+                    average_score: average_score.toFixed(2),
+                    weight: segment.weight,
+                    weighted_contribution: weighted_contribution.toFixed(2)
+                });
+            });
+            
             return {
-                ...row,
+                participant_id: participant.participant_id,
+                participant_name: participant.participant_name,
+                contestant_number: participant.contestant_number,
+                photo_url: participant.photo_url,
                 segments: segments,
-                weighted_grand_total: parseFloat(row.weighted_grand_total || 0).toFixed(2)
+                weighted_grand_total: weighted_grand_total.toFixed(2),
+                segments_completed: participant.segments_completed.size,
+                judge_count: participant.judges.size
             };
         });
+        
+        // Sort by weighted_grand_total descending
+        leaderboard.sort((a, b) => parseFloat(b.weighted_grand_total) - parseFloat(a.weighted_grand_total));
         
         res.json(leaderboard);
     });
