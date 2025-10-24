@@ -562,27 +562,50 @@ app.get('/judge/:id', (req, res) => {
     });
 });
 
+
 app.get('/judge-competitions/:judgeId', (req, res) => {
     const { judgeId } = req.params;
+    
     const sql = `
-        SELECT DISTINCT c.competition_id, c.competition_name, c.competition_date, c.event_description,
-               et.type_name, et.is_pageant,
-               COUNT(DISTINCT p.participant_id) as participant_count
+        SELECT DISTINCT 
+            c.competition_id, 
+            c.competition_name, 
+            c.competition_date, 
+            c.event_description,
+            et.type_name, 
+            et.is_pageant,
+            COUNT(DISTINCT p.participant_id) as participant_count,
+            
+            (SELECT COUNT(DISTINCT CONCAT(os.judge_id, '-', os.participant_id))
+             FROM overall_scores os
+             WHERE os.competition_id = c.competition_id 
+             AND os.judge_id = ?) as scored_count,
+            
+            COUNT(DISTINCT j.judge_id) as total_judges
         FROM competitions c
         JOIN event_types et ON c.event_type_id = et.event_type_id
         JOIN judges j ON c.competition_id = j.competition_id
         LEFT JOIN participants p ON c.competition_id = p.competition_id
         WHERE j.judge_id = ? 
-        GROUP BY c.competition_id, c.competition_name, c.competition_date, c.event_description, et.type_name, et.is_pageant
+        GROUP BY c.competition_id, c.competition_name, c.competition_date, 
+                 c.event_description, et.type_name, et.is_pageant
         ORDER BY c.competition_date DESC
     `;
-    db.query(sql, [judgeId], (err, result) => {
+    
+    db.query(sql, [judgeId, judgeId], (err, result) => {
         if (err) {
+            console.error('Error fetching judge competitions:', err);
             return res.status(500).json({ error: 'Error fetching judge competitions' });
         }
+        
+        console.log(` Judge ${judgeId} competitions loaded with correct scoring progress`);
         res.json(result);
     });
 });
+
+
+
+console.log(' Fixed endpoint loaded - Pageant scoring progress now shows correctly');
 
 app.post('/add-judge', (req, res) => {
     const { 

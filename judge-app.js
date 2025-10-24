@@ -1236,11 +1236,16 @@ function displayUnlockRequests(requests) {
 }
 
 // ==========================================
-// 14. SCORING HISTORY
+// 14. ENHANCED SCORING HISTORY WITH SEGMENTS
 // ==========================================
 function showScoringHistory() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
+
+    document.getElementById("content").innerHTML = `
+        <h2>My Scoring History</h2>
+        <div class="loading">Loading your scoring history...</div>
+    `;
 
     fetch(`${API_URL}/judges`)
         .then(response => response.json())
@@ -1257,7 +1262,7 @@ function showScoringHistory() {
             fetch(`${API_URL}/judge-competitions/${currentJudge.judge_id}`)
                 .then(response => response.json())
                 .then(competitions => {
-                    displayScoringHistory(competitions, currentJudge.judge_id);
+                    loadDetailedScoringHistory(competitions, currentJudge.judge_id);
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -1266,58 +1271,378 @@ function showScoringHistory() {
         });
 }
 
-function displayScoringHistory(competitions, judgeId) {
-    let html = `
-        <h2>My Scoring History</h2>
-        <div style="margin-bottom: 20px;">
-            <p>Review all your submitted scores and feedback.</p>
-        </div>
-    `;
-
+function loadDetailedScoringHistory(competitions, judgeId) {
     if (competitions.length === 0) {
-        html += '<p class="alert alert-warning">No competitions assigned yet.</p>';
-        document.getElementById("content").innerHTML = html;
+        document.getElementById("content").innerHTML = `
+            <h2>My Scoring History</h2>
+            <p class="alert alert-warning">No competitions assigned yet.</p>
+        `;
         return;
     }
 
     Promise.all(
-        competitions.map(comp => 
-            fetch(`${API_URL}/overall-scores/${comp.competition_id}`)
-                .then(r => r.json())
-                .then(overallScores => ({
-                    competition: comp,
-                    overallScores: overallScores.filter(s => s.judge_id === judgeId)
-                }))
-        )
+        competitions.map(comp => {
+            return Promise.all([
+                fetch(`${API_URL}/overall-scores/${comp.competition_id}`).then(r => r.json()),
+                fetch(`${API_URL}/pageant-segments/${comp.competition_id}`).then(r => r.json()).catch(() => []),
+                fetch(`${API_URL}/participants/${comp.competition_id}`).then(r => r.json())
+            ]).then(([overallScores, segments, participants]) => ({
+                competition: comp,
+                overallScores: overallScores.filter(s => s.judge_id === judgeId),
+                segments: segments,
+                participants: participants
+            }));
+        })
     )
-    .then(competitionScores => {
-        competitionScores.forEach(({ competition, overallScores }) => {
-            html += `
-                <div class="dashboard-card" style="text-align: left; margin-bottom: 20px;">
-                    <h3>${competition.competition_name}</h3>
-                    <p><strong>Event Type:</strong> ${competition.type_name} | <strong>Date:</strong> ${competition.competition_date}</p>
-                    
-                    ${overallScores.length === 0 ? 
-                        '<p style="color: #666;">No scores submitted yet for this competition.</p>' :
-                        `<div style="margin-top: 15px;">
-                            <h4>Scored Participants (${overallScores.length}):</h4>
-                            ${overallScores.map(score => `
-                                <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px;">
-                                    <strong>${score.participant_name}</strong> - Score: <span class="score-display">${score.total_score}</span>
-                                    ${score.general_comments ? `<br><small>Comments: ${score.general_comments}</small>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>`
-                    }
-                </div>
-            `;
-        });
-
-        document.getElementById("content").innerHTML = html;
+    .then(competitionData => {
+        displayEnhancedScoringHistory(competitionData, judgeId);
     })
     .catch(error => {
         console.error('Error fetching scoring history:', error);
         showNotification('Error loading scoring history', 'error');
+    });
+}
+
+function displayEnhancedScoringHistory(competitionData, judgeId) {
+    let html = `
+        <h2>My Scoring History</h2>
+        <div style="margin-bottom: 20px;">
+            <p>Review all your submitted scores, segments, averages, and rankings.</p>
+        </div>
+    `;
+
+    competitionData.forEach(({ competition, overallScores, segments, participants }) => {
+        const isPageant = competition.is_pageant;
+        
+        // Group scores by participant and segment
+        const participantScores = {};
+        
+        overallScores.forEach(score => {
+            if (!participantScores[score.participant_id]) {
+                participantScores[score.participant_id] = {
+                    participant_name: score.participant_name,
+                    scores: [],
+                    total: 0,
+                    count: 0
+                };
+            }
+            
+            participantScores[score.participant_id].scores.push({
+                segment_id: score.segment_id,
+                score: parseFloat(score.total_score),
+                comments: score.general_comments,
+                submitted_at: score.submitted_at
+            });
+            
+            participantScores[score.participant_id].total += parseFloat(score.total_score);
+            participantScores[score.participant_id].count++;
+        });
+
+        // Calculate averages and rankings
+        const rankedParticipants = Object.entries(participantScores)
+            .map(([id, data]) => ({
+                participant_id: id,
+                participant_name: data.participant_name,
+                average: data.total / data.count,
+                scores: data.scores,
+                segments_scored: data.count
+            }))
+            .sort((a, b) => b.average - a.average);
+
+        // Assign ranks
+        rankedParticipants.forEach((participant, index) => {
+            participant.rank = index + 1;
+        });
+
+        html += `
+            <div class="dashboard-card" style="text-align: left; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div>
+                        <h3 style="margin: 0;">${competition.competition_name}</h3>
+                        <p style="margin: 5px 0 0 0; color: #666;">
+                            <strong>Event Type:</strong> ${competition.type_name} | 
+                            <strong>Date:</strong> ${competition.competition_date}
+                            ${isPageant ? ' | <strong>Type:</strong> Pageant (Multi-Segment)' : ''}
+                        </p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; color: #666;">Scored</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #800020;">
+                            ${rankedParticipants.length}/${participants.length}
+                        </div>
+                        <div style="font-size: 12px; color: #666;">participants</div>
+                    </div>
+                </div>
+        `;
+
+        if (rankedParticipants.length === 0) {
+            html += '<p style="color: #666;">No scores submitted yet for this competition.</p>';
+        } else {
+            // Show segment breakdown for pageants
+            if (isPageant && segments.length > 0) {
+                html += `
+                    <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #800020;">
+                        <h4 style="margin: 0 0 10px 0; color: #800020;">Pageant Segments</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                `;
+                
+                segments.forEach(segment => {
+                    const segmentScores = overallScores.filter(s => s.segment_id === segment.segment_id);
+                    const totalParticipants = participants.length;
+                    const scoredCount = segmentScores.length;
+                    const isComplete = scoredCount === totalParticipants;
+                    
+                    html += `
+                        <div style="background: white; padding: 10px; border-radius: 5px; border: 2px solid ${isComplete ? '#28a745' : '#800020'};">
+                            <div style="font-weight: 600; color: #800020; margin-bottom: 5px;">${segment.segment_name}</div>
+                            <div style="font-size: 12px; color: #666;">Day ${segment.day_number}</div>
+                            <div style="margin-top: 8px; font-size: 14px;">
+                                ${isComplete ? '✓' : ''} Scored: <strong>${scoredCount}/${totalParticipants}</strong>
+                            </div>
+                            ${isComplete ? 
+                                '<div style="margin-top: 5px; font-size: 11px; color: #28a745; font-weight: 600;">COMPLETE</div>' :
+                                '<div style="margin-top: 5px; font-size: 11px; color: #ff9800; font-weight: 600;">IN PROGRESS</div>'
+                            }
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Rankings and scores table
+            html += `
+                <h4 style="margin: 20px 0 10px 0;">Your Rankings & Scores</h4>
+                <table style="width: 100%; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Rank</th>
+                            <th>Participant</th>
+                            ${isPageant ? '<th style="width: 120px;">Segments</th>' : ''}
+                            <th style="width: 120px;">Average Score</th>
+                            <th style="width: 100px;">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            rankedParticipants.forEach(participant => {
+                const medalEmoji = participant.rank === 1 ? '🥇' : participant.rank === 2 ? '🥈' : participant.rank === 3 ? '🥉' : '';
+                const rankColor = participant.rank <= 3 ? '#800020' : '#666';
+                
+                html += `
+                    <tr>
+                        <td style="text-align: center; font-weight: bold; font-size: 18px; color: ${rankColor};">
+                            ${medalEmoji} ${participant.rank}
+                        </td>
+                        <td><strong>${participant.participant_name}</strong></td>
+                        ${isPageant ? `<td style="text-align: center;">${participant.segments_scored}/${segments.length}</td>` : ''}
+                        <td style="text-align: center;">
+                            <span class="score-display" style="font-size: 18px;">${participant.average.toFixed(2)}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <button onclick="showParticipantScoreDetails(${participant.participant_id}, ${competition.competition_id}, ${judgeId}, ${isPageant})" 
+                                    style="padding: 5px 15px; font-size: 13px;">
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+
+                // Show segment breakdown for this participant if pageant
+                if (isPageant && participant.scores.length > 0) {
+                    html += `
+                        <tr>
+                            <td colspan="${isPageant ? '5' : '4'}" style="padding: 0 12px 12px 60px;">
+                                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 13px;">
+                                    <strong>Segment Scores:</strong>
+                                    <div style="display: flex; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
+                    `;
+                    
+                    participant.scores.forEach(scoreData => {
+                        const segment = segments.find(s => s.segment_id === scoreData.segment_id);
+                        if (segment) {
+                            html += `
+                                <div style="background: white; padding: 8px 12px; border-radius: 5px; border: 1px solid #ddd;">
+                                    <div style="font-weight: 600; color: #800020; font-size: 12px;">${segment.segment_name}</div>
+                                    <div style="font-size: 16px; font-weight: bold; margin-top: 3px;">${scoreData.score.toFixed(2)}</div>
+                                    <div style="font-size: 11px; color: #666;">${new Date(scoreData.submitted_at).toLocaleDateString()}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    html += `
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            // Summary statistics
+            const totalScored = rankedParticipants.length;
+            const avgOfAverages = rankedParticipants.reduce((sum, p) => sum + p.average, 0) / totalScored;
+            const highestScore = rankedParticipants[0].average;
+            const lowestScore = rankedParticipants[rankedParticipants.length - 1].average;
+
+            html += `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">PARTICIPANTS SCORED</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${totalScored}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">YOUR AVERAGE</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${avgOfAverages.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">HIGHEST SCORE</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #28a745;">${highestScore.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">LOWEST SCORE</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #666;">${lowestScore.toFixed(2)}</div>
+                    </div>
+                    ${isPageant ? `
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">TOTAL SEGMENTS</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${segments.length}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        html += '</div>';
+    });
+
+    document.getElementById("content").innerHTML = html;
+}
+
+// Show detailed score breakdown for a participant
+function showParticipantScoreDetails(participantId, competitionId, judgeId, isPageant) {
+    document.getElementById("content").innerHTML = `
+        <h2>Score Details</h2>
+        <div class="loading">Loading detailed scores...</div>
+    `;
+
+    Promise.all([
+        fetch(`${API_URL}/participant/${participantId}`).then(r => r.json()),
+        fetch(`${API_URL}/competition/${competitionId}`).then(r => r.json()),
+        fetch(`${API_URL}/overall-scores/${competitionId}`).then(r => r.json()),
+        fetch(`${API_URL}/detailed-scores/${competitionId}`).then(r => r.json()).catch(() => []),
+        isPageant ? fetch(`${API_URL}/pageant-segments/${competitionId}`).then(r => r.json()) : Promise.resolve([])
+    ])
+    .then(([participant, competition, overallScores, detailedScores, segments]) => {
+        const myScores = overallScores.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
+        const myDetailedScores = detailedScores.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
+
+        let html = `
+            <h2>Score Details - ${participant.participant_name}</h2>
+            <div style="margin-bottom: 20px;">
+                <button onclick="showScoringHistory()" class="secondary">Back to History</button>
+            </div>
+
+            ${generateParticipantPhotoHTML(participant)}
+
+            <div class="dashboard-card" style="max-width: 900px; margin: 20px auto;">
+                <h3 style="color: #800020;">Competition: ${competition.competition_name}</h3>
+        `;
+
+        if (myScores.length === 0) {
+            html += '<p>No scores found for this participant.</p>';
+        } else {
+            myScores.forEach(score => {
+                const segment = segments.find(s => s.segment_id === score.segment_id);
+                
+                html += `
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #800020;">
+                        ${segment ? `<h4 style="color: #800020; margin-bottom: 10px;">Segment: ${segment.segment_name}</h4>` : '<h4 style="color: #800020; margin-bottom: 10px;">Overall Score</h4>'}
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
+                            <div>
+                                <div style="font-size: 14px; color: #666;">Your Score</div>
+                                <div style="font-size: 32px; font-weight: bold; color: #800020;">${parseFloat(score.total_score).toFixed(2)}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 14px; color: #666;">Submitted</div>
+                                <div style="font-size: 16px; font-weight: 600;">${new Date(score.submitted_at).toLocaleString()}</div>
+                            </div>
+                        </div>
+
+                        ${score.general_comments ? `
+                            <div style="margin-top: 15px;">
+                                <strong>Your Comments:</strong>
+                                <div style="background: white; padding: 12px; border-radius: 5px; margin-top: 5px;">
+                                    ${score.general_comments}
+                                </div>
+                            </div>
+                        ` : ''}
+                `;
+
+                // Show criteria breakdown if available
+                const relevantCriteria = myDetailedScores.filter(ds => {
+                    if (segment) {
+                        return ds.segment_id === segment.segment_id;
+                    }
+                    return !ds.segment_id;
+                });
+
+                if (relevantCriteria.length > 0) {
+                    html += `
+                        <div style="margin-top: 20px;">
+                            <strong>Criteria Breakdown:</strong>
+                            <table style="width: 100%; margin-top: 10px;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: left;">Criterion</th>
+                                        <th style="width: 100px;">Weight</th>
+                                        <th style="width: 100px;">Score</th>
+                                        <th style="width: 120px;">Weighted</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    relevantCriteria.forEach(criteria => {
+                        html += `
+                            <tr>
+                                <td>${criteria.criteria_name}</td>
+                                <td style="text-align: center;">${criteria.percentage}%</td>
+                                <td style="text-align: center; font-weight: bold;">${parseFloat(criteria.score).toFixed(2)}</td>
+                                <td style="text-align: center; font-weight: bold; color: #800020;">${parseFloat(criteria.weighted_score).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                html += '</div>';
+            });
+        }
+
+        html += '</div>';
+        document.getElementById("content").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error loading score details:', error);
+        showNotification('Error loading score details', 'error');
+        showScoringHistory();
     });
 }
 
