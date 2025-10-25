@@ -1,5 +1,6 @@
 // Clean Admin Dashboard JavaScript - Maroon & White Theme
 // Bug-free, organized code with Year/Course instead of School Org
+// UPDATED: Status changed to Active/Disqualified/Done with auto-assignment
 
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
@@ -1025,7 +1026,7 @@ function manageSegmentCriteria(segmentId, segmentName, competitionId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(`✅ ${criteriaIds.length} criteria assigned to "${segmentName}"!`);
+                alert(`${criteriaIds.length} criteria assigned to "${segmentName}"!`);
                 viewPageantSegments(competitionId, 'Competition');
             } else {
                 alert('Error: ' + data.error);
@@ -1072,12 +1073,16 @@ function updateSegmentCriteriaTotal() {
 }
 
 // ================================================
-// PARTICIPANTS - WITH YEAR & COURSE
+// PARTICIPANTS - WITH YEAR & COURSE - UPDATED STATUS
 // ================================================
 
 function showAddParticipantForm() {
     document.getElementById("content").innerHTML = `
         <h2>Add New Participant</h2>
+        
+        <div class="alert alert-info">
+            <strong>Note:</strong> Participant status will automatically be set to "Active" upon registration.
+        </div>
         
         <form id="addParticipantForm" style="max-width: 700px;">
             <h3>Basic Information</h3>
@@ -1091,7 +1096,7 @@ function showAddParticipantForm() {
             <label>Phone:</label>
             <input type="tel" id="phone">
             
-            <div class="grid-3">
+            <div class="grid-2">
                 <div>
                     <label>Age:</label>
                     <input type="number" id="age" min="1" required>
@@ -1103,14 +1108,6 @@ function showAddParticipantForm() {
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Status:</label>
-                    <select id="status" required>
-                        <option value="pending">Pending</option>
-                        <option value="ongoing">Ongoing</option>
-                        <option value="done">Done</option>
                     </select>
                 </div>
             </div>
@@ -1133,10 +1130,10 @@ function showAddParticipantForm() {
             
             <h3>Contestant Information</h3>
             
-            <label>Contestant Number: <span style="color: #800020;">*</span></label>
+            <label>Contestant Number:</label>
             <input type="text" id="contestant_number" required>
             
-            <label>Photo URL: <span style="color: #800020;">*</span></label>
+            <label>Photo URL:</label>
             <input type="url" id="photo_url" required>
             <small style="color: #666; display: block; margin-top: 5px;">
                 Upload photo to Imgur or similar, then paste URL here
@@ -1185,7 +1182,7 @@ function showAddParticipantForm() {
                 performance_title: document.getElementById("performance_title").value,
                 performance_description: document.getElementById("performance_description").value,
                 competition_id: document.getElementById("competition").value,
-                status: document.getElementById("status").value,
+                status: 'Active',
                 height: null,
                 measurements: null,
                 talents: document.getElementById("talents").value || null,
@@ -1195,7 +1192,7 @@ function showAddParticipantForm() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Participant added!');
+                alert('Participant added with Active status!');
                 showViewParticipants();
             } else {
                 alert('Error: ' + data.error);
@@ -1232,7 +1229,7 @@ function showViewParticipants() {
             html = '<div style="display: grid; gap: 20px;">';
             
             participants.forEach(p => {
-                const statusColor = p.status === 'done' ? '#28a745' : p.status === 'ongoing' ? '#ffc107' : '#dc3545';
+                const statusColor = p.status === 'Done' ? '#28a745' : p.status === 'Active' ? '#17a2b8' : '#dc3545';
                 
                 html += `
                     <div class="dashboard-card" style="text-align: left;">
@@ -1302,9 +1299,9 @@ function editParticipant(id) {
                     <div>
                         <label>Status:</label>
                         <select id="status" required>
-                            <option value="pending" ${p.status === 'pending' ? 'selected' : ''}>Pending</option>
-                            <option value="ongoing" ${p.status === 'ongoing' ? 'selected' : ''}>Ongoing</option>
-                            <option value="done" ${p.status === 'done' ? 'selected' : ''}>Done</option>
+                            <option value="Active" ${p.status === 'Active' ? 'selected' : ''}>Active</option>
+                            <option value="Disqualified" ${p.status === 'Disqualified' ? 'selected' : ''}>Disqualified</option>
+                            <option value="Done" ${p.status === 'Done' ? 'selected' : ''}>Done</option>
                         </select>
                     </div>
                 </div>
@@ -1740,7 +1737,7 @@ function loadScoringResults() {
 
         sortedParticipants.forEach((p, index) => {
             const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
-            const rankText = index === 0 ? '🥇 1st' : index === 1 ? '🥈 2nd' : index === 2 ? '🥉 3rd' : `${index + 1}th`;
+            const rankText = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`;
             
             html += `
                 <tr>
@@ -1795,7 +1792,7 @@ function loadUnlockRequests() {
         if (requests.length === 0) {
             html = `
                 <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
-                    <h3>✅ No Unlock Requests</h3>
+                    <h3>No Unlock Requests</h3>
                 </div>
             `;
         } else {
@@ -1804,19 +1801,19 @@ function loadUnlockRequests() {
             const rejected = requests.filter(r => r.status === 'rejected');
             
             if (pending.length > 0) {
-                html += `<h3 style="color: #ffc107;">⏳ Pending (${pending.length})</h3><div style="display: grid; gap: 15px; margin-bottom: 30px;">`;
+                html += `<h3 style="color: #ffc107;">Pending (${pending.length})</h3><div style="display: grid; gap: 15px; margin-bottom: 30px;">`;
                 pending.forEach(r => html += renderUnlockRequestCard(r, true));
                 html += '</div>';
             }
             
             if (approved.length > 0) {
-                html += `<h3 style="color: #28a745;">✅ Approved (${approved.length})</h3><div style="display: grid; gap: 15px; margin-bottom: 30px;">`;
+                html += `<h3 style="color: #28a745;">Approved (${approved.length})</h3><div style="display: grid; gap: 15px; margin-bottom: 30px;">`;
                 approved.forEach(r => html += renderUnlockRequestCard(r, false));
                 html += '</div>';
             }
             
             if (rejected.length > 0) {
-                html += `<h3 style="color: #dc3545;">❌ Rejected (${rejected.length})</h3><div style="display: grid; gap: 15px;">`;
+                html += `<h3 style="color: #dc3545;">Rejected (${rejected.length})</h3><div style="display: grid; gap: 15px;">`;
                 rejected.forEach(r => html += renderUnlockRequestCard(r, false));
                 html += '</div>';
             }
@@ -1828,14 +1825,13 @@ function loadUnlockRequests() {
 
 function renderUnlockRequestCard(request, showActions) {
     const statusColor = request.status === 'approved' ? '#28a745' : request.status === 'rejected' ? '#dc3545' : '#ffc107';
-    const statusIcon = request.status === 'approved' ? '✅' : request.status === 'rejected' ? '❌' : '⏳';
     
     return `
         <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${statusColor};">
             <div style="display: flex; justify-content: space-between;">
                 <h4>Judge: ${request.judge_name}</h4>
                 <span style="padding: 6px 12px; border-radius: 15px; background: ${statusColor}; color: white; font-size: 12px; font-weight: bold;">
-                    ${statusIcon} ${request.status.toUpperCase()}
+                    ${request.status.toUpperCase()}
                 </span>
             </div>
             
@@ -1858,10 +1854,10 @@ function renderUnlockRequestCard(request, showActions) {
             ${showActions ? `
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
                     <button onclick="reviewUnlockRequest(${request.request_id}, 'approve')" style="flex: 1; background: #28a745;">
-                        ✅ Approve
+                        Approve
                     </button>
                     <button onclick="reviewUnlockRequest(${request.request_id}, 'reject')" style="flex: 1; background: #dc3545;">
-                        ❌ Reject
+                        Reject
                     </button>
                 </div>
             ` : ''}
@@ -1914,14 +1910,15 @@ function showUnlockRequestsBadge() {
     });
 }
 
-console.log('✅ Clean Admin Dashboard Loaded - Maroon & White Theme');
+console.log('Clean Admin Dashboard Loaded - Maroon & White Theme with Active/Disqualified/Done Status');
+
 function manageSegmentWeights(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
         <h2>Manage Segment Weights</h2>
         <h3 style="color: #800020;">${competitionName}</h3>
         
         <div class="alert alert-info">
-            <strong>📊 About Segment Weights:</strong>
+            <strong>About Segment Weights:</strong>
             <p>Assign a percentage weight to each segment to calculate the weighted grand total.</p>
             <p><strong>Example:</strong> If "Evening Gown" is weighted 40% and a contestant scores 90, 
             their contribution to the grand total is 90 × 0.40 = 36 points.</p>
@@ -1945,7 +1942,7 @@ function manageSegmentWeights(competitionId, competitionName) {
                 <strong style="font-size: 18px;">Total Weight: <span id="totalWeight">0</span>%</strong>
             </div>
             <button onclick="saveSegmentWeights(${competitionId})" class="card-button">
-                💾 Save Segment Weights
+                Save Segment Weights
             </button>
         </div>
     `;
@@ -2042,15 +2039,15 @@ function updateWeightTotal() {
         if (Math.abs(total - 100) < 0.1) {
             container.style.background = '#d4edda';
             container.style.border = '2px solid #28a745';
-            container.innerHTML = `<strong style="font-size: 18px; color: #155724;">✅ Total Weight: ${total.toFixed(1)}% (Perfect!)</strong>`;
+            container.innerHTML = `<strong style="font-size: 18px; color: #155724;">Total Weight: ${total.toFixed(1)}% (Perfect!)</strong>`;
         } else if (total > 100) {
             container.style.background = '#f8d7da';
             container.style.border = '2px solid #dc3545';
-            container.innerHTML = `<strong style="font-size: 18px; color: #721c24;">❌ Total Weight: ${total.toFixed(1)}% (Too High!)</strong>`;
+            container.innerHTML = `<strong style="font-size: 18px; color: #721c24;">Total Weight: ${total.toFixed(1)}% (Too High!)</strong>`;
         } else {
             container.style.background = '#fff3cd';
             container.style.border = '2px solid #ffc107';
-            container.innerHTML = `<strong style="font-size: 18px; color: #856404;">⚠️ Total Weight: ${total.toFixed(1)}% (Need ${(100 - total).toFixed(1)}% more)</strong>`;
+            container.innerHTML = `<strong style="font-size: 18px; color: #856404;">Total Weight: ${total.toFixed(1)}% (Need ${(100 - total).toFixed(1)}% more)</strong>`;
         }
     }
 }
@@ -2071,7 +2068,7 @@ function saveSegmentWeights(competitionId) {
     });
     
     if (Math.abs(total - 100) > 0.1) {
-        alert(`❌ Total weight must equal 100%!\n\nCurrent total: ${total.toFixed(1)}%\n\nPlease adjust the weights so they add up to exactly 100%.`);
+        alert(`Total weight must equal 100%!\n\nCurrent total: ${total.toFixed(1)}%\n\nPlease adjust the weights so they add up to exactly 100%.`);
         return;
     }
     
@@ -2090,21 +2087,21 @@ function saveSegmentWeights(competitionId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('✅ Segment weights saved successfully!\n\nGrand totals will now be calculated using these weights.');
+            alert('Segment weights saved successfully!\n\nGrand totals will now be calculated using these weights.');
             showViewCompetitions();
         } else {
-            alert('❌ Error: ' + data.error);
+            alert('Error: ' + data.error);
         }
     })
     .catch(error => {
-        alert('❌ Error saving weights: ' + error.message);
+        alert('Error saving weights: ' + error.message);
     });
 }
 
 // View weighted grand total leaderboard
 function viewWeightedLeaderboard(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
-        <h2>🏆 Weighted Grand Total Leaderboard</h2>
+        <h2>Weighted Grand Total Leaderboard</h2>
         <h3 style="color: #800020;">${competitionName}</h3>
         
         <div class="alert alert-info">
@@ -2136,14 +2133,13 @@ function viewWeightedLeaderboard(competitionId, competitionName) {
         
         leaderboard.forEach((contestant, index) => {
             const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
-            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
             const rankText = index === 0 ? '1st Place' : index === 1 ? '2nd Place' : index === 2 ? '3rd Place' : `${index + 1}th Place`;
             
             html += `
                 <div class="dashboard-card" style="text-align: left; margin-bottom: 20px; border-left: 5px solid ${rankColor};">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <div>
-                            <h3 style="margin: 0;">${rankEmoji} ${contestant.participant_name}</h3>
+                            <h3 style="margin: 0;">${contestant.participant_name}</h3>
                             <p style="margin: 5px 0 0 0; color: #666;">Contestant #${contestant.contestant_number || 'N/A'}</p>
                         </div>
                         <div style="text-align: right;">
