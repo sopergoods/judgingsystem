@@ -627,7 +627,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                     });
                 } else {
                     // FOR REGULAR: Count participant scores
-                    const regularSql = `
+                   const regularSql = `
     SELECT 
         COUNT(DISTINCT p.participant_id) as total_required,
         COUNT(DISTINCT os.participant_id) as scored_count
@@ -635,7 +635,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
     LEFT JOIN overall_scores os 
         ON p.participant_id = os.participant_id 
         AND os.judge_id = ?
-        AND os.competition_id = ?    // ✅ USE competition_id INSTEAD
+        AND os.competition_id = ?
     WHERE p.competition_id = ?
 `;
                     
