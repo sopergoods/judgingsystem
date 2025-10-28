@@ -1308,51 +1308,71 @@ function loadDetailedScoringHistory(competitions, judgeId) {
     });
 }
 
+// FIXED: Display scoring history with correct calculations
 function displayEnhancedScoringHistory(competitionData, judgeId) {
     let html = `
         <h2>My Scoring History</h2>
         <div style="margin-bottom: 20px;">
-            <p>Review all your submitted scores, segments, averages, and rankings.</p>
+            <p>Review all your submitted scores, segments, and rankings.</p>
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                <strong>📊 Scoring Calculation:</strong>
+                <p style="margin-top: 5px; color: #1976d2;">For multi-segment pageants, segment averages are calculated first, then averaged for the final score.</p>
+            </div>
         </div>
     `;
 
     competitionData.forEach(({ competition, overallScores, segments, participants }) => {
         const isPageant = competition.is_pageant;
         
-        // Group scores by participant and segment
-        const participantScores = {};
+        // IMPORTANT: For pageants, overallScores now contains the correctly averaged scores
+        // from the unified endpoint
         
-        overallScores.forEach(score => {
-            if (!participantScores[score.participant_id]) {
-                participantScores[score.participant_id] = {
-                    participant_name: score.participant_name,
-                    scores: [],
-                    total: 0,
-                    count: 0
-                };
-            }
-            
-            participantScores[score.participant_id].scores.push({
-                segment_id: score.segment_id,
-                score: parseFloat(score.total_score),
-                comments: score.general_comments,
-                submitted_at: score.submitted_at
+        let participantScores = {};
+        
+        if (isPageant) {
+            // The unified endpoint already calculated averages correctly
+            // Just group by participant
+            overallScores.forEach(score => {
+                if (!participantScores[score.participant_id]) {
+                    participantScores[score.participant_id] = {
+                        participant_name: score.participant_name,
+                        performance_title: score.performance_title,
+                        average_score: parseFloat(score.total_score),
+                        judge_count: score.judge_count,
+                        segments_completed: score.segments_completed
+                    };
+                }
+            });
+        } else {
+            // Regular competition - calculate averages
+            overallScores.forEach(score => {
+                if (!participantScores[score.participant_id]) {
+                    participantScores[score.participant_id] = {
+                        participant_name: score.participant_name,
+                        performance_title: score.performance_title,
+                        scores: []
+                    };
+                }
+                participantScores[score.participant_id].scores.push(parseFloat(score.total_score));
             });
             
-            participantScores[score.participant_id].total += parseFloat(score.total_score);
-            participantScores[score.participant_id].count++;
-        });
+            // Calculate averages for regular competitions
+            Object.values(participantScores).forEach(p => {
+                if (p.scores) {
+                    const sum = p.scores.reduce((acc, s) => acc + s, 0);
+                    p.average_score = sum / p.scores.length;
+                    p.judge_count = p.scores.length;
+                }
+            });
+        }
 
-        // Calculate averages and rankings
+        // Sort by average score
         const rankedParticipants = Object.entries(participantScores)
             .map(([id, data]) => ({
                 participant_id: id,
-                participant_name: data.participant_name,
-                average: data.total / data.count,
-                scores: data.scores,
-                segments_scored: data.count
+                ...data
             }))
-            .sort((a, b) => b.average - a.average);
+            .sort((a, b) => b.average_score - a.average_score);
 
         // Assign ranks
         rankedParticipants.forEach((participant, index) => {
@@ -1392,6 +1412,7 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                 `;
                 
                 segments.forEach(segment => {
+                    // Count how many participants you've scored for this segment
                     const segmentScores = overallScores.filter(s => s.segment_id === segment.segment_id);
                     const totalParticipants = participants.length;
                     const scoredCount = segmentScores.length;
@@ -1418,7 +1439,7 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                 `;
             }
 
-            // Rankings and scores table
+            // Rankings table
             html += `
                 <h4 style="margin: 20px 0 10px 0;">Your Rankings & Scores</h4>
                 <table style="width: 100%; margin-top: 10px;">
@@ -1444,9 +1465,9 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                             ${medalEmoji} ${participant.rank}
                         </td>
                         <td><strong>${participant.participant_name}</strong></td>
-                        ${isPageant ? `<td style="text-align: center;">${participant.segments_scored}/${segments.length}</td>` : ''}
+                        ${isPageant ? `<td style="text-align: center;">${participant.segments_completed}/${segments.length}</td>` : ''}
                         <td style="text-align: center;">
-                            <span class="score-display" style="font-size: 18px;">${participant.average.toFixed(2)}</span>
+                            <span class="score-display" style="font-size: 18px;">${participant.average_score.toFixed(2)}</span>
                         </td>
                         <td style="text-align: center;">
                             <button onclick="showParticipantScoreDetails(${participant.participant_id}, ${competition.competition_id}, ${judgeId}, ${isPageant})" 
@@ -1456,37 +1477,6 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                         </td>
                     </tr>
                 `;
-
-                // Show segment breakdown for this participant if pageant
-                if (isPageant && participant.scores.length > 0) {
-                    html += `
-                        <tr>
-                            <td colspan="${isPageant ? '5' : '4'}" style="padding: 0 12px 12px 60px;">
-                                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 13px;">
-                                    <strong>Segment Scores:</strong>
-                                    <div style="display: flex; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
-                    `;
-                    
-                    participant.scores.forEach(scoreData => {
-                        const segment = segments.find(s => s.segment_id === scoreData.segment_id);
-                        if (segment) {
-                            html += `
-                                <div style="background: white; padding: 8px 12px; border-radius: 5px; border: 1px solid #ddd;">
-                                    <div style="font-weight: 600; color: #800020; font-size: 12px;">${segment.segment_name}</div>
-                                    <div style="font-size: 16px; font-weight: bold; margin-top: 3px;">${scoreData.score.toFixed(2)}</div>
-                                    <div style="font-size: 11px; color: #666;">${new Date(scoreData.submitted_at).toLocaleDateString()}</div>
-                                </div>
-                            `;
-                        }
-                    });
-                    
-                    html += `
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }
             });
 
             html += `
@@ -1496,9 +1486,9 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
 
             // Summary statistics
             const totalScored = rankedParticipants.length;
-            const avgOfAverages = rankedParticipants.reduce((sum, p) => sum + p.average, 0) / totalScored;
-            const highestScore = rankedParticipants[0].average;
-            const lowestScore = rankedParticipants[rankedParticipants.length - 1].average;
+            const avgOfAverages = rankedParticipants.reduce((sum, p) => sum + p.average_score, 0) / totalScored;
+            const highestScore = rankedParticipants[0].average_score;
+            const lowestScore = rankedParticipants[rankedParticipants.length - 1].average_score;
 
             html += `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
