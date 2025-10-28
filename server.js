@@ -601,7 +601,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                         SELECT 
                             COUNT(DISTINCT CONCAT(p.participant_id, '-', ps.segment_id)) as total_required,
                             COUNT(DISTINCT CASE 
-                                WHEN os.participant_id IS NOT NULL 
+                                WHEN os.score_id IS NOT NULL 
                                 THEN CONCAT(os.participant_id, '-', os.segment_id) 
                             END) as scored_count
                         FROM participants p
@@ -622,30 +622,36 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                         } else {
                             comp.scored_count = result[0].scored_count || 0;
                             comp.total_required = result[0].total_required || 0;
+                            console.log(`✅ PAGEANT ${comp.competition_name}: ${comp.scored_count}/${comp.total_required}`);
                             resolve(comp);
                         }
                     });
                 } else {
-                    // FOR REGULAR: Count participant scores
-                   const regularSql = `
-    SELECT 
-        COUNT(DISTINCT p.participant_id) as total_required,
-        COUNT(DISTINCT os.participant_id) as scored_count
-    FROM participants p
-    LEFT JOIN overall_scores os 
-        ON p.participant_id = os.participant_id 
-        AND os.judge_id = ?
-        AND os.competition_id = ?
-    WHERE p.competition_id = ?
-`;
+                    // FOR REGULAR: Count participant scores (FIXED - exclude pageant scores)
+                    const regularSql = `
+                        SELECT 
+                            COUNT(DISTINCT p.participant_id) as total_required,
+                            COUNT(DISTINCT CASE 
+                                WHEN os.score_id IS NOT NULL 
+                                THEN os.participant_id 
+                            END) as scored_count
+                        FROM participants p
+                        LEFT JOIN overall_scores os 
+                            ON p.participant_id = os.participant_id 
+                            AND os.judge_id = ?
+                            AND os.competition_id = ?
+                            AND os.segment_id IS NULL
+                        WHERE p.competition_id = ?
+                    `;
                     
-                   db.query(regularSql, [judgeId, comp.competition_id, comp.competition_id], (err, result) => {
+                    db.query(regularSql, [judgeId, comp.competition_id, comp.competition_id], (err, result) => {
                         if (err) {
                             console.error('Error calculating regular progress:', err);
                             reject(err);
                         } else {
                             comp.scored_count = result[0].scored_count || 0;
                             comp.total_required = result[0].total_required || 0;
+                            console.log(`✅ REGULAR ${comp.competition_name}: ${comp.scored_count}/${comp.total_required}`);
                             resolve(comp);
                         }
                     });
@@ -664,6 +670,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
             });
     });
 });
+
 app.get('/judge-pageant-progress/:judgeId/:competitionId', (req, res) => {
     const { judgeId, competitionId } = req.params;
     
