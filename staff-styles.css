@@ -544,3 +544,160 @@ a:focus {
         border-width: 3px;
     }
 }
+
+@media print {
+    /* Hide unnecessary elements */
+    header,
+    nav,
+    .no-print,
+    button,
+    .card-button,
+    .secondary {
+        display: none !important;
+    }
+    
+    /* Show print-only elements */
+    .print-header {
+        display: block !important;
+    }
+    
+    /* Reset page styles */
+    body {
+        background: white !important;
+        color: black !important;
+        margin: 0;
+        padding: 20px;
+    }
+    
+    body::before {
+        display: none !important;
+    }
+    
+    .container {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    section {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Table styles for printing */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: auto !important;
+    }
+    
+    tr {
+        page-break-inside: avoid !important;
+        page-break-after: auto !important;
+    }
+    
+    thead {
+        display: table-header-group !important;
+    }
+    
+    tfoot {
+        display: table-footer-group !important;
+    }
+    
+    /* Ensure colors print */
+    table th {
+        background: #800020 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Rankings specific */
+    #printableRankings {
+        width: 100% !important;
+    }
+    
+    /* Page breaks */
+    .page-break {
+        page-break-after: always !important;
+    }
+    
+    /* Headers and titles */
+    h1, h2, h3 {
+        page-break-after: avoid !important;
+    }
+}
+
+/* ==========================================
+   EXPORT/DOWNLOAD NOTIFICATION STYLES
+   ========================================== */
+
+.export-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 10000;
+    text-align: center;
+    border: 3px solid #800020;
+}
+
+.export-notification h3 {
+    color: #800020;
+    margin-bottom: 15px;
+}
+
+.export-notification p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* ==========================================
+   RANKINGS TABLE ENHANCEMENTS
+   ========================================== */
+
+.rankings-table-wrapper {
+    overflow-x: auto;
+    margin: 20px 0;
+}
+
+.rank-medal {
+    font-size: 24px;
+    margin-right: 8px;
+}
+
+.rank-number {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.score-highlight {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+/* Responsive rankings */
+@media (max-width: 768px) {
+    .rankings-table-wrapper {
+        font-size: 14px;
+    }
+    
+    table th,
+    table td {
+        padding: 10px 8px !important;
+    }
+    
+    .rank-number {
+        font-size: 18px;
+    }
+}

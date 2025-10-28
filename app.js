@@ -1681,79 +1681,197 @@ function loadScoringResults() {
 
     document.getElementById("resultsContent").innerHTML = '<div class="loading">Loading results...</div>';
 
-    fetch(`${API_URL}/overall-scores/${competitionId}`)
+    // First, check if this is a pageant competition
+    fetch(`${API_URL}/competition/${competitionId}`)
     .then(response => response.json())
-    .then(scores => {
-        if (scores.length === 0) {
-            document.getElementById("resultsContent").innerHTML = `
-                <div class="alert alert-warning">
-                    <h3>No Scores Yet</h3>
-                    <p>No scores submitted for this competition.</p>
-                </div>
-            `;
-            return;
+    .then(competition => {
+        const isPageant = competition.is_pageant;
+        
+        if (isPageant) {
+            // For PAGEANTS: Use the pageant leaderboard endpoint
+            fetch(`${API_URL}/pageant-leaderboard/${competitionId}`)
+            .then(response => response.json())
+            .then(leaderboard => {
+                if (leaderboard.length === 0) {
+                    document.getElementById("resultsContent").innerHTML = `
+                        <div class="alert alert-warning">
+                            <h3>No Scores Yet</h3>
+                            <p>No scores submitted for this pageant competition.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                displayPageantRankings(leaderboard, competition.competition_name);
+            })
+            .catch(error => {
+                console.error('Error loading pageant rankings:', error);
+                document.getElementById("resultsContent").innerHTML = `
+                    <div class="alert alert-error">
+                        <h3>Error Loading Rankings</h3>
+                        <p>Could not load pageant rankings.</p>
+                    </div>
+                `;
+            });
+        } else {
+            // For REGULAR: Use the existing overall scores endpoint
+            fetch(`${API_URL}/overall-scores/${competitionId}`)
+            .then(response => response.json())
+            .then(scores => {
+                if (scores.length === 0) {
+                    document.getElementById("resultsContent").innerHTML = `
+                        <div class="alert alert-warning">
+                            <h3>No Scores Yet</h3>
+                            <p>No scores submitted for this competition.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                displayRegularRankings(scores);
+            })
+            .catch(error => {
+                console.error('Error loading rankings:', error);
+                document.getElementById("resultsContent").innerHTML = `
+                    <div class="alert alert-error">
+                        <h3>Error Loading Rankings</h3>
+                        <p>Could not load rankings.</p>
+                    </div>
+                `;
+            });
         }
-
-        const participantScores = {};
-        scores.forEach(score => {
-            if (!participantScores[score.participant_id]) {
-                participantScores[score.participant_id] = {
-                    participant_name: score.participant_name,
-                    performance_title: score.performance_title,
-                    scores: [],
-                    average: 0
-                };
-            }
-            
-            const totalScore = parseFloat(score.total_score);
-            if (!isNaN(totalScore)) {
-                participantScores[score.participant_id].scores.push({
-                    judge_name: score.judge_name,
-                    total_score: totalScore
-                });
-            }
-        });
-
-        const sortedParticipants = Object.values(participantScores).map(p => {
-            if (p.scores.length > 0) {
-                const sum = p.scores.reduce((total, s) => total + s.total_score, 0);
-                p.average = sum / p.scores.length;
-            }
-            return p;
-        }).sort((a, b) => b.average - a.average);
-
-        let html = `
-            <div class="dashboard-card" style="text-align: left;">
-                <h3>Competition Rankings</h3>
-                <table style="width: 100%; margin-top: 15px;">
-                    <tr>
-                        <th>Rank</th>
-                        <th>Participant</th>
-                        <th>Performance</th>
-                        <th>Average Score</th>
-                        <th>Judges</th>
-                    </tr>
+    })
+    .catch(error => {
+        console.error('Error checking competition type:', error);
+        document.getElementById("resultsContent").innerHTML = `
+            <div class="alert alert-error">
+                <h3>Error</h3>
+                <p>Could not load competition details.</p>
+            </div>
         `;
-
-        sortedParticipants.forEach((p, index) => {
-            const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
-            const rankText = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`;
-            
-            html += `
-                <tr>
-                    <td style="text-align: center; font-size: 18px; color: ${rankColor}; font-weight: bold;">${rankText}</td>
-                    <td><strong>${p.participant_name}</strong></td>
-                    <td>${p.performance_title || 'N/A'}</td>
-                    <td style="text-align: center; font-weight: bold; color: #800020;">${p.average.toFixed(2)}</td>
-                    <td style="text-align: center;">${p.scores.length}</td>
-                </tr>
-            `;
-        });
-
-        html += `</table></div>`;
-
-        document.getElementById("resultsContent").innerHTML = html;
     });
+}
+
+// NEW FUNCTION: Display pageant rankings (with correct segment averaging)
+function displayPageantRankings(leaderboard, competitionName) {
+    let html = `
+        <div class="dashboard-card" style="text-align: left;">
+            <h3>Competition Rankings - ${competitionName}</h3>
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <strong>ℹ️ Multi-Segment Competition:</strong> Scores are averaged across all segments (Days) first, then averaged across judges.
+            </div>
+            <table style="width: 100%; margin-top: 15px;">
+                <tr>
+                    <th>Rank</th>
+                    <th>Participant</th>
+                    <th>Performance</th>
+                    <th>Average Score</th>
+                    <th>Judges</th>
+                    <th>Segments</th>
+                </tr>
+    `;
+
+    leaderboard.forEach((participant, index) => {
+        const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
+        const rankText = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`;
+        
+        html += `
+            <tr>
+                <td style="text-align: center; font-size: 18px; color: ${rankColor}; font-weight: bold;">${rankText}</td>
+                <td><strong>${participant.participant_name}</strong></td>
+                <td>${participant.performance_title || 'N/A'}</td>
+                <td style="text-align: center; font-weight: bold; color: #800020; font-size: 18px;">${parseFloat(participant.average_score).toFixed(2)}</td>
+                <td style="text-align: center;">${participant.judge_count || 0}</td>
+                <td style="text-align: center;">${participant.segments_completed || 0}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </table>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h4 style="color: #800020;">How Multi-Day Pageant Scoring Works:</h4>
+            <ol style="margin-top: 10px; color: #666;">
+                <li><strong>Step 1:</strong> For each segment (Day), all judge scores are averaged together</li>
+                <li><strong>Step 2:</strong> The segment averages are then averaged together for the final score</li>
+                <li><strong>Example:</strong> If a contestant scores [100, 100] on Day 1, [100, 100] on Day 2, and [83, 83] on Day 3:
+                    <ul style="margin-top: 5px;">
+                        <li>Day 1 average: (100 + 100) / 2 = 100</li>
+                        <li>Day 2 average: (100 + 100) / 2 = 100</li>
+                        <li>Day 3 average: (83 + 83) / 2 = 83</li>
+                        <li><strong>Final average: (100 + 100 + 83) / 3 = 94.33 ✓</strong></li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    `;
+    
+    document.getElementById("resultsContent").innerHTML = html;
+}
+
+// EXISTING FUNCTION: Display regular competition rankings (keep as is)
+function displayRegularRankings(scores) {
+    const participantScores = {};
+    scores.forEach(score => {
+        if (!participantScores[score.participant_id]) {
+            participantScores[score.participant_id] = {
+                participant_name: score.participant_name,
+                performance_title: score.performance_title,
+                scores: [],
+                average: 0
+            };
+        }
+        
+        const totalScore = parseFloat(score.total_score);
+        if (!isNaN(totalScore)) {
+            participantScores[score.participant_id].scores.push({
+                judge_name: score.judge_name,
+                total_score: totalScore
+            });
+        }
+    });
+
+    const sortedParticipants = Object.values(participantScores).map(p => {
+        if (p.scores.length > 0) {
+            const sum = p.scores.reduce((total, s) => total + s.total_score, 0);
+            p.average = sum / p.scores.length;
+        }
+        return p;
+    }).sort((a, b) => b.average - a.average);
+
+    let html = `
+        <div class="dashboard-card" style="text-align: left;">
+            <h3>Competition Rankings</h3>
+            <table style="width: 100%; margin-top: 15px;">
+                <tr>
+                    <th>Rank</th>
+                    <th>Participant</th>
+                    <th>Performance</th>
+                    <th>Average Score</th>
+                    <th>Judges</th>
+                </tr>
+    `;
+
+    sortedParticipants.forEach((p, index) => {
+        const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
+        const rankText = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`;
+        
+        html += `
+            <tr>
+                <td style="text-align: center; font-size: 18px; color: ${rankColor}; font-weight: bold;">${rankText}</td>
+                <td><strong>${p.participant_name}</strong></td>
+                <td>${p.performance_title || 'N/A'}</td>
+                <td style="text-align: center; font-weight: bold; color: #800020; font-size: 18px;">${p.average.toFixed(2)}</td>
+                <td style="text-align: center;">${p.scores.length}</td>
+            </tr>
+        `;
+    });
+
+    html += '</table></div>';
+    
+    document.getElementById("resultsContent").innerHTML = html;
 }
 
 // ================================================

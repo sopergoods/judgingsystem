@@ -1443,5 +1443,298 @@ function initializeConnectionMonitor() {
     });
 }
 
+// ADD THESE FUNCTIONS TO YOUR EXISTING staff-app.js FILE
+
+// ==========================================
+// NEW: VIEW COMPETITION RANKINGS
+// ==========================================
+function showCompetitionRankings() {
+    clearIntervals();
+    document.getElementById("content").innerHTML = `
+        <h2>Competition Rankings</h2>
+        <div style="margin-bottom: 30px;">
+            <label for="rankingsCompetition" style="font-weight: 600; color: #800020; margin-right: 10px;">Select Competition:</label>
+            <select id="rankingsCompetition" onchange="loadCompetitionRankings()" style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 5px;">
+                <option value="">Choose Competition</option>
+            </select>
+            <button onclick="printRankings()" id="printBtn" style="display: none; margin-left: 15px;" class="card-button">
+                🖨️ Print Rankings
+            </button>
+        </div>
+        <div id="rankingsContent">
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>Select a Competition</h3>
+                <p>Choose a competition to view the current rankings.</p>
+            </div>
+        </div>
+    `;
+
+    fetchData(`${API_URL}/competitions`).then(competitions => {
+        const select = document.getElementById("rankingsCompetition");
+        competitions.forEach(competition => {
+            const option = document.createElement("option");
+            option.value = competition.competition_id;
+            option.setAttribute('data-is-pageant', competition.is_pageant);
+            option.setAttribute('data-name', competition.competition_name);
+            option.textContent = competition.competition_name;
+            select.appendChild(option);
+        });
+    });
+}
+
+function loadCompetitionRankings() {
+    const select = document.getElementById("rankingsCompetition");
+    const competitionId = select.value;
+    
+    if (!competitionId) {
+        document.getElementById("rankingsContent").innerHTML = `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>Select a Competition</h3>
+                <p>Choose a competition to view rankings.</p>
+            </div>
+        `;
+        document.getElementById("printBtn").style.display = 'none';
+        return;
+    }
+
+    const selectedOption = select.options[select.selectedIndex];
+    const isPageant = selectedOption.getAttribute('data-is-pageant') === '1';
+    const competitionName = selectedOption.getAttribute('data-name');
+
+    document.getElementById("rankingsContent").innerHTML = '<div class="loading">Loading rankings...</div>';
+    document.getElementById("printBtn").style.display = 'inline-block';
+
+    // Store for printing
+    window.currentCompetitionName = competitionName;
+    window.currentCompetitionId = competitionId;
+
+    const endpoint = isPageant ? 
+        `${API_URL}/pageant-leaderboard/${competitionId}` : 
+        `${API_URL}/overall-scores/${competitionId}`;
+
+    fetchData(endpoint)
+        .then(scores => {
+            if (scores.length === 0) {
+                document.getElementById("rankingsContent").innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;">
+                        <h3>No Scores Yet</h3>
+                        <p>No scores have been submitted for this competition.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            displayRankings(scores, competitionName, isPageant);
+        })
+        .catch(() => showError('rankingsContent', 'Error loading rankings'));
+}
+
+function displayRankings(scores, competitionName, isPageant) {
+    // Process scores for rankings
+    let rankings = [];
+    
+    if (isPageant) {
+        // Pageant scores are already averaged
+        rankings = scores.map(score => ({
+            participant_name: score.participant_name,
+            contestant_number: score.contestant_number,
+            performance_title: score.performance_title,
+            average_score: parseFloat(score.average_score),
+            judge_count: score.judge_count,
+            segments_completed: score.segments_completed
+        }));
+    } else {
+        // Regular competition - calculate averages per participant
+        const participantScores = {};
+        scores.forEach(score => {
+            if (!participantScores[score.participant_id]) {
+                participantScores[score.participant_id] = {
+                    participant_name: score.participant_name,
+                    performance_title: score.performance_title,
+                    scores: []
+                };
+            }
+            participantScores[score.participant_id].scores.push(parseFloat(score.total_score));
+        });
+        
+        rankings = Object.values(participantScores).map(p => {
+            const sum = p.scores.reduce((acc, s) => acc + s, 0);
+            return {
+                participant_name: p.participant_name,
+                performance_title: p.performance_title,
+                average_score: sum / p.scores.length,
+                judge_count: p.scores.length
+            };
+        });
+    }
+    
+    // Sort by score descending
+    rankings.sort((a, b) => b.average_score - a.average_score);
+    
+    // Store for printing
+    window.currentRankings = rankings;
+    window.isPageantRankings = isPageant;
+    
+    // Display rankings
+    let html = `
+        <div id="printableRankings">
+            <div class="print-header" style="display: none;">
+                <h1 style="color: #800020; text-align: center; margin-bottom: 10px;">Competition Rankings</h1>
+                <h2 style="text-align: center; color: #666; margin-bottom: 20px;">${competitionName}</h2>
+                <p style="text-align: center; color: #666; margin-bottom: 30px;">
+                    Generated on ${new Date().toLocaleString()}
+                </p>
+            </div>
+            
+            <div style="background: #800020; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;" class="no-print">
+                <h3 style="margin: 0; color: white;">${competitionName}</h3>
+                <p style="margin: 5px 0 0 0; opacity: 0.9;">Current Rankings - ${rankings.length} Participants</p>
+            </div>
+            
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #800020; color: white;">
+                        <th style="padding: 15px; text-align: center; width: 80px;">Rank</th>
+                        <th style="padding: 15px; text-align: left;">Participant</th>
+                        ${isPageant ? '<th style="padding: 15px; text-align: center;">Contestant #</th>' : ''}
+                        <th style="padding: 15px; text-align: left;">Performance</th>
+                        <th style="padding: 15px; text-align: center;">Average Score</th>
+                        <th style="padding: 15px; text-align: center;">Judges</th>
+                        ${isPageant ? '<th style="padding: 15px; text-align: center;">Segments</th>' : ''}
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    rankings.forEach((participant, index) => {
+        const rank = index + 1;
+        const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#666';
+        const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+        const bgColor = index % 2 === 0 ? '#ffffff' : '#f9f9f9';
+        
+        html += `
+            <tr style="background: ${bgColor}; border-bottom: 1px solid #ddd;">
+                <td style="padding: 15px; text-align: center; font-size: 24px; font-weight: bold; color: ${rankColor};">
+                    ${rankMedal} ${rank}
+                </td>
+                <td style="padding: 15px; font-weight: 600;">${participant.participant_name}</td>
+                ${isPageant ? `<td style="padding: 15px; text-align: center;">${participant.contestant_number || 'N/A'}</td>` : ''}
+                <td style="padding: 15px;">${participant.performance_title || 'N/A'}</td>
+                <td style="padding: 15px; text-align: center; font-size: 20px; font-weight: bold; color: #800020;">
+                    ${participant.average_score.toFixed(2)}
+                </td>
+                <td style="padding: 15px; text-align: center;">${participant.judge_count}</td>
+                ${isPageant ? `<td style="padding: 15px; text-align: center;">${participant.segments_completed || 'N/A'}</td>` : ''}
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;" class="no-print">
+                <h4 style="color: #800020;">Ranking Summary</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div>
+                        <strong>Total Participants:</strong> ${rankings.length}
+                    </div>
+                    <div>
+                        <strong>Highest Score:</strong> ${rankings[0]?.average_score.toFixed(2) || 'N/A'}
+                    </div>
+                    <div>
+                        <strong>Lowest Score:</strong> ${rankings[rankings.length - 1]?.average_score.toFixed(2) || 'N/A'}
+                    </div>
+                    <div>
+                        <strong>Average Score:</strong> ${(rankings.reduce((sum, p) => sum + p.average_score, 0) / rankings.length).toFixed(2)}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;" class="no-print">
+            <button onclick="printRankings()" class="card-button">🖨️ Print Rankings</button>
+            <button onclick="exportRankingsCSV()" class="card-button">📥 Export to CSV</button>
+            <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
+        </div>
+    `;
+    
+    document.getElementById("rankingsContent").innerHTML = html;
+}
+
+// ==========================================
+// PRINT FUNCTIONALITY
+// ==========================================
+function printRankings() {
+    // Show print-specific elements
+    const printHeaders = document.querySelectorAll('.print-header');
+    printHeaders.forEach(header => header.style.display = 'block');
+    
+    // Hide no-print elements
+    const noPrintElements = document.querySelectorAll('.no-print');
+    noPrintElements.forEach(element => element.style.display = 'none');
+    
+    // Print
+    window.print();
+    
+    // Restore after print
+    setTimeout(() => {
+        printHeaders.forEach(header => header.style.display = 'none');
+        noPrintElements.forEach(element => element.style.display = 'block');
+    }, 1000);
+}
+
+function exportRankingsCSV() {
+    if (!window.currentRankings) {
+        showNotification('No rankings data to export', 'error');
+        return;
+    }
+    
+    const isPageant = window.isPageantRankings;
+    const competitionName = window.currentCompetitionName;
+    
+    // Create CSV content
+    let csv = `Competition Rankings - ${competitionName}\n`;
+    csv += `Generated on ${new Date().toLocaleString()}\n\n`;
+    
+    // Headers
+    if (isPageant) {
+        csv += 'Rank,Participant Name,Contestant Number,Performance,Average Score,Judges,Segments Completed\n';
+    } else {
+        csv += 'Rank,Participant Name,Performance,Average Score,Judges\n';
+    }
+    
+    // Data rows
+    window.currentRankings.forEach((participant, index) => {
+        const rank = index + 1;
+        const row = [
+            rank,
+            `"${participant.participant_name}"`,
+            ...(isPageant ? [`"${participant.contestant_number || 'N/A'}"`] : []),
+            `"${participant.performance_title || 'N/A'}"`,
+            participant.average_score.toFixed(2),
+            participant.judge_count,
+            ...(isPageant ? [participant.segments_completed || 'N/A'] : [])
+        ];
+        csv += row.join(',') + '\n';
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${competitionName.replace(/\s+/g, '_')}_Rankings_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showNotification('Rankings exported successfully!', 'success');
+}
+
+
+console.log('✅ Rankings view and print functionality loaded for staff dashboard');
+
 // Initialize
 showDashboard();

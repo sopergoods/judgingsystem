@@ -77,6 +77,11 @@ function showDashboard() {
                     <p>View your judge profile and credentials</p>
                     <button onclick="showProfile()" class="card-button">View Profile</button>
                 </div>
+                <div class="dashboard-card">
+                    <h3>Competition Rankings</h3>
+                    <p>View current standings and print results</p>
+                    <button onclick="showCompetitionRankings()" class="card-button">View Rankings</button>
+</div>
             </div>
         </div>
     `;
