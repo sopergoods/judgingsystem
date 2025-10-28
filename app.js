@@ -1,11 +1,11 @@
-// Clean Admin Dashboard JavaScript - Maroon & White Theme
-// Bug-free, organized code with Year/Course instead of School Org
-// UPDATED: Status changed to Active/Disqualified/Done with auto-assignment
+// Admin Dashboard - Clean & Bug-Free
+// Maroon & White Theme Only
+// Updated: Year/Course, Active/Disqualified/Done Status
 
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
 // ================================================
-// AUTHENTICATION & INITIALIZATION
+// AUTHENTICATION
 // ================================================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -20,7 +20,6 @@ function checkAuthentication() {
         return;
     }
     
-    // Check if userInfo element exists before trying to update it
     const userInfoElement = document.getElementById('userInfo');
     if (userInfoElement) {
         userInfoElement.innerHTML = `
@@ -117,7 +116,7 @@ function showEventTypes() {
         eventTypes.forEach(et => {
             const badge = et.is_pageant ? 
                 '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #800020;">PAGEANT</span>' :
-                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #666;">REGULAR</span>';
+                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #800020; background: white; border: 2px solid #800020;">REGULAR</span>';
             
             html += `
                 <tr>
@@ -125,7 +124,7 @@ function showEventTypes() {
                     <td>${et.description || '-'}</td>
                     <td>${badge}</td>
                     <td>
-                        <button onclick="deleteEventType(${et.event_type_id})" style="background: #dc3545;">Delete</button>
+                        <button onclick="deleteEventType(${et.event_type_id})" style="background: #800020;">Delete</button>
                     </td>
                 </tr>
             `;
@@ -137,31 +136,6 @@ function showEventTypes() {
     .catch(error => {
         document.getElementById("eventTypesList").innerHTML = '<p class="alert alert-error">Error loading event types.</p>';
     });
-}
-
-// ================================================
-// CRITERIA TEMPLATES (Placeholder)
-// ================================================
-
-function showCriteriaTemplates() {
-    document.getElementById("content").innerHTML = `
-        <h2>Criteria Templates Management</h2>
-        
-        <div class="alert alert-info">
-            <strong>Note:</strong> This feature allows you to create reusable criteria templates.
-            For now, please manage criteria directly within each competition.
-        </div>
-        
-        <div style="margin-top: 20px;">
-            <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
-        </div>
-        
-        <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 30px;">
-            <h3>Feature Coming Soon</h3>
-            <p>The Criteria Templates feature is under development.</p>
-            <p>You can still create custom criteria for each competition individually.</p>
-        </div>
-    `;
 }
 
 function showCreateEventTypeForm() {
@@ -201,7 +175,7 @@ function showCreateEventTypeForm() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Event type created!');
+                alert('Event type created successfully!');
                 showEventTypes();
             } else {
                 alert('Error: ' + data.error);
@@ -211,12 +185,12 @@ function showCreateEventTypeForm() {
 }
 
 function deleteEventType(id) {
-    if (confirm('Delete this event type?')) {
+    if (confirm('Delete this event type? This action cannot be undone.')) {
         fetch(`${API_URL}/delete-event-type/${id}`, { method: 'DELETE' })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Deleted!');
+                alert('Event type deleted successfully!');
                 showEventTypes();
             } else {
                 alert('Error: ' + data.error);
@@ -280,7 +254,7 @@ function showCreateCompetitionForm() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Competition created!');
+                alert('Competition created successfully!');
                 showViewCompetitions();
             } else {
                 alert('Error: ' + data.error);
@@ -307,7 +281,7 @@ function showViewCompetitions() {
         competitions.forEach(comp => {
             const badge = comp.is_pageant ? 
                 '<span style="background: #800020; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">PAGEANT</span>' :
-                '<span style="background: #666; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">REGULAR</span>';
+                '<span style="background: white; color: #800020; padding: 4px 8px; border-radius: 12px; font-size: 12px; border: 2px solid #800020;">REGULAR</span>';
             
             html += `
                 <div class="dashboard-card" style="text-align: left;">
@@ -328,7 +302,7 @@ function showViewCompetitions() {
                         <button onclick="setupPageant(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">Setup Pageant</button>
                         <button onclick="viewPageantSegments(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">View Schedule</button>
                         ` : ''}
-                        <button onclick="deleteCompetition(${comp.competition_id})" style="background: #dc3545;">Delete</button>
+                        <button onclick="deleteCompetition(${comp.competition_id})" style="background: #800020;">Delete</button>
                     </div>
                 </div>
             `;
@@ -350,12 +324,12 @@ function showViewCompetitions() {
 }
 
 function deleteCompetition(id) {
-    if (confirm('Delete this competition? This will delete all related data.')) {
+    if (confirm('Delete this competition? This will delete all related data including participants, scores, and criteria.')) {
         fetch(`${API_URL}/delete-competition/${id}`, { method: 'DELETE' })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Competition deleted!');
+                alert('Competition deleted successfully!');
                 showViewCompetitions();
             } else {
                 alert('Error: ' + data.error);
@@ -427,7 +401,7 @@ function displayCriteria(criteria) {
                         <span>%</span>
                     </div>
                     <div>
-                        <button type="button" onclick="removeCriterion(this)" style="background: #dc3545;">Remove</button>
+                        <button type="button" onclick="removeCriterion(this)" style="background: #800020;">Remove</button>
                     </div>
                 </div>
             </div>
@@ -455,7 +429,7 @@ function addCriterion() {
                 <span>%</span>
             </div>
             <div>
-                <button type="button" onclick="removeCriterion(this)" style="background: #dc3545;">Remove</button>
+                <button type="button" onclick="removeCriterion(this)" style="background: #800020;">Remove</button>
             </div>
         </div>
     `;
@@ -545,7 +519,7 @@ function saveCriteria() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Criteria saved!');
+            alert('Criteria saved successfully!');
             showViewCompetitions();
         } else {
             alert('Error: ' + data.error);
@@ -637,7 +611,7 @@ function generateDayInputs(competitionId) {
                     ${createSegmentInput(day, 1)}
                 </div>
                 
-                <button type="button" class="add-segment-btn" data-day="${day}" style="background: #28a745; margin-top: 10px;">
+                <button type="button" class="add-segment-btn" data-day="${day}" style="background: #800020; margin-top: 10px;">
                     Add Segment
                 </button>
             </div>
@@ -683,7 +657,7 @@ function createSegmentInput(day, segmentNum) {
             <label>Description:</label>
             <textarea class="segment-description" rows="2"></textarea>
             
-            <button type="button" class="remove-segment-btn" style="background: #dc3545; margin-top: 10px;">Remove</button>
+            <button type="button" class="remove-segment-btn" style="background: #800020; margin-top: 10px;">Remove</button>
         </div>
     `;
 }
@@ -781,7 +755,7 @@ function submitPageantSetup(competitionId, totalDays) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(`Pageant created with ${data.total_segments} segments!`);
+            alert(`Pageant created with ${data.total_segments} segments successfully!`);
             showViewCompetitions();
         } else {
             alert('Error: ' + data.error);
@@ -790,7 +764,7 @@ function submitPageantSetup(competitionId, totalDays) {
 }
 
 // ================================================
-// VIEW AND MANAGE PAGEANT SEGMENTS
+// VIEW PAGEANT SEGMENTS
 // ================================================
 
 function viewPageantSegments(competitionId, competitionName) {
@@ -799,18 +773,16 @@ function viewPageantSegments(competitionId, competitionName) {
         <h3 style="color: #800020;">${competitionName}</h3>
         
         <div style="margin-bottom: 20px;">
-    <button onclick="manageSegmentWeights(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
-            style="background: #28a745; margin-right: 10px;">
-        Set Segment Weights
-    </button>
-    <button onclick="viewWeightedLeaderboard(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
-            style="background: #ffc107; color: #000; margin-right: 10px;">
-        View Grand Total
-    </button>
-    <button onclick="showViewCompetitions()" class="secondary">
-        Back to Competitions
-    </button>
-</div>
+            <button onclick="manageSegmentWeights(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" style="background: #800020; margin-right: 10px;">
+                Set Segment Weights
+            </button>
+            <button onclick="viewWeightedLeaderboard(${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" style="background: #800020; margin-right: 10px;">
+                View Grand Total
+            </button>
+            <button onclick="showViewCompetitions()" class="secondary">
+                Back to Competitions
+            </button>
+        </div>
         
         <div id="segmentsDisplay"><div class="loading">Loading schedule...</div></div>
     `;
@@ -873,7 +845,7 @@ function viewPageantSegments(competitionId, competitionName) {
                                     Set Criteria
                                 </button>
                                 <button onclick="deletePageantSegment(${segment.segment_id}, ${competitionId}, '${competitionName.replace(/'/g, "\\'")}');" 
-                                        style="background: #dc3545;">
+                                        style="background: #800020;">
                                     Delete
                                 </button>
                             </div>
@@ -894,7 +866,7 @@ function viewPageantSegments(competitionId, competitionName) {
 }
 
 function deletePageantSegment(segmentId, competitionId, competitionName) {
-    if (!confirm('Delete this segment?')) {
+    if (!confirm('Delete this segment? This action cannot be undone.')) {
         return;
     }
     
@@ -904,7 +876,7 @@ function deletePageantSegment(segmentId, competitionId, competitionName) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Segment deleted!');
+            alert('Segment deleted successfully!');
             viewPageantSegments(competitionId, competitionName);
         } else {
             alert('Error: ' + data.error);
@@ -913,7 +885,7 @@ function deletePageantSegment(segmentId, competitionId, competitionName) {
 }
 
 // ================================================
-// SEGMENT CRITERIA MANAGEMENT
+// SEGMENT CRITERIA
 // ================================================
 
 function manageSegmentCriteria(segmentId, segmentName, competitionId) {
@@ -1007,7 +979,6 @@ function manageSegmentCriteria(segmentId, segmentName, competitionId) {
             return;
         }
         
-        // Check if total percentage equals 100%
         const total = parseFloat(document.getElementById('selectedPercentage').textContent);
         if (Math.abs(total - 100) > 0.1) {
             if (!confirm(`Warning: Selected criteria total is ${total.toFixed(1)}%, not 100%. Continue anyway?`)) {
@@ -1026,7 +997,7 @@ function manageSegmentCriteria(segmentId, segmentName, competitionId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(`${criteriaIds.length} criteria assigned to "${segmentName}"!`);
+                alert(`${criteriaIds.length} criteria assigned to "${segmentName}" successfully!`);
                 viewPageantSegments(competitionId, 'Competition');
             } else {
                 alert('Error: ' + data.error);
@@ -1073,7 +1044,7 @@ function updateSegmentCriteriaTotal() {
 }
 
 // ================================================
-// PARTICIPANTS - WITH YEAR & COURSE - UPDATED STATUS
+// PARTICIPANTS
 // ================================================
 
 function showAddParticipantForm() {
@@ -1192,7 +1163,7 @@ function showAddParticipantForm() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Participant added with Active status!');
+                alert('Participant added with Active status successfully!');
                 showViewParticipants();
             } else {
                 alert('Error: ' + data.error);
@@ -1229,7 +1200,7 @@ function showViewParticipants() {
             html = '<div style="display: grid; gap: 20px;">';
             
             participants.forEach(p => {
-                const statusColor = p.status === 'Done' ? '#28a745' : p.status === 'Active' ? '#17a2b8' : '#dc3545';
+                const statusColor = p.status === 'Done' ? '#28a745' : p.status === 'Active' ? '#17a2b8' : '#800020';
                 
                 html += `
                     <div class="dashboard-card" style="text-align: left;">
@@ -1251,7 +1222,7 @@ function showViewParticipants() {
                         </div>
                         <div style="margin-top: 20px;">
                             <button onclick="editParticipant(${p.participant_id})">Edit</button>
-                            <button onclick="deleteParticipant(${p.participant_id})" style="background: #dc3545;">Delete</button>
+                            <button onclick="deleteParticipant(${p.participant_id})" style="background: #800020;">Delete</button>
                         </div>
                     </div>
                 `;
@@ -1381,7 +1352,7 @@ function editParticipant(id) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Participant updated!');
+                    alert('Participant updated successfully!');
                     showViewParticipants();
                 } else {
                     alert('Error: ' + data.error);
@@ -1392,12 +1363,12 @@ function editParticipant(id) {
 }
 
 function deleteParticipant(id) {
-    if (confirm('Delete this participant?')) {
+    if (confirm('Delete this participant? This action cannot be undone.')) {
         fetch(`${API_URL}/delete-participant/${id}`, { method: 'DELETE' })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Participant deleted!');
+                alert('Participant deleted successfully!');
                 showViewParticipants();
             } else {
                 alert('Error: ' + data.error);
@@ -1478,7 +1449,7 @@ function showAddJudgeForm() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(`Judge added!\n\nUsername: ${data.credentials.username}\nPassword: ${data.credentials.password}`);
+                alert(`Judge added successfully!\n\nUsername: ${data.credentials.username}\nPassword: ${data.credentials.password}`);
                 showViewJudges();
             } else {
                 alert('Error: ' + data.error);
@@ -1531,7 +1502,7 @@ function showViewJudges() {
                         </div>
                         <div style="margin-top: 20px;">
                             <button onclick="editJudge(${j.judge_id})">Edit</button>
-                            <button onclick="deleteJudge(${j.judge_id})" style="background: #dc3545;">Delete</button>
+                            <button onclick="deleteJudge(${j.judge_id})" style="background: #800020;">Delete</button>
                         </div>
                     </div>
                 `;
@@ -1613,7 +1584,7 @@ function editJudge(id) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Judge updated!');
+                    alert('Judge updated successfully!');
                     showViewJudges();
                 } else {
                     alert('Error: ' + data.error);
@@ -1629,7 +1600,7 @@ function deleteJudge(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Judge deleted!');
+                alert('Judge deleted successfully!');
                 showViewJudges();
             } else {
                 alert('Error: ' + data.error);
@@ -1681,14 +1652,12 @@ function loadScoringResults() {
 
     document.getElementById("resultsContent").innerHTML = '<div class="loading">Loading results...</div>';
 
-    // First, check if this is a pageant competition
     fetch(`${API_URL}/competition/${competitionId}`)
     .then(response => response.json())
     .then(competition => {
         const isPageant = competition.is_pageant;
         
         if (isPageant) {
-            // For PAGEANTS: Use the pageant leaderboard endpoint
             fetch(`${API_URL}/pageant-leaderboard/${competitionId}`)
             .then(response => response.json())
             .then(leaderboard => {
@@ -1714,7 +1683,6 @@ function loadScoringResults() {
                 `;
             });
         } else {
-            // For REGULAR: Use the existing overall scores endpoint
             fetch(`${API_URL}/overall-scores/${competitionId}`)
             .then(response => response.json())
             .then(scores => {
@@ -1752,13 +1720,12 @@ function loadScoringResults() {
     });
 }
 
-// UPDATED: Display pageant rankings using unified endpoint
 function displayPageantRankings(leaderboard, competitionName) {
     let html = `
         <div class="dashboard-card" style="text-align: left;">
             <h3>Competition Rankings - ${competitionName}</h3>
             <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                <strong>ℹ️ Multi-Segment Competition Scoring:</strong>
+                <strong>Multi-Segment Competition Scoring:</strong>
                 <p style="margin-top: 8px;">Scores are calculated in two steps:</p>
                 <ol style="margin: 10px 0 0 20px; color: #666;">
                     <li><strong>Step 1:</strong> For each segment (day), all judge scores are averaged together</li>
@@ -1806,7 +1773,7 @@ function displayPageantRankings(leaderboard, competitionName) {
                     <li><strong>Day 3:</strong> Judge A: 83, Judge B: 83 → Segment Average = <strong>83</strong></li>
                 </ul>
                 <p style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px;">
-                    <strong>Final Score = (100 + 100 + 83) ÷ 3 = 94.33 ✓</strong>
+                    <strong>Final Score = (100 + 100 + 83) ÷ 3 = 94.33</strong>
                 </p>
             </div>
         </div>
@@ -1815,7 +1782,6 @@ function displayPageantRankings(leaderboard, competitionName) {
     document.getElementById("resultsContent").innerHTML = html;
 }
 
-// EXISTING FUNCTION: Display regular competition rankings (keep as is)
 function displayRegularRankings(scores) {
     const participantScores = {};
     scores.forEach(score => {
@@ -1935,7 +1901,7 @@ function loadUnlockRequests() {
             }
             
             if (rejected.length > 0) {
-                html += `<h3 style="color: #dc3545;">Rejected (${rejected.length})</h3><div style="display: grid; gap: 15px;">`;
+                html += `<h3 style="color: #800020;">Rejected (${rejected.length})</h3><div style="display: grid; gap: 15px;">`;
                 rejected.forEach(r => html += renderUnlockRequestCard(r, false));
                 html += '</div>';
             }
@@ -1946,7 +1912,7 @@ function loadUnlockRequests() {
 }
 
 function renderUnlockRequestCard(request, showActions) {
-    const statusColor = request.status === 'approved' ? '#28a745' : request.status === 'rejected' ? '#dc3545' : '#ffc107';
+    const statusColor = request.status === 'approved' ? '#28a745' : request.status === 'rejected' ? '#800020' : '#ffc107';
     
     return `
         <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${statusColor};">
@@ -1978,7 +1944,7 @@ function renderUnlockRequestCard(request, showActions) {
                     <button onclick="reviewUnlockRequest(${request.request_id}, 'approve')" style="flex: 1; background: #28a745;">
                         Approve
                     </button>
-                    <button onclick="reviewUnlockRequest(${request.request_id}, 'reject')" style="flex: 1; background: #dc3545;">
+                    <button onclick="reviewUnlockRequest(${request.request_id}, 'reject')" style="flex: 1; background: #800020;">
                         Reject
                     </button>
                 </div>
@@ -2026,13 +1992,15 @@ function showUnlockRequestsBadge() {
         if (pendingCount > 0) {
             const btn = document.getElementById('unlockBtn');
             if (btn) {
-                btn.innerHTML = `View Requests <span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 5px;">${pendingCount}</span>`;
+                btn.innerHTML = `View Requests <span style="background: #800020; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 5px;">${pendingCount}</span>`;
             }
         }
     });
 }
 
-console.log('Clean Admin Dashboard Loaded - Maroon & White Theme with Active/Disqualified/Done Status');
+// ================================================
+// SEGMENT WEIGHTS
+// ================================================
 
 function manageSegmentWeights(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
@@ -2220,7 +2188,6 @@ function saveSegmentWeights(competitionId) {
     });
 }
 
-// View weighted grand total leaderboard
 function viewWeightedLeaderboard(competitionId, competitionName) {
     document.getElementById("content").innerHTML = `
         <h2>Weighted Grand Total Leaderboard</h2>
@@ -2308,3 +2275,5 @@ function viewWeightedLeaderboard(competitionId, competitionName) {
         `;
     });
 }
+
+console.log('Clean Admin Dashboard Loaded - Maroon & White Theme');
