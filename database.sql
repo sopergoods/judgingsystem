@@ -1,12 +1,13 @@
 -- =====================================================
--- MSEU FCI JUDGING SYSTEM - COMPLETE DATABASE SCHEMA
+-- MSEU FCI JUDGING SYSTEM - COMPLETE DATABASE SCHEMA (SAFE VERSION)
 -- =====================================================
--- Generated from application code analysis
--- Supports: Regular Competitions & Multi-Day Pageants
--- Features: Scoring, Locking, Unlock Requests, Drafts
+-- This version safely handles existing tables and foreign keys
 -- =====================================================
 
--- Drop existing tables in correct order (foreign key dependencies)
+-- Disable foreign key checks temporarily to allow dropping tables
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Drop existing tables in any order (foreign keys disabled)
 DROP TABLE IF EXISTS score_edit_history;
 DROP TABLE IF EXISTS unlock_requests;
 DROP TABLE IF EXISTS draft_scores;
@@ -19,8 +20,12 @@ DROP TABLE IF EXISTS judges;
 DROP TABLE IF EXISTS participants;
 DROP TABLE IF EXISTS competition_criteria;
 DROP TABLE IF EXISTS competitions;
+DROP TABLE IF EXISTS criteria_templates;
 DROP TABLE IF EXISTS event_types;
 DROP TABLE IF EXISTS users;
+
+-- Re-enable foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================
 -- 1. USERS TABLE (Authentication)
@@ -97,7 +102,7 @@ CREATE TABLE participants (
     performance_title VARCHAR(255),
     performance_description TEXT,
     competition_id INT NOT NULL,
-    status ENUM('Active', 'Disqualified', 'Done', 'pending', 'ongoing', 'done') DEFAULT 'Active',
+    status ENUM('active', 'disqualified', 'done', 'pending', 'ongoing') DEFAULT 'active',
     height VARCHAR(50),
     measurements VARCHAR(255),
     talents TEXT,
@@ -177,30 +182,27 @@ CREATE TABLE overall_scores (
     judge_id INT NOT NULL,
     participant_id INT NOT NULL,
     competition_id INT NOT NULL,
-    segment_id INT,
     total_score DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    general_comments TEXT,
+    final_rank INT,
     is_locked BOOLEAN DEFAULT FALSE,
     locked_at TIMESTAMP NULL,
-    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (judge_id) REFERENCES judges(judge_id) ON DELETE CASCADE,
     FOREIGN KEY (participant_id) REFERENCES participants(participant_id) ON DELETE CASCADE,
     FOREIGN KEY (competition_id) REFERENCES competitions(competition_id) ON DELETE CASCADE,
-    FOREIGN KEY (segment_id) REFERENCES pageant_segments(segment_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_judge_participant_segment (judge_id, participant_id, competition_id, segment_id),
+    UNIQUE KEY unique_score (judge_id, participant_id, competition_id),
     INDEX idx_judge (judge_id),
     INDEX idx_participant (participant_id),
     INDEX idx_competition (competition_id),
-    INDEX idx_segment (segment_id),
     INDEX idx_locked (is_locked)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
--- 10. DETAILED SCORES TABLE (Per Criterion)
+-- 10. DETAILED SCORES TABLE (Per-Criteria Scores)
 -- =====================================================
 CREATE TABLE detailed_scores (
-    detailed_score_id INT AUTO_INCREMENT PRIMARY KEY,
+    detail_id INT AUTO_INCREMENT PRIMARY KEY,
     judge_id INT NOT NULL,
     participant_id INT NOT NULL,
     competition_id INT NOT NULL,
@@ -317,7 +319,7 @@ CREATE TABLE score_edit_history (
 -- DEFAULT DATA INSERTS
 -- =====================================================
 
--- Insert default admin user (password: admin123)
+-- Insert default admin user (password: admin123 - CHANGE IN PRODUCTION!)
 INSERT INTO users (username, password, role, full_name) VALUES
 ('admin', 'admin123', 'admin', 'System Administrator'),
 ('staff1', 'staff123', 'staff', 'Staff User');
@@ -334,8 +336,12 @@ INSERT INTO event_types (type_name, description, is_pageant) VALUES
 -- USEFUL VIEWS FOR REPORTING
 -- =====================================================
 
+-- Drop views if they exist
+DROP VIEW IF EXISTS vw_competition_overview;
+DROP VIEW IF EXISTS vw_judge_progress;
+
 -- View: Competition Overview
-CREATE OR REPLACE VIEW vw_competition_overview AS
+CREATE VIEW vw_competition_overview AS
 SELECT 
     c.competition_id,
     c.competition_name,
@@ -353,7 +359,7 @@ LEFT JOIN overall_scores os ON c.competition_id = os.competition_id
 GROUP BY c.competition_id, c.competition_name, c.competition_date, et.type_name, et.is_pageant;
 
 -- View: Judge Scoring Progress
-CREATE OR REPLACE VIEW vw_judge_progress AS
+CREATE VIEW vw_judge_progress AS
 SELECT 
     j.judge_id,
     j.judge_name,
@@ -372,7 +378,13 @@ GROUP BY j.judge_id, j.judge_name, c.competition_id, c.competition_name;
 -- DATABASE SETUP COMPLETE
 -- =====================================================
 -- Database: judging_system
--- Tables: 14
+-- Tables: 14 core tables
 -- Features: Full support for regular competitions & pageants
 -- Includes: Scoring, locking, unlock requests, drafts, audit trail
+-- =====================================================
+-- IMPORTANT NOTES:
+-- 1. Foreign key checks are temporarily disabled to handle existing tables
+-- 2. All existing foreign key constraints are removed before recreation
+-- 3. Default passwords are plain text - IMPLEMENT PROPER HASHING IN PRODUCTION
+-- 4. The criteria_templates table (if needed) is also dropped
 -- =====================================================

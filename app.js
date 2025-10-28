@@ -1752,13 +1752,18 @@ function loadScoringResults() {
     });
 }
 
-// NEW FUNCTION: Display pageant rankings (with correct segment averaging)
+// UPDATED: Display pageant rankings using unified endpoint
 function displayPageantRankings(leaderboard, competitionName) {
     let html = `
         <div class="dashboard-card" style="text-align: left;">
             <h3>Competition Rankings - ${competitionName}</h3>
             <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                <strong>ℹ️ Multi-Segment Competition:</strong> Scores are averaged across all segments (Days) first, then averaged across judges.
+                <strong>ℹ️ Multi-Segment Competition Scoring:</strong>
+                <p style="margin-top: 8px;">Scores are calculated in two steps:</p>
+                <ol style="margin: 10px 0 0 20px; color: #666;">
+                    <li><strong>Step 1:</strong> For each segment (day), all judge scores are averaged together</li>
+                    <li><strong>Step 2:</strong> The segment averages are then averaged together for the final score</li>
+                </ol>
             </div>
             <table style="width: 100%; margin-top: 15px;">
                 <tr>
@@ -1780,7 +1785,7 @@ function displayPageantRankings(leaderboard, competitionName) {
                 <td style="text-align: center; font-size: 18px; color: ${rankColor}; font-weight: bold;">${rankText}</td>
                 <td><strong>${participant.participant_name}</strong></td>
                 <td>${participant.performance_title || 'N/A'}</td>
-                <td style="text-align: center; font-weight: bold; color: #800020; font-size: 18px;">${parseFloat(participant.average_score).toFixed(2)}</td>
+                <td style="text-align: center; font-weight: bold; color: #800020; font-size: 18px;">${parseFloat(participant.total_score).toFixed(2)}</td>
                 <td style="text-align: center;">${participant.judge_count || 0}</td>
                 <td style="text-align: center;">${participant.segments_completed || 0}</td>
             </tr>
@@ -1792,19 +1797,18 @@ function displayPageantRankings(leaderboard, competitionName) {
         </div>
         
         <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-            <h4 style="color: #800020;">How Multi-Day Pageant Scoring Works:</h4>
-            <ol style="margin-top: 10px; color: #666;">
-                <li><strong>Step 1:</strong> For each segment (Day), all judge scores are averaged together</li>
-                <li><strong>Step 2:</strong> The segment averages are then averaged together for the final score</li>
-                <li><strong>Example:</strong> If a contestant scores [100, 100] on Day 1, [100, 100] on Day 2, and [83, 83] on Day 3:
-                    <ul style="margin-top: 5px;">
-                        <li>Day 1 average: (100 + 100) / 2 = 100</li>
-                        <li>Day 2 average: (100 + 100) / 2 = 100</li>
-                        <li>Day 3 average: (83 + 83) / 2 = 83</li>
-                        <li><strong>Final average: (100 + 100 + 83) / 3 = 94.33 ✓</strong></li>
-                    </ul>
-                </li>
-            </ol>
+            <h4 style="color: #800020;">Scoring Example:</h4>
+            <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                <p style="margin-bottom: 10px;">If a contestant scores:</p>
+                <ul style="margin-left: 20px; color: #666;">
+                    <li><strong>Day 1:</strong> Judge A: 100, Judge B: 100 → Segment Average = <strong>100</strong></li>
+                    <li><strong>Day 2:</strong> Judge A: 100, Judge B: 100 → Segment Average = <strong>100</strong></li>
+                    <li><strong>Day 3:</strong> Judge A: 83, Judge B: 83 → Segment Average = <strong>83</strong></li>
+                </ul>
+                <p style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px;">
+                    <strong>Final Score = (100 + 100 + 83) ÷ 3 = 94.33 ✓</strong>
+                </p>
+            </div>
         </div>
     `;
     

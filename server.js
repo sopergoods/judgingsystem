@@ -899,24 +899,7 @@ app.get('/detailed-scores/:competitionId', (req, res) => {
     });
 });
 
-app.get('/overall-scores/:competitionId', (req, res) => {
-    const { competitionId } = req.params;
-    const sql = `
-        SELECT os.*, j.judge_name, p.participant_name, p.performance_title
-        FROM overall_scores os
-        JOIN judges j ON os.judge_id = j.judge_id
-        JOIN participants p ON os.participant_id = p.participant_id
-        WHERE os.competition_id = ?
-        ORDER BY p.participant_name, os.total_score DESC
-    `;
-    db.query(sql, [competitionId], (err, result) => {
-        if (err) {
-            console.error('Error fetching overall scores:', err);
-            return res.status(500).json({ error: 'Error fetching overall scores' });
-        }
-        res.json(result);
-    });
-});
+
 
 // ================================================
 // CRITERIA TEMPLATES ENDPOINTS (New)
@@ -1435,10 +1418,11 @@ app.get('/pageant-leaderboard/:competitionId', (req, res) => {
 });
 
 
+
 app.get('/overall-scores/:competitionId', (req, res) => {
     const { competitionId } = req.params;
     
-    // Check if this is a pageant competition
+    // First, check if this is a pageant competition
     db.query('SELECT is_pageant FROM competitions c JOIN event_types et ON c.event_type_id = et.event_type_id WHERE c.competition_id = ?', 
         [competitionId], (err, compResult) => {
         
@@ -1450,7 +1434,9 @@ app.get('/overall-scores/:competitionId', (req, res) => {
         const isPageant = compResult[0].is_pageant;
         
         if (isPageant) {
-            // FOR PAGEANTS: Calculate segment averages first
+            // FOR PAGEANTS: Use the SAME calculation as /pageant-leaderboard
+            console.log('📊 Fetching PAGEANT scores with segment averaging for competition:', competitionId);
+            
             const sql = `
                 SELECT 
                     p.participant_id,
@@ -1459,6 +1445,7 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     p.performance_title,
                     ps.segment_id,
                     ps.segment_name,
+                    ps.day_number,
                     os.judge_id,
                     j.judge_name,
                     os.total_score
@@ -1467,86 +1454,86 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                 JOIN judges j ON os.judge_id = j.judge_id
                 JOIN pageant_segments ps ON os.segment_id = ps.segment_id
                 WHERE ps.competition_id = ? AND ps.is_active = TRUE
-                ORDER BY p.participant_id, ps.segment_id, os.judge_id
+                ORDER BY p.participant_id, ps.day_number, ps.order_number, os.judge_id
             `;
             
             db.query(sql, [competitionId], (err, result) => {
                 if (err) {
+                    console.error('❌ Error fetching pageant scores:', err);
                     return res.status(500).json({ error: 'Error fetching scores' });
                 }
                 
-                // Group by participant and segment
-                const participantSegments = {};
+                if (result.length === 0) {
+                    return res.json([]);
+                }
+                
+                // STEP 1: Group by participant and segment
+                const participantMap = {};
                 
                 result.forEach(row => {
-                    const key = `${row.participant_id}-${row.segment_id}`;
-                    if (!participantSegments[key]) {
-                        participantSegments[key] = {
+                    if (!participantMap[row.participant_id]) {
+                        participantMap[row.participant_id] = {
                             participant_id: row.participant_id,
                             participant_name: row.participant_name,
                             contestant_number: row.contestant_number,
                             performance_title: row.performance_title,
-                            segment_id: row.segment_id,
+                            segments: {},
+                            all_judges: new Set()
+                        };
+                    }
+                    
+                    const participant = participantMap[row.participant_id];
+                    participant.all_judges.add(row.judge_id);
+                    
+                    // Group by segment
+                    if (!participant.segments[row.segment_id]) {
+                        participant.segments[row.segment_id] = {
                             segment_name: row.segment_name,
-                            scores: [],
-                            judges: []
+                            day_number: row.day_number,
+                            scores: []
                         };
                     }
-                    participantSegments[key].scores.push(parseFloat(row.total_score));
-                    participantSegments[key].judges.push(row.judge_name);
+                    
+                    participant.segments[row.segment_id].scores.push({
+                        judge_name: row.judge_name,
+                        score: parseFloat(row.total_score)
+                    });
                 });
                 
-                // Calculate segment averages
-                const segmentAverages = Object.values(participantSegments).map(seg => {
-                    const sum = seg.scores.reduce((acc, score) => acc + score, 0);
-                    const average = sum / seg.scores.length;
-                    return {
-                        participant_id: seg.participant_id,
-                        participant_name: seg.participant_name,
-                        performance_title: seg.performance_title,
-                        segment_name: seg.segment_name,
-                        total_score: average.toFixed(2),
-                        judge_count: seg.judges.length,
-                        judge_name: `${seg.judges.length} judges` // Average representation
-                    };
-                });
-                
-                // Now calculate overall averages per participant
-                const participantMap = {};
-                segmentAverages.forEach(seg => {
-                    if (!participantMap[seg.participant_id]) {
-                        participantMap[seg.participant_id] = {
-                            participant_id: seg.participant_id,
-                            participant_name: seg.participant_name,
-                            performance_title: seg.performance_title,
-                            segment_averages: [],
-                            total_judges: new Set()
-                        };
-                    }
-                    participantMap[seg.participant_id].segment_averages.push(parseFloat(seg.total_score));
-                });
-                
-                // Calculate final averages
-                const finalScores = Object.values(participantMap).map(p => {
-                    const sum = p.segment_averages.reduce((acc, avg) => acc + avg, 0);
-                    const overallAverage = sum / p.segment_averages.length;
+                // STEP 2: Calculate SEGMENT AVERAGES first, then OVERALL AVERAGE
+                const finalScores = Object.values(participantMap).map(participant => {
+                    const segmentAverages = [];
+                    
+                    // For each segment, calculate average of judge scores
+                    Object.values(participant.segments).forEach(segment => {
+                        const sum = segment.scores.reduce((acc, s) => acc + s.score, 0);
+                        const average = sum / segment.scores.length;
+                        segmentAverages.push(average);
+                    });
+                    
+                    // Overall average is the average of segment averages
+                    const overallAverage = segmentAverages.reduce((acc, avg) => acc + avg, 0) / segmentAverages.length;
                     
                     return {
-                        participant_id: p.participant_id,
-                        participant_name: p.participant_name,
-                        performance_title: p.performance_title,
+                        participant_id: participant.participant_id,
+                        participant_name: participant.participant_name,
+                        contestant_number: participant.contestant_number,
+                        performance_title: participant.performance_title,
                         total_score: overallAverage.toFixed(2),
-                        judge_name: 'All Judges (Averaged)',
-                        judge_count: p.segment_averages.length
+                        judge_name: `${participant.all_judges.size} judges`,
+                        judge_count: participant.all_judges.size,
+                        segments_completed: Object.keys(participant.segments).length
                     };
                 });
                 
-                console.log('✅ Pageant overall scores calculated with correct segment averaging');
+                console.log('✅ Pageant scores calculated with CORRECT segment averaging');
                 res.json(finalScores);
             });
             
         } else {
-            // FOR REGULAR COMPETITIONS: Use standard query
+            // FOR REGULAR COMPETITIONS: Standard query
+            console.log('📊 Fetching REGULAR competition scores for competition:', competitionId);
+            
             const sql = `
                 SELECT os.*, j.judge_name, p.participant_name, p.performance_title
                 FROM overall_scores os
@@ -1558,6 +1545,7 @@ app.get('/overall-scores/:competitionId', (req, res) => {
             
             db.query(sql, [competitionId], (err, result) => {
                 if (err) {
+                    console.error('❌ Error fetching regular scores:', err);
                     return res.status(500).json({ error: 'Error fetching scores' });
                 }
                 res.json(result);
