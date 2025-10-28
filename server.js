@@ -601,7 +601,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                         SELECT 
                             COUNT(DISTINCT CONCAT(p.participant_id, '-', ps.segment_id)) as total_required,
                             COUNT(DISTINCT CASE 
-                                WHEN os.score_id IS NOT NULL 
+                                WHEN os.participant_id IS NOT NULL 
                                 THEN CONCAT(os.participant_id, '-', os.segment_id) 
                             END) as scored_count
                         FROM participants p
@@ -617,6 +617,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                     
                     db.query(pageantSql, [judgeId, comp.competition_id, comp.competition_id], (err, result) => {
                         if (err) {
+                            console.error('Error calculating pageant progress:', err);
                             reject(err);
                         } else {
                             comp.scored_count = result[0].scored_count || 0;
@@ -640,6 +641,7 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                     
                     db.query(regularSql, [judgeId, comp.competition_id], (err, result) => {
                         if (err) {
+                            console.error('Error calculating regular progress:', err);
                             reject(err);
                         } else {
                             comp.scored_count = result[0].scored_count || 0;
@@ -653,59 +655,15 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
         
         Promise.all(promises)
             .then(results => {
-                console.log('✅ Judge competitions loaded with CORRECT pageant progress tracking');
+                console.log('✅ Judge competitions loaded with CORRECT progress tracking');
                 res.json(results);
             })
             .catch(err => {
                 console.error('Error calculating progress:', err);
-                res.status(500).json({ error: 'Error calculating progress' });
+                res.status(500).json({ error: 'Error calculating progress: ' + err.message });
             });
     });
 });
-
-console.log('✅ FIXED: Pageant scoring progress now counts participant-segment combinations correctly!');
-
-
-// ==========================================
-// EXPLANATION OF THE FIX
-// ==========================================
-
-/*
-BEFORE (WRONG):
-- Counted: Total judge scores (7) / Total participants (5)
-- Problem: In multi-day pageants, each participant has MULTIPLE segments
-- Result: Shows 7/5 (confusing and incorrect)
-
-AFTER (CORRECT):
-- For PAGEANTS: Counts participant-segment combinations
-  Example: 5 participants × 3 segments = 15 total required scores
-  If judge scored Catherine on all 3 segments = 3/15 progress
-  
-- For REGULAR: Counts participants only
-  Example: 5 participants = 5 total required scores
-  If judge scored 3 participants = 3/5 progress
-
-MATH EXAMPLE:
-Competition: Miss Universe with 5 participants and 3 segments (Day 1, 2, 3)
-
-Total required scores for judge = 5 participants × 3 segments = 15
-
-Judge progress:
-- Scored Catherine: Day 1 ✅, Day 2 ✅, Day 3 ✅ (3 scores)
-- Scored Isabella: Day 1 ✅ (1 score)
-- Scored Maria: Day 1 ✅ (1 score)
-- Total: 5 scored out of 15
-
-Progress: 5/15 (33%) ✅ CORRECT!
-NOT: 7/5 (140%) ❌ WRONG!
-*/
-
-
-// ==========================================
-// BONUS: GET JUDGE'S SEGMENT PROGRESS DETAILS
-// ==========================================
-
-// Add this NEW endpoint for detailed progress view
 app.get('/judge-pageant-progress/:judgeId/:competitionId', (req, res) => {
     const { judgeId, competitionId } = req.params;
     
