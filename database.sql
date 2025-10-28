@@ -1,7 +1,8 @@
 -- =====================================================
--- MSEU FCI JUDGING SYSTEM - COMPLETE DATABASE SCHEMA (SAFE VERSION)
+-- MSEU FCI JUDGING SYSTEM - COMPLETE DATABASE SCHEMA WITH SAMPLE DATA
 -- =====================================================
--- This version safely handles existing tables and foreign keys
+-- Includes: Regular Competition + Multi-Day Pageant (NO SCORES - READY FOR TESTING)
+-- Sample Data: 5 Judges, 5 Participants per competition
 -- =====================================================
 
 -- Disable foreign key checks temporarily to allow dropping tables
@@ -316,15 +317,20 @@ CREATE TABLE score_edit_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
--- DEFAULT DATA INSERTS
+-- SAMPLE DATA INSERTS
 -- =====================================================
 
--- Insert default admin user (password: admin123 - CHANGE IN PRODUCTION!)
+-- Insert admin, staff, and judge users
 INSERT INTO users (username, password, role, full_name) VALUES
 ('admin', 'admin123', 'admin', 'System Administrator'),
-('staff1', 'staff123', 'staff', 'Staff User');
+('staff1', 'staff123', 'staff', 'Staff User'),
+('judge1', 'judge123', 'judge', 'Maria Santos'),
+('judge2', 'judge123', 'judge', 'Roberto Cruz'),
+('judge3', 'judge123', 'judge', 'Carmen Reyes'),
+('judge4', 'judge123', 'judge', 'Jose Garcia'),
+('judge5', 'judge123', 'judge', 'Ana Mendoza');
 
--- Insert default event types
+-- Insert event types
 INSERT INTO event_types (type_name, description, is_pageant) VALUES
 ('Talent Competition', 'Individual or group talent showcase', FALSE),
 ('Beauty Pageant', 'Traditional beauty pageant with multiple segments', TRUE),
@@ -333,12 +339,114 @@ INSERT INTO event_types (type_name, description, is_pageant) VALUES
 ('Mr. & Ms. Event', 'Multi-segment pageant competition', TRUE);
 
 -- =====================================================
+-- COMPETITION 1: REGULAR TALENT COMPETITION
+-- =====================================================
+
+INSERT INTO competitions (competition_name, event_type_id, competition_date, event_description) VALUES
+('MSEU Talent Showcase 2025', 1, '2025-11-15', 'Annual talent competition featuring the best performers from different universities');
+
+-- Insert competition criteria for Competition 1
+INSERT INTO competition_criteria (competition_id, criteria_name, description, percentage, max_score, order_number) VALUES
+(1, 'Technical Skills', 'Mastery of technique and execution', 30.00, 100, 1),
+(1, 'Creativity & Originality', 'Innovation and unique artistic expression', 25.00, 100, 2),
+(1, 'Stage Presence', 'Confidence, charisma, and audience engagement', 25.00, 100, 3),
+(1, 'Overall Impact', 'Emotional connection and lasting impression', 20.00, 100, 4);
+
+-- Insert 5 participants for Competition 1
+INSERT INTO participants (participant_name, contestant_number, email, phone, age, gender, school_organization, performance_title, performance_description, competition_id, status) VALUES
+('Juan Dela Cruz', '001', 'juan.delacruz@email.com', '09171234567', 21, 'male', 'University of Manila', 'Fire Dance Fusion', 'Contemporary dance with traditional Filipino elements', 1, 'active'),
+('Maria Clara Santos', '002', 'maria.santos@email.com', '09181234568', 20, 'female', 'Ateneo de Manila', 'Voice of the Islands', 'Vocal performance featuring OPM classics', 1, 'active'),
+('Carlos Mendoza', '003', 'carlos.mendoza@email.com', '09191234569', 22, 'male', 'De La Salle University', 'Urban Rhythm', 'Hip-hop dance with beatbox performance', 1, 'active'),
+('Isabella Reyes', '004', 'isabella.reyes@email.com', '09201234570', 19, 'female', 'University of Santo Tomas', 'Piano Dreams', 'Classical piano with modern arrangement', 1, 'active'),
+('Miguel Torres', '005', 'miguel.torres@email.com', '09211234571', 23, 'male', 'Far Eastern University', 'Magic & Illusion', 'Contemporary magic performance with storytelling', 1, 'active');
+
+-- Insert 5 judges for Competition 1
+INSERT INTO judges (judge_name, email, phone, expertise, experience_years, credentials, competition_id, user_id) VALUES
+('Maria Santos', 'maria.judge@email.com', '09171111111', 'Dance Choreography, Performance Arts', 15, 'Professional Dancer, Dance Teacher at National Academy', 1, 3),
+('Roberto Cruz', 'roberto.judge@email.com', '09172222222', 'Vocal Performance, Music Theory', 12, 'Voice Coach, Former Opera Singer', 1, 4),
+('Carmen Reyes', 'carmen.judge@email.com', '09173333333', 'Theater Arts, Stage Direction', 18, 'Theater Director, Drama Professor', 1, 5),
+('Jose Garcia', 'jose.judge@email.com', '09174444444', 'Music Composition, Instrumental Performance', 10, 'Concert Pianist, Music Conductor', 1, 6),
+('Ana Mendoza', 'ana.judge@email.com', '09175555555', 'Contemporary Arts, Cultural Performance', 14, 'Cultural Arts Director, Festival Organizer', 1, 7);
+
+-- =====================================================
+-- COMPETITION 2: MULTI-DAY PAGEANT (MR. & MS. MSEU 2025)
+-- =====================================================
+
+INSERT INTO competitions (competition_name, event_type_id, competition_date, event_description) VALUES
+('Mr. & Ms. MSEU 2025', 5, '2025-12-10', 'Three-day pageant competition showcasing beauty, talent, intelligence, and personality');
+
+-- Insert competition criteria for Competition 2 (Pageant)
+INSERT INTO competition_criteria (competition_id, criteria_name, description, percentage, max_score, order_number) VALUES
+(2, 'Physical Appearance', 'Overall physical presentation and grooming', 30.00, 100, 1),
+(2, 'Poise & Carriage', 'Grace, posture, and movement', 25.00, 100, 2),
+(2, 'Confidence', 'Self-assurance and composure', 25.00, 100, 3),
+(2, 'Stage Presence', 'Charisma and audience connection', 20.00, 100, 4),
+(2, 'Talent Performance', 'Skill and creativity in talent presentation', 30.00, 100, 5),
+(2, 'Originality', 'Uniqueness and innovation', 25.00, 100, 6),
+(2, 'Entertainment Value', 'Audience engagement and enjoyment', 25.00, 100, 7),
+(2, 'Execution', 'Technical skill and polish', 20.00, 100, 8),
+(2, 'Evening Gown Presentation', 'Elegance and sophistication in formal wear', 35.00, 100, 9),
+(2, 'Overall Beauty', 'Complete aesthetic presentation', 35.00, 100, 10),
+(2, 'Personality', 'Charm and likability', 30.00, 100, 11),
+(2, 'Intelligence', 'Articulation and depth of response', 25.00, 100, 12),
+(2, 'Relevance', 'Appropriateness and insight of answer', 25.00, 100, 13),
+(2, 'Delivery', 'Clarity and confidence in communication', 20.00, 100, 14);
+
+-- Insert 3 pageant segments (3-day event)
+INSERT INTO pageant_segments (competition_id, segment_name, segment_date, segment_time, description, order_number, day_number, segment_weight) VALUES
+(2, 'Swimsuit & Introduction', '2025-12-10', '18:00:00', 'Opening segment featuring swimsuit presentation and contestant introductions', 1, 1, 25.00),
+(2, 'Talent Showcase', '2025-12-11', '19:00:00', 'Individual talent performances showcasing unique skills and creativity', 1, 2, 30.00),
+(2, 'Evening Gown & Q&A', '2025-12-12', '20:00:00', 'Final segment with evening gown presentation and question-answer portion', 1, 3, 45.00);
+
+-- Assign criteria to segments
+-- Segment 1: Swimsuit & Introduction (Criteria 1-4)
+INSERT INTO segment_criteria (segment_id, criteria_id, is_active) VALUES
+(1, 1, TRUE),  -- Physical Appearance
+(1, 2, TRUE),  -- Poise & Carriage
+(1, 3, TRUE),  -- Confidence
+(1, 4, TRUE);  -- Stage Presence
+
+-- Segment 2: Talent Showcase (Criteria 5-8)
+INSERT INTO segment_criteria (segment_id, criteria_id, is_active) VALUES
+(2, 5, TRUE),  -- Talent Performance
+(2, 6, TRUE),  -- Originality
+(2, 7, TRUE),  -- Entertainment Value
+(2, 8, TRUE);  -- Execution
+
+-- Segment 3: Evening Gown & Q&A (Criteria 9-14)
+INSERT INTO segment_criteria (segment_id, criteria_id, is_active) VALUES
+(3, 9, TRUE),   -- Evening Gown Presentation
+(3, 10, TRUE),  -- Overall Beauty
+(3, 11, TRUE),  -- Personality
+(3, 12, TRUE),  -- Intelligence
+(3, 13, TRUE),  -- Relevance
+(3, 14, TRUE);  -- Delivery
+
+-- Insert 5 participants for Competition 2 (Pageant)
+INSERT INTO participants (participant_name, contestant_number, email, phone, age, gender, school_organization, competition_id, status, height, measurements, talents) VALUES
+('Sofia Rodriguez', 'P-01', 'sofia.rodriguez@email.com', '09221234567', 22, 'female', 'University of Manila', 2, 'active', '5\'7"', '34-24-36', 'Classical Ballet, Piano'),
+('Gabriel Hernandez', 'P-02', 'gabriel.hernandez@email.com', '09231234568', 24, 'male', 'Ateneo de Manila', 2, 'active', '6\'0"', 'Athletic Build', 'Contemporary Dance, Singing'),
+('Valentina Cruz', 'P-03', 'valentina.cruz@email.com', '09241234569', 21, 'female', 'De La Salle University', 2, 'active', '5\'6"', '33-25-35', 'Vocal Performance, Guitar'),
+('Rafael Santillan', 'P-04', 'rafael.santillan@email.com', '09251234570', 23, 'male', 'University of Santo Tomas', 2, 'active', '5\'11"', 'Athletic Build', 'Hip-hop Dance, Beatbox'),
+('Angelica Fernandez', 'P-05', 'angelica.fernandez@email.com', '09261234571', 20, 'female', 'Far Eastern University', 2, 'active', '5\'8"', '35-24-36', 'Modern Dance, Poetry');
+
+-- Insert 5 judges for Competition 2 (can be same judges with different IDs)
+INSERT INTO judges (judge_name, email, phone, expertise, experience_years, credentials, competition_id, user_id) VALUES
+('Maria Santos', 'maria.pageant@email.com', '09171111111', 'Pageant Coaching, Dance', 15, 'Former Miss Philippines Judge, Pageant Director', 2, 3),
+('Roberto Cruz', 'roberto.pageant@email.com', '09172222222', 'Talent Development, Performance', 12, 'Talent Coach, Entertainment Director', 2, 4),
+('Carmen Reyes', 'carmen.pageant@email.com', '09173333333', 'Fashion, Beauty Standards', 18, 'Fashion Designer, Beauty Consultant', 2, 5),
+('Jose Garcia', 'jose.pageant@email.com', '09174444444', 'Communication, Public Speaking', 10, 'Communication Professor, TV Host', 2, 6),
+('Ana Mendoza', 'ana.pageant@email.com', '09175555555', 'Cultural Arts, Performance', 14, 'Cultural Ambassador, Pageant Coordinator', 2, 7);
+
+-- =====================================================
 -- USEFUL VIEWS FOR REPORTING
 -- =====================================================
 
 -- Drop views if they exist
 DROP VIEW IF EXISTS vw_competition_overview;
 DROP VIEW IF EXISTS vw_judge_progress;
+DROP VIEW IF EXISTS vw_participant_scores;
+DROP VIEW IF EXISTS vw_pageant_segment_overview;
 
 -- View: Competition Overview
 CREATE VIEW vw_competition_overview AS
@@ -350,11 +458,13 @@ SELECT
     et.is_pageant,
     COUNT(DISTINCT p.participant_id) as participant_count,
     COUNT(DISTINCT j.judge_id) as judge_count,
+    COUNT(DISTINCT ps.segment_id) as segment_count,
     COUNT(DISTINCT os.score_id) as score_count
 FROM competitions c
 LEFT JOIN event_types et ON c.event_type_id = et.event_type_id
 LEFT JOIN participants p ON c.competition_id = p.competition_id
 LEFT JOIN judges j ON c.competition_id = j.competition_id
+LEFT JOIN pageant_segments ps ON c.competition_id = ps.competition_id
 LEFT JOIN overall_scores os ON c.competition_id = os.competition_id
 GROUP BY c.competition_id, c.competition_name, c.competition_date, et.type_name, et.is_pageant;
 
@@ -367,24 +477,76 @@ SELECT
     c.competition_name,
     COUNT(DISTINCT p.participant_id) as total_participants,
     COUNT(DISTINCT os.participant_id) as scored_participants,
-    ROUND((COUNT(DISTINCT os.participant_id) / COUNT(DISTINCT p.participant_id) * 100), 2) as completion_percentage
+    CASE 
+        WHEN COUNT(DISTINCT p.participant_id) > 0 
+        THEN ROUND((COUNT(DISTINCT os.participant_id) / COUNT(DISTINCT p.participant_id) * 100), 2)
+        ELSE 0
+    END as completion_percentage
 FROM judges j
 JOIN competitions c ON j.competition_id = c.competition_id
 LEFT JOIN participants p ON c.competition_id = p.competition_id
 LEFT JOIN overall_scores os ON j.judge_id = os.judge_id AND p.participant_id = os.participant_id
 GROUP BY j.judge_id, j.judge_name, c.competition_id, c.competition_name;
 
+-- View: Participant Average Scores
+CREATE VIEW vw_participant_scores AS
+SELECT 
+    p.participant_id,
+    p.participant_name,
+    p.contestant_number,
+    p.competition_id,
+    c.competition_name,
+    AVG(os.total_score) as average_score,
+    COUNT(os.score_id) as judge_count
+FROM participants p
+LEFT JOIN overall_scores os ON p.participant_id = os.participant_id
+LEFT JOIN competitions c ON p.competition_id = c.competition_id
+GROUP BY p.participant_id, p.participant_name, p.contestant_number, p.competition_id, c.competition_name;
+
+-- View: Pageant Segment Overview
+CREATE VIEW vw_pageant_segment_overview AS
+SELECT 
+    ps.segment_id,
+    ps.segment_name,
+    ps.segment_date,
+    ps.day_number,
+    ps.order_number,
+    ps.segment_weight,
+    c.competition_id,
+    c.competition_name,
+    COUNT(DISTINCT sc.criteria_id) as criteria_count,
+    COUNT(DISTINCT pss.score_id) as score_count
+FROM pageant_segments ps
+JOIN competitions c ON ps.competition_id = c.competition_id
+LEFT JOIN segment_criteria sc ON ps.segment_id = sc.segment_id
+LEFT JOIN pageant_segment_scores pss ON ps.segment_id = pss.segment_id
+GROUP BY ps.segment_id, ps.segment_name, ps.segment_date, ps.day_number, 
+         ps.order_number, ps.segment_weight, c.competition_id, c.competition_name;
+
 -- =====================================================
--- DATABASE SETUP COMPLETE
+-- DATABASE SETUP COMPLETE - READY FOR TESTING
 -- =====================================================
 -- Database: judging_system
--- Tables: 14 core tables
--- Features: Full support for regular competitions & pageants
--- Includes: Scoring, locking, unlock requests, drafts, audit trail
--- =====================================================
--- IMPORTANT NOTES:
--- 1. Foreign key checks are temporarily disabled to handle existing tables
--- 2. All existing foreign key constraints are removed before recreation
--- 3. Default passwords are plain text - IMPLEMENT PROPER HASHING IN PRODUCTION
--- 4. The criteria_templates table (if needed) is also dropped
+-- Tables: 14
+-- 
+-- COMPETITION 1 (Regular): MSEU Talent Showcase 2025
+--   - 5 Participants
+--   - 5 Judges
+--   - 4 Criteria
+--   - NO SCORES (ready for manual scoring)
+--
+-- COMPETITION 2 (Multi-Day Pageant): Mr. & Ms. MSEU 2025
+--   - 5 Participants
+--   - 5 Judges
+--   - 3 Segments (3 days)
+--   - 14 Criteria (distributed across segments)
+--     * Segment 1: Swimsuit & Introduction (4 criteria)
+--     * Segment 2: Talent Showcase (4 criteria)
+--     * Segment 3: Evening Gown & Q&A (6 criteria)
+--   - NO SCORES (ready for manual scoring per segment)
+--
+-- Login Credentials:
+--   Admin: username: admin, password: admin123
+--   Staff: username: staff1, password: staff123
+--   Judges: username: judge1-5, password: judge123
 -- =====================================================

@@ -628,18 +628,18 @@ app.get('/judge-competitions/:judgeId', (req, res) => {
                 } else {
                     // FOR REGULAR: Count participant scores
                     const regularSql = `
-                        SELECT 
-                            COUNT(DISTINCT p.participant_id) as total_required,
-                            COUNT(DISTINCT os.participant_id) as scored_count
-                        FROM participants p
-                        LEFT JOIN overall_scores os 
-                            ON p.participant_id = os.participant_id 
-                            AND os.judge_id = ? 
-                            AND os.segment_id IS NULL
-                        WHERE p.competition_id = ?
-                    `;
+    SELECT 
+        COUNT(DISTINCT p.participant_id) as total_required,
+        COUNT(DISTINCT os.participant_id) as scored_count
+    FROM participants p
+    LEFT JOIN overall_scores os 
+        ON p.participant_id = os.participant_id 
+        AND os.judge_id = ?
+        AND os.competition_id = ?    // ✅ USE competition_id INSTEAD
+    WHERE p.competition_id = ?
+`;
                     
-                    db.query(regularSql, [judgeId, comp.competition_id], (err, result) => {
+                   db.query(regularSql, [judgeId, comp.competition_id, comp.competition_id], (err, result) => {
                         if (err) {
                             console.error('Error calculating regular progress:', err);
                             reject(err);
