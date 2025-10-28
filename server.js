@@ -1704,14 +1704,6 @@ app.post('/assign-segment-criteria', (req, res) => {
 });
 console.log('✅ Pageant Segment Scoring Endpoints Added');
 
-// ================================================
-// SCORE LOCKING & UNLOCK REQUEST ENDPOINTS
-// NEW CODE - ADD THIS ENTIRE SECTION
-// ================================================
-
-// ================================================
-// COMPLETE SCORING SYSTEM - PAGEANTS & REGULAR
-// ================================================
 
 // ==========================================
 // 1. SUBMIT PAGEANT SEGMENT SCORES
@@ -1719,100 +1711,99 @@ console.log('✅ Pageant Segment Scoring Endpoints Added');
 app.post('/submit-segment-scores', (req, res) => {
     const { judge_id, participant_id, segment_id, scores, general_comments, total_score } = req.body;
     
-    console.log('📥 Submitting PAGEANT segment scores:', { judge_id, participant_id, segment_id });
+    console.log('Submitting PAGEANT segment scores:', { judge_id, participant_id, segment_id });
     
     if (!judge_id || !participant_id || !segment_id || !scores || scores.length === 0) {
         return res.status(400).json({ success: false, error: 'Required fields missing' });
     }
 
-    db.getConnection((err, connection) => {
+    // First, get the competition_id from the segment
+    const getCompSql = 'SELECT competition_id FROM pageant_segments WHERE segment_id = ?';
+    
+    db.query(getCompSql, [segment_id], (err, compResult) => {
         if (err) {
-            console.error('❌ Connection error:', err);
-            return res.status(500).json({ success: false, error: 'Database connection error' });
+            console.error('Error getting competition:', err);
+            return res.status(500).json({ success: false, error: 'Error getting competition: ' + err.message });
         }
-
-        connection.beginTransaction((err) => {
+        
+        if (compResult.length === 0) {
+            return res.status(404).json({ success: false, error: 'Segment not found' });
+        }
+        
+        const competition_id = compResult[0].competition_id;
+        
+        // Delete old segment scores
+        const deleteSql = 'DELETE FROM pageant_segment_scores WHERE judge_id = ? AND participant_id = ? AND segment_id = ?';
+        
+        db.query(deleteSql, [judge_id, participant_id, segment_id], (err) => {
             if (err) {
-                connection.release();
-                return res.status(500).json({ success: false, error: 'Transaction error' });
+                console.error('Error deleting old scores:', err);
+                return res.status(500).json({ success: false, error: 'Error deleting old scores: ' + err.message });
             }
 
-            const deleteSql = 'DELETE FROM pageant_segment_scores WHERE judge_id = ? AND participant_id = ? AND segment_id = ?';
-            
-            connection.query(deleteSql, [judge_id, participant_id, segment_id], (err) => {
-                if (err) {
-                    return connection.rollback(() => {
-                        connection.release();
-                        res.status(500).json({ success: false, error: 'Error deleting old scores' });
-                    });
-                }
-
-                const insertPromises = scores.map(score => {
-                    return new Promise((resolve, reject) => {
-                        const sql = 'INSERT INTO pageant_segment_scores (judge_id, participant_id, segment_id, criteria_id, score, weighted_score, comments) VALUES (?, ?, ?, ?, ?, ?, ?)';
-                        connection.query(sql, [judge_id, participant_id, segment_id, score.criteria_id, score.score, score.weighted_score, score.comments || null], (err, result) => {
-                            if (err) reject(err);
-                            else resolve(result);
-                        });
-                    });
-                });
-
-                Promise.all(insertPromises).then(() => {
-                    const getCompSql = 'SELECT competition_id FROM pageant_segments WHERE segment_id = ?';
-                    connection.query(getCompSql, [segment_id], (err, result) => {
-                        if (err || result.length === 0) {
-                            return connection.rollback(() => {
-                                connection.release();
-                                res.status(500).json({ success: false, error: 'Segment not found' });
-                            });
+            // Insert new segment scores
+            const insertPromises = scores.map(score => {
+                return new Promise((resolve, reject) => {
+                    const sql = 'INSERT INTO pageant_segment_scores (judge_id, participant_id, segment_id, criteria_id, score, weighted_score, comments) VALUES (?, ?, ?, ?, ?, ?, ?)';
+                    db.query(sql, [
+                        judge_id, 
+                        participant_id, 
+                        segment_id, 
+                        score.criteria_id, 
+                        score.score, 
+                        score.weighted_score, 
+                        score.comments || null
+                    ], (err, result) => {
+                        if (err) {
+                            console.error('Error inserting score:', err);
+                            reject(err);
+                        } else {
+                            resolve(result);
                         }
-
-                        const competition_id = result[0].competition_id;
-                        const overallSql = `
-                            INSERT INTO overall_scores (judge_id, participant_id, competition_id, segment_id, total_score, general_comments, is_locked, locked_at)
-                            VALUES (?, ?, ?, ?, ?, ?, FALSE, NULL)
-                            ON DUPLICATE KEY UPDATE 
-                            total_score = VALUES(total_score), 
-                            general_comments = VALUES(general_comments),
-                            is_locked = FALSE,
-                            locked_at = NULL,
-                            updated_at = CURRENT_TIMESTAMP
-                        `;
-                        
-                        connection.query(overallSql, [judge_id, participant_id, competition_id, segment_id, total_score || 0, general_comments || null], (err) => {
-                            if (err) {
-                                return connection.rollback(() => {
-                                    connection.release();
-                                    res.status(500).json({ success: false, error: 'Error saving overall score' });
-                                });
-                            }
-
-                            connection.commit((err) => {
-                                if (err) {
-                                    return connection.rollback(() => {
-                                        connection.release();
-                                        res.status(500).json({ success: false, error: 'Commit error' });
-                                    });
-                                }
-
-                                connection.release();
-                                console.log('✅ Pageant segment scores saved successfully');
-                                res.json({ 
-                                    success: true, 
-                                    message: 'Segment scores submitted!', 
-                                    total_score, 
-                                    should_start_countdown: true 
-                                });
-                            });
-                        });
-                    });
-                }).catch(err => {
-                    connection.rollback(() => {
-                        connection.release();
-                        res.status(500).json({ success: false, error: err.message });
                     });
                 });
             });
+
+            Promise.all(insertPromises)
+                .then(() => {
+                    // Insert or update overall score
+                    const overallSql = `
+                        INSERT INTO overall_scores (judge_id, participant_id, competition_id, segment_id, total_score, general_comments, is_locked, locked_at)
+                        VALUES (?, ?, ?, ?, ?, ?, FALSE, NULL)
+                        ON DUPLICATE KEY UPDATE 
+                        total_score = VALUES(total_score), 
+                        general_comments = VALUES(general_comments),
+                        is_locked = FALSE,
+                        locked_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    `;
+                    
+                    db.query(overallSql, [
+                        judge_id, 
+                        participant_id, 
+                        competition_id, 
+                        segment_id, 
+                        total_score || 0, 
+                        general_comments || null
+                    ], (err, overallResult) => {
+                        if (err) {
+                            console.error('Error saving overall score:', err);
+                            return res.status(500).json({ success: false, error: 'Error saving overall score: ' + err.message });
+                        }
+
+                        console.log('Pageant segment scores saved successfully');
+                        res.json({ 
+                            success: true, 
+                            message: 'Segment scores submitted successfully', 
+                            total_score: total_score,
+                            should_start_countdown: true 
+                        });
+                    });
+                })
+                .catch(err => {
+                    console.error('Error in score insertion:', err);
+                    res.status(500).json({ success: false, error: 'Error saving scores: ' + err.message });
+                });
         });
     });
 });
