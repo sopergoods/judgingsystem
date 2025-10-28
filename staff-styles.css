@@ -1,4 +1,11 @@
-/* Staff Dashboard - Maroon and White Theme Only */
+/* =====================================================
+   STAFF DASHBOARD STYLES - CLEAN VERSION
+   Maroon & White Theme Only | Professional & Bug-Free
+   ===================================================== */
+
+/* =====================================================
+   GLOBAL STYLES
+   ===================================================== */
 
 * {
     margin: 0;
@@ -14,6 +21,7 @@ body {
     color: #333;
     min-height: 100vh;
     position: relative;
+    line-height: 1.6;
 }
 
 body::before {
@@ -34,12 +42,14 @@ body::before {
     padding: 20px;
 }
 
-/* Header */
+/* =====================================================
+   HEADER
+   ===================================================== */
+
 header {
     background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
     color: white;
     padding: 20px;
-    text-align: center;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(128, 0, 32, 0.3);
     margin-bottom: 20px;
@@ -49,7 +59,7 @@ header h1 {
     font-size: 2.2em;
     font-weight: 600;
     margin-bottom: 5px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 header p {
@@ -85,7 +95,7 @@ header p {
     font-size: 2.2em;
     font-weight: 600;
     margin-bottom: 5px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .header-content p {
@@ -93,12 +103,32 @@ header p {
     opacity: 0.9;
 }
 
-/* Navigation */
+.logout-btn {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: white;
+    color: #800020;
+}
+
+/* =====================================================
+   NAVIGATION
+   ===================================================== */
+
 nav {
     margin: 20px 0;
     background: white;
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
 
@@ -112,7 +142,7 @@ nav ul {
 
 nav li {
     flex: 1;
-    min-width: 150px;
+    min-width: 120px;
 }
 
 nav a {
@@ -137,17 +167,39 @@ nav a:hover {
     transform: translateY(-2px);
 }
 
-/* Content Section */
+nav a:focus {
+    outline: 2px solid #800020;
+    outline-offset: -2px;
+}
+
+/* =====================================================
+   CONTENT SECTION
+   ===================================================== */
+
 section {
     margin-top: 20px;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     padding: 30px;
     min-height: 400px;
 }
 
-/* Dashboard Cards */
+section h2 {
+    color: #800020;
+    margin-bottom: 15px;
+}
+
+section h3 {
+    color: #800020;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+/* =====================================================
+   DASHBOARD CARDS
+   ===================================================== */
+
 .dashboard-card {
     background: white;
     border: 2px solid #800020;
@@ -176,6 +228,11 @@ section {
     line-height: 1.4;
 }
 
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+
+button,
 .card-button {
     background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
     color: white;
@@ -184,17 +241,46 @@ section {
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    font-size: 14px;
     margin: 5px;
     transition: all 0.3s ease;
 }
 
+button:hover,
 .card-button:hover {
     background: linear-gradient(135deg, #a0002a 0%, #c0003a 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
 }
 
-/* Forms */
+button:focus,
+.card-button:focus {
+    outline: 2px solid #800020;
+    outline-offset: 2px;
+}
+
+button.secondary {
+    background: white;
+    color: #800020;
+    border: 2px solid #800020;
+}
+
+button.secondary:hover {
+    background: #f8f9fa;
+    border-color: #a0002a;
+    color: #a0002a;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* =====================================================
+   FORMS
+   ===================================================== */
+
 form {
     background-color: #fff;
     padding: 30px;
@@ -203,7 +289,8 @@ form {
     border: 2px solid #f0f0f0;
 }
 
-form h2, form h3 {
+form h2,
+form h3 {
     color: #800020;
     margin-bottom: 20px;
 }
@@ -216,13 +303,13 @@ form label {
     margin-top: 15px;
 }
 
-form input[type="text"], 
-form input[type="email"], 
-form input[type="tel"], 
-form input[type="number"], 
+form input[type="text"],
+form input[type="email"],
+form input[type="tel"],
+form input[type="number"],
 form input[type="date"],
 form input[type="url"],
-form select, 
+form select,
 form textarea {
     width: 100%;
     padding: 12px;
@@ -230,15 +317,21 @@ form textarea {
     border: 2px solid #ddd;
     border-radius: 8px;
     font-size: 16px;
+    font-family: inherit;
     transition: border-color 0.3s ease;
 }
 
-form input:focus, 
-form select:focus, 
+form input:focus,
+form select:focus,
 form textarea:focus {
     outline: none;
     border-color: #800020;
     box-shadow: 0 0 5px rgba(128, 0, 32, 0.3);
+}
+
+form textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
 form button[type="submit"] {
@@ -260,37 +353,40 @@ form button[type="submit"]:hover {
     box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
 }
 
-/* Buttons */
-button {
-    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    margin: 5px;
-    transition: all 0.3s ease;
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
 }
 
-button:hover {
-    background: linear-gradient(135deg, #a0002a 0%, #c0003a 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.3);
+.form-section:last-child {
+    border-bottom: none;
 }
 
-button.secondary {
-    background: #fff;
+/* =====================================================
+   FILTERS & SELECTS
+   ===================================================== */
+
+.filter-select {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
     color: #800020;
-    border: 2px solid #800020;
+    font-weight: 600;
+    transition: border-color 0.3s ease;
 }
 
-button.secondary:hover {
-    background: #f8f9fa;
-    border-color: #a0002a;
+.filter-select:focus {
+    outline: none;
+    border-color: #800020;
+    box-shadow: 0 0 5px rgba(128, 0, 32, 0.3);
 }
 
-/* Tables */
+/* =====================================================
+   TABLES
+   ===================================================== */
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -298,7 +394,7 @@ table {
     background: white;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 table th {
@@ -323,7 +419,10 @@ table tr:hover {
     background-color: #f0f0f0;
 }
 
-/* Status Indicators */
+/* =====================================================
+   STATUS INDICATORS
+   ===================================================== */
+
 .status-done {
     color: #28a745;
     font-weight: 600;
@@ -339,66 +438,10 @@ table tr:hover {
     font-weight: 600;
 }
 
-/* Alerts */
-.alert {
-    padding: 15px;
-    border-radius: 8px;
-    margin: 15px 0;
-    font-weight: 600;
-}
+/* =====================================================
+   LOADING STATE
+   ===================================================== */
 
-.alert-success {
-    background-color: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-}
-
-.alert-error {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-
-.alert-warning {
-    background-color: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-}
-
-/* Form Sections */
-.form-section {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.form-section:last-child {
-    border-bottom: none;
-}
-
-/* Report Sections */
-.report-section {
-    background: white;
-    border: 2px solid #800020;
-    border-radius: 12px;
-    padding: 25px;
-    margin: 20px 0;
-    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.1);
-}
-
-.report-section h3 {
-    color: #800020;
-    margin-bottom: 15px;
-    font-size: 1.4em;
-}
-
-.report-section h4 {
-    color: #800020;
-    margin: 15px 0 10px 0;
-    font-size: 1.2em;
-}
-
-/* Loading State */
 .loading {
     text-align: center;
     padding: 40px;
@@ -419,10 +462,15 @@ table tr:hover {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-/* Notification System */
+/* =====================================================
+   NOTIFICATIONS
+   ===================================================== */
+
 .notification {
     position: fixed;
     top: 20px;
@@ -433,8 +481,24 @@ table tr:hover {
     font-weight: 600;
     z-index: 10000;
     max-width: 300px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.notification-success {
+    background: #28a745;
+}
+
+.notification-error {
+    background: #dc3545;
+}
+
+.notification-warning {
+    background: #ffc107;
+    color: #333;
+}
+
+.notification-info {
+    background: #17a2b8;
 }
 
 @keyframes slideIn {
@@ -459,94 +523,40 @@ table tr:hover {
     }
 }
 
-/* Connection Indicator */
-#connection-indicator {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    padding: 5px 15px;
+/* =====================================================
+   REPORT SECTIONS
+   ===================================================== */
+
+.report-section {
     background: white;
     border: 2px solid #800020;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
-    z-index: 9999;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(128, 0, 32, 0.1);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .container {
-        width: 95%;
-        padding: 10px;
-    }
-    
-    nav ul {
-        flex-direction: column;
-    }
-    
-    nav a {
-        border-right: none;
-        border-bottom: 1px solid #f0f0f0;
-    }
-    
-    header h1 {
-        font-size: 1.8em;
-    }
-    
-    .header-left {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .dashboard-card {
-        margin-bottom: 20px;
-    }
-    
-    section {
-        padding: 15px;
-    }
+.report-section h3 {
+    color: #800020;
+    margin-bottom: 15px;
+    font-size: 1.4em;
 }
 
-/* Print Styles */
+.report-section h4 {
+    color: #800020;
+    margin: 15px 0 10px 0;
+    font-size: 1.2em;
+}
+
+/* =====================================================
+   PRINT STYLES
+   ===================================================== */
+
 @media print {
     body::before {
         display: none;
     }
-    
-    nav, button {
-        display: none;
-    }
-    
-    .dashboard-card {
-        break-inside: avoid;
-    }
-}
 
-/* Accessibility */
-button:focus,
-input:focus,
-select:focus,
-textarea:focus {
-    outline: 2px solid #800020;
-    outline-offset: 2px;
-}
-
-a:focus {
-    outline: 2px solid #800020;
-    outline-offset: 2px;
-}
-
-/* High Contrast Mode Support */
-@media (prefers-contrast: high) {
-    .dashboard-card,
-    button {
-        border-width: 3px;
-    }
-}
-
-@media print {
-    /* Hide unnecessary elements */
     header,
     nav,
     .no-print,
@@ -555,149 +565,177 @@ a:focus {
     .secondary {
         display: none !important;
     }
-    
-    /* Show print-only elements */
+
     .print-header {
         display: block !important;
     }
-    
-    /* Reset page styles */
+
     body {
         background: white !important;
         color: black !important;
         margin: 0;
         padding: 20px;
     }
-    
-    body::before {
-        display: none !important;
-    }
-    
+
     .container {
         width: 100% !important;
         max-width: none !important;
         margin: 0 !important;
         padding: 0 !important;
     }
-    
+
     section {
         box-shadow: none !important;
         border: none !important;
         padding: 0 !important;
         margin: 0 !important;
     }
-    
-    /* Table styles for printing */
+
     table {
         width: 100% !important;
         border-collapse: collapse !important;
         page-break-inside: auto !important;
     }
-    
+
     tr {
         page-break-inside: avoid !important;
         page-break-after: auto !important;
     }
-    
+
     thead {
         display: table-header-group !important;
     }
-    
-    tfoot {
-        display: table-footer-group !important;
-    }
-    
-    /* Ensure colors print */
+
     table th {
         background: #800020 !important;
         color: white !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
-    /* Rankings specific */
-    #printableRankings {
-        width: 100% !important;
+
+    h1,
+    h2,
+    h3 {
+        page-break-after: avoid !important;
     }
-    
-    /* Page breaks */
+
     .page-break {
         page-break-after: always !important;
     }
-    
-    /* Headers and titles */
-    h1, h2, h3 {
-        page-break-after: avoid !important;
+}
+
+/* =====================================================
+   RESPONSIVE DESIGN
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 10px;
+    }
+
+    nav ul {
+        flex-direction: column;
+    }
+
+    nav a {
+        border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    nav li:last-child a {
+        border-bottom: none;
+    }
+
+    header h1 {
+        font-size: 1.8em;
+    }
+
+    .header-left {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .dashboard-card {
+        margin-bottom: 20px;
+    }
+
+    section {
+        padding: 15px;
+    }
+
+    table {
+        font-size: 14px;
+    }
+
+    table th,
+    table td {
+        padding: 8px !important;
     }
 }
 
-/* ==========================================
-   EXPORT/DOWNLOAD NOTIFICATION STYLES
-   ========================================== */
+/* =====================================================
+   ACCESSIBILITY
+   ===================================================== */
 
-.export-notification {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    z-index: 10000;
+a:focus {
+    outline: 2px solid #800020;
+    outline-offset: 2px;
+}
+
+button:focus {
+    outline: 2px solid #800020;
+    outline-offset: 2px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 5px rgba(128, 0, 32, 0.5);
+}
+
+@media (prefers-contrast: high) {
+    .dashboard-card,
+    button {
+        border-width: 3px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =====================================================
+   UTILITY CLASSES
+   ===================================================== */
+
+.text-center {
     text-align: center;
-    border: 3px solid #800020;
 }
 
-.export-notification h3 {
-    color: #800020;
-    margin-bottom: 15px;
-}
-
-.export-notification p {
-    color: #666;
+.mb-20 {
     margin-bottom: 20px;
 }
 
-/* ==========================================
-   RANKINGS TABLE ENHANCEMENTS
-   ========================================== */
-
-.rankings-table-wrapper {
-    overflow-x: auto;
-    margin: 20px 0;
+.mt-20 {
+    margin-top: 20px;
 }
 
-.rank-medal {
-    font-size: 24px;
-    margin-right: 8px;
+.p-20 {
+    padding: 20px;
 }
 
-.rank-number {
-    font-size: 24px;
-    font-weight: bold;
+.hidden {
+    display: none !important;
 }
 
-.score-highlight {
-    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-weight: bold;
-    display: inline-block;
-}
-
-/* Responsive rankings */
-@media (max-width: 768px) {
-    .rankings-table-wrapper {
-        font-size: 14px;
-    }
-    
-    table th,
-    table td {
-        padding: 10px 8px !important;
-    }
-    
-    .rank-number {
-        font-size: 18px;
-    }
+.visible {
+    display: block !important;
 }

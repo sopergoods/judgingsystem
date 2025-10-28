@@ -1,6 +1,6 @@
-// Admin Dashboard - Clean & Bug-Free
+// Admin Dashboard - Clean & Bug-Free Version
 // Maroon & White Theme Only
-// Updated: Year/Course, Active/Disqualified/Done Status
+// No Emojis - Professional Code
 
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
@@ -1044,7 +1044,7 @@ function updateSegmentCriteriaTotal() {
 }
 
 // ================================================
-// PARTICIPANTS
+// PARTICIPANTS (Continued...)
 // ================================================
 
 function showAddParticipantForm() {
@@ -1378,7 +1378,7 @@ function deleteParticipant(id) {
 }
 
 // ================================================
-// JUDGES
+// JUDGES (Continued in next part due to length...)
 // ================================================
 
 function showAddJudgeForm() {
@@ -1768,12 +1768,12 @@ function displayPageantRankings(leaderboard, competitionName) {
             <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 10px;">
                 <p style="margin-bottom: 10px;">If a contestant scores:</p>
                 <ul style="margin-left: 20px; color: #666;">
-                    <li><strong>Day 1:</strong> Judge A: 100, Judge B: 100 → Segment Average = <strong>100</strong></li>
-                    <li><strong>Day 2:</strong> Judge A: 100, Judge B: 100 → Segment Average = <strong>100</strong></li>
-                    <li><strong>Day 3:</strong> Judge A: 83, Judge B: 83 → Segment Average = <strong>83</strong></li>
+                    <li><strong>Day 1:</strong> Judge A: 100, Judge B: 100 = Segment Average = <strong>100</strong></li>
+                    <li><strong>Day 2:</strong> Judge A: 100, Judge B: 100 = Segment Average = <strong>100</strong></li>
+                    <li><strong>Day 3:</strong> Judge A: 83, Judge B: 83 = Segment Average = <strong>83</strong></li>
                 </ul>
                 <p style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px;">
-                    <strong>Final Score = (100 + 100 + 83) ÷ 3 = 94.33</strong>
+                    <strong>Final Score = (100 + 100 + 83) / 3 = 94.33</strong>
                 </p>
             </div>
         </div>
@@ -2011,11 +2011,11 @@ function manageSegmentWeights(competitionId, competitionName) {
             <strong>About Segment Weights:</strong>
             <p>Assign a percentage weight to each segment to calculate the weighted grand total.</p>
             <p><strong>Example:</strong> If "Evening Gown" is weighted 40% and a contestant scores 90, 
-            their contribution to the grand total is 90 × 0.40 = 36 points.</p>
+            their contribution to the grand total is 90 x 0.40 = 36 points.</p>
             <ul style="margin-top: 10px;">
                 <li>Total weights must equal <strong>100%</strong></li>
                 <li>More important segments get higher weights</li>
-                <li>Final score = Sum of (segment_average × segment_weight)</li>
+                <li>Final score = Sum of (segment_average x segment_weight)</li>
             </ul>
         </div>
         

@@ -1,4 +1,4 @@
-/* Judge Dashboard - Maroon and White Theme */
+/* Judge Dashboard - Clean Maroon and White Theme */
 
 * {
     margin: 0;
@@ -315,6 +315,16 @@ form textarea:focus {
     box-shadow: 0 0 5px rgba(128, 0, 32, 0.3);
 }
 
+.score-input {
+    width: 200px !important;
+    padding: 12px;
+    font-size: 18px;
+    text-align: center;
+    font-weight: bold;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+}
+
 /* Tables */
 table {
     width: 100%;
@@ -379,16 +389,6 @@ table tr:hover {
     color: #666;
     margin-bottom: 15px;
     font-size: 14px;
-}
-
-.criterion-item input[type="number"] {
-    width: 200px;
-    padding: 12px;
-    font-size: 18px;
-    text-align: center;
-    font-weight: bold;
-    border: 2px solid #ddd;
-    border-radius: 8px;
 }
 
 /* Total Score Display */
@@ -555,6 +555,66 @@ table tr:hover {
     }
 }
 
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #800020;
+    font-size: 18px;
+}
+
+/* Participant Photo Display */
+.participant-photo-container {
+    text-align: center;
+    margin: 20px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #fff0f5 0%, #ffe4e9 100%);
+    border-radius: 12px;
+    border: 3px solid #800020;
+}
+
+.participant-photo {
+    display: inline-block;
+    position: relative;
+}
+
+.contestant-number-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+}
+
+.participant-photo-img {
+    max-width: 350px;
+    max-height: 450px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border: 4px solid white;
+}
+
+.participant-info-card {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.participant-info-card p {
+    margin: 5px 0;
+    color: #800020;
+    font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
@@ -600,172 +660,8 @@ table tr:hover {
     #totalScore {
         font-size: 2.5em;
     }
-}
-
-/* Loading State */
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: #800020;
-    font-size: 18px;
-}
-
-/* Participant Photo Display */
-.participant-photo-container {
-    text-align: center;
-    margin: 20px 0;
-    padding: 20px;
-    background: linear-gradient(135deg, #fff0f5 0%, #ffe4e9 100%);
-    border-radius: 12px;
-    border: 3px solid #800020;
-}
-
-.participant-photo {
-    display: inline-block;
-    position: relative;
-}
-
-.contestant-number-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: linear-gradient(135deg, #800020 0%, #a0002a 100%);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: bold;
-    font-size: 24px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    z-index: 10;
-}
-
-.participant-photo img {
-    max-width: 350px;
-    max-height: 450px;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    border: 4px solid white;
-}
-
-.participant-info-card {
-    margin-top: 20px;
-    padding: 15px;
-    background: white;
-    border-radius: 10px;
-    display: inline-block;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.participant-info-card p {
-    margin: 5px 0;
-    color: #800020;
-    font-weight: 600;
-}
-
-/* Scoring History Enhancements */
-.history-segment-badge {
-    display: inline-block;
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 12px;
-    font-weight: 600;
-    margin: 3px;
-}
-
-.history-segment-badge.complete {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.history-segment-badge.incomplete {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-}
-
-.ranking-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    font-weight: bold;
-    font-size: 18px;
-}
-
-.ranking-badge.gold {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-    color: #800020;
-    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
-}
-
-.ranking-badge.silver {
-    background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
-    color: #666;
-    box-shadow: 0 2px 8px rgba(192, 192, 192, 0.4);
-}
-
-.ranking-badge.bronze {
-    background: linear-gradient(135deg, #cd7f32 0%, #e8a87c 100%);
-    color: white;
-    box-shadow: 0 2px 8px rgba(205, 127, 50, 0.4);
-}
-
-.stat-card {
-    padding: 15px;
-    background: white;
-    border-radius: 8px;
-    border: 2px solid #800020;
-    text-align: center;
-}
-
-.stat-card .stat-label {
-    font-size: 12px;
-    color: #666;
-    font-weight: 600;
-    text-transform: uppercase;
-    margin-bottom: 5px;
-}
-
-.stat-card .stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: #800020;
-}
-
-.segment-score-card {
-    background: white;
-    padding: 10px 15px;
-    border-radius: 8px;
-    border: 2px solid #ddd;
-    display: inline-block;
-    margin: 5px;
-    transition: all 0.3s ease;
-}
-
-.segment-score-card:hover {
-    border-color: #800020;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(128, 0, 32, 0.2);
-}
-
-.segment-score-card .segment-name {
-    font-weight: 600;
-    color: #800020;
-    font-size: 13px;
-    margin-bottom: 5px;
-}
-
-.segment-score-card .segment-score {
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
-}
-
-.segment-score-card .segment-date {
-    font-size: 11px;
-    color: #666;
-    margin-top: 3px;
+    
+    .score-input {
+        width: 100% !important;
+    }
 }
