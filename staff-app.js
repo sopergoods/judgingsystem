@@ -895,20 +895,16 @@ function viewParticipantDetails(id) {
 }
 
 function updateRegistrationStatus(participantId, currentStatus) {
-    const statusOptions = {
-        'pending': 'ongoing',
-        'ongoing': 'done',
-        'done': 'pending'
-    };
-    
-    const nextStatus = statusOptions[currentStatus];
-    
+    // Only two states in Staff: ACTIVE <-> DONE
+    const s = String(currentStatus || '').toLowerCase();
+    const nextStatus = (s === 'done') ? 'active' : 'done';
+
     if (confirm(`Change status to "${nextStatus.toUpperCase()}"?`)) {
         putData(`${API_URL}/update-participant-status/${participantId}`, { status: nextStatus })
             .then(data => {
                 if (data.success) {
                     showNotification(`Status updated to ${nextStatus.toUpperCase()}`, 'success');
-                    setTimeout(() => showViewParticipants(), 1000);
+                    setTimeout(() => showViewParticipants(), 600);
                 } else {
                     showNotification(data.error || 'Error updating status', 'error');
                 }
@@ -916,6 +912,7 @@ function updateRegistrationStatus(participantId, currentStatus) {
             .catch(() => showNotification('Error updating status', 'error'));
     }
 }
+
 
 function editParticipant(participantId) {
     clearAllIntervals();

@@ -460,7 +460,7 @@ app.post('/add-participant', (req, res) => {
         performance_title, 
         performance_description, 
         competition_id, 
-        status || 'pending',
+        status || 'Active',
         height || null,
         measurements || null, // Keep this field
         talents || null,
