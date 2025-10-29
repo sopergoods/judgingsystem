@@ -1258,6 +1258,7 @@ function showScoringHistory() {
                 });
         });
 }
+// === REPLACE the whole function with this ===
 function loadDetailedScoringHistory(competitions, judgeId) {
     if (competitions.length === 0) {
         document.getElementById("content").innerHTML = `
@@ -1269,49 +1270,81 @@ function loadDetailedScoringHistory(competitions, judgeId) {
 
     Promise.all(
         competitions.map(comp => {
-            return Promise.all([
-                // 🔁 Use granular rows (per judge, per criterion) instead of cross-judge overall
-                fetch(`${API_URL}/competition-segment-scores/${comp.competition_id}`).then(r => r.json()),
-                fetch(`${API_URL}/pageant-segments/${comp.competition_id}`).then(r => r.json()).catch(() => []),
-                fetch(`${API_URL}/participants/${comp.competition_id}`).then(r => r.json())
-            ]).then(([rows, segments, participants]) => {
-                // Only this judge's rows
-                const mine = rows.filter(r => r.judge_id === judgeId);
+            // Branch per competition type
+            if (comp.is_pageant) {
+                // ---- PAGEANT (multi-day) ----
+                return Promise.all([
+                    fetch(`${API_URL}/competition-segment-scores/${comp.competition_id}`).then(r => r.json()),
+                    fetch(`${API_URL}/pageant-segments/${comp.competition_id}`).then(r => r.json()).catch(() => []),
+                    fetch(`${API_URL}/participants/${comp.competition_id}`).then(r => r.json())
+                ]).then(([rows, segments, participants]) => {
+                    // Only this judge's rows
+                    const mine = rows.filter(r => r.judge_id === judgeId);
 
-                // Quick lookup for participant meta (for table labels)
-                const pmap = {};
-                participants.forEach(p => {
-                    pmap[p.participant_id] = {
-                        participant_name: p.participant_name,
-                        performance_title: p.performance_title
-                    };
-                });
-
-                // Aggregate to what your renderer expects: one row per (participant, segment)
-                const byPS = {};
-                mine.forEach(r => {
-                    const key = `${r.participant_id}-${r.segment_id}`;
-                    if (!byPS[key]) {
-                        byPS[key] = {
-                            participant_id: r.participant_id,
-                            segment_id: r.segment_id,
-                            total_score: 0,
-                            submitted_at: r.updated_at || r.created_at,
-                            // fields your renderer uses in displayEnhancedScoringHistory
-                            participant_name: pmap[r.participant_id]?.participant_name || r.participant_name || '',
-                            performance_title: pmap[r.participant_id]?.performance_title || ''
+                    // participant meta
+                    const pmap = {};
+                    participants.forEach(p => {
+                        pmap[p.participant_id] = {
+                            participant_name: p.participant_name,
+                            performance_title: p.performance_title
                         };
-                    }
-                    byPS[key].total_score += parseFloat(r.weighted_score || 0);
-                });
+                    });
 
-                const overallScores = Object.values(byPS);
-                return { competition: comp, overallScores, segments, participants };
-            });
+                    // Aggregate per (participant, segment)
+                    const byPS = {};
+                    mine.forEach(r => {
+                        const key = `${r.participant_id}-${r.segment_id}`;
+                        if (!byPS[key]) {
+                            byPS[key] = {
+                                participant_id: r.participant_id,
+                                segment_id: r.segment_id,
+                                total_score: 0,
+                                submitted_at: r.updated_at || r.created_at,
+                                participant_name: pmap[r.participant_id]?.participant_name || r.participant_name || '',
+                                performance_title: pmap[r.participant_id]?.performance_title || ''
+                            };
+                        }
+                        byPS[key].total_score += parseFloat(r.weighted_score || 0);
+                    });
+
+                    const overallScores = Object.values(byPS);
+                    return { competition: comp, overallScores, segments, participants };
+                });
+            } else {
+                // ---- REGULAR (single-day) ----
+                return Promise.all([
+                    fetch(`${API_URL}/overall-scores/${comp.competition_id}`).then(r => r.json()),
+                    fetch(`${API_URL}/participants/${comp.competition_id}`).then(r => r.json())
+                ]).then(([rows, participants]) => {
+                    // Keep only this judge's rows
+                    const mine = rows.filter(r => r.judge_id === judgeId);
+
+                    // participant meta
+                    const pmap = {};
+                    participants.forEach(p => {
+                        pmap[p.participant_id] = {
+                            participant_name: p.participant_name,
+                            performance_title: p.performance_title
+                        };
+                    });
+
+                    // Shape to what displayEnhancedScoringHistory expects
+                    const overallScores = mine.map(r => ({
+                        participant_id: r.participant_id,
+                        // no segment_id needed for regular
+                        total_score: parseFloat(r.total_score || 0),
+                        submitted_at: r.updated_at || r.created_at,
+                        participant_name: pmap[r.participant_id]?.participant_name || r.participant_name || '',
+                        performance_title: pmap[r.participant_id]?.performance_title || ''
+                    }));
+
+                    return { competition: comp, overallScores, segments: [], participants };
+                });
+            }
         })
     )
     .then(competitionData => {
-        // ⬅️ keep your existing renderer
+        // Your existing renderer (already updated to do weighted totals for pageants)
         displayEnhancedScoringHistory(competitionData, judgeId);
     })
     .catch(error => {
