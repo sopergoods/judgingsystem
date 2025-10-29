@@ -1578,7 +1578,7 @@ function loadCompetitionRankings() {
     window.currentCompetitionId = competitionId;
 
     const endpoint = isPageant ? 
-        `${API_URL}/pageant-leaderboard/${competitionId}` : 
+        `${API_URL}/pageant-grand-total/${competitionId}` : 
         `${API_URL}/overall-scores/${competitionId}`;
 
     fetchData(endpoint)
@@ -1601,15 +1601,16 @@ function loadCompetitionRankings() {
 function displayRankings(scores, competitionName, isPageant) {
     let rankings = [];
     
-    if (isPageant) {
-        rankings = scores.map(score => ({
-            participant_name: score.participant_name,
-            contestant_number: score.contestant_number,
-            performance_title: score.performance_title,
-            average_score: parseFloat(score.average_score),
-            judge_count: score.judge_count,
-            segments_completed: score.segments_completed
-        }));
+   if (isPageant) {
+   rankings = scores.map(score => ({
+     participant_name: score.participant_name,
+     contestant_number: score.contestant_number,
+     performance_title: score.performance_title,
+     // use weighted grand total from API
+     average_score: Number(score.weighted_grand_total),   // keep field name used by renderer
+     judge_count: score.judge_count,
+     segments_completed: score.segments_completed
+   }));
     } else {
         const participantScores = {};
         scores.forEach(score => {
@@ -1747,7 +1748,7 @@ function exportRankingsCSV() {
     csv += `Generated on ${new Date().toLocaleString()}\n\n`;
     
     if (isPageant) {
-        csv += 'Rank,Participant Name,Contestant Number,Performance,Average Score,Judges,Segments Completed\n';
+       csv += 'Rank,Participant Name,Contestant Number,Performance,Grand Total (Weighted),Judges,Segments Completed\n';
     } else {
         csv += 'Rank,Participant Name,Performance,Average Score,Judges\n';
     }
