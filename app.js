@@ -1772,31 +1772,33 @@ function displayPageantRankings(leaderboard, competitionName) {
 
 function displayRegularRankings(scores) {
     const participantScores = {};
+
     scores.forEach(score => {
         if (!participantScores[score.participant_id]) {
             participantScores[score.participant_id] = {
                 participant_name: score.participant_name,
                 performance_title: score.performance_title,
-                scores: [],
-                average: 0
+                scores: []
             };
         }
-        
-        const totalScore = parseFloat(score.total_score);
-        if (!isNaN(totalScore)) {
-            participantScores[score.participant_id].scores.push({
-                judge_name: score.judge_name,
-                total_score: totalScore
-            });
+
+        const totalScore = Number(score.total_score);
+        if (Number.isFinite(totalScore)) {
+            participantScores[score.participant_id].scores.push(totalScore);
         }
     });
 
     const sortedParticipants = Object.values(participantScores).map(p => {
-        if (p.scores.length > 0) {
-            const sum = p.scores.reduce((total, s) => total + s.total_score, 0);
-            p.average = sum / p.scores.length;
-        }
-        return p;
+        const validScores = p.scores.filter(s => Number.isFinite(s));
+        const sum = validScores.reduce((a, b) => a + b, 0);
+        const avg = validScores.length > 0 ? sum / validScores.length : 0;
+
+        return {
+            participant_name: p.participant_name,
+            performance_title: p.performance_title,
+            average: avg,
+            judge_count: validScores.length
+        };
     }).sort((a, b) => b.average - a.average);
 
     let html = `
@@ -1815,22 +1817,22 @@ function displayRegularRankings(scores) {
     sortedParticipants.forEach((p, index) => {
         const rankColor = index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#666';
         const rankText = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`;
-        
+
         html += `
             <tr>
                 <td style="text-align: center; font-size: 18px; color: ${rankColor}; font-weight: bold;">${rankText}</td>
                 <td><strong>${p.participant_name}</strong></td>
                 <td>${p.performance_title || 'N/A'}</td>
                 <td style="text-align: center; font-weight: bold; color: #800020; font-size: 18px;">${p.average.toFixed(2)}</td>
-                <td style="text-align: center;">${p.scores.length}</td>
+                <td style="text-align: center;">${p.judge_count}</td>
             </tr>
         `;
     });
 
     html += '</table></div>';
-    
     document.getElementById("resultsContent").innerHTML = html;
 }
+
 
 // ================================================
 // UNLOCK REQUESTS
