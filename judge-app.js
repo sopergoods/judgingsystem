@@ -1,5 +1,5 @@
 // JUDGE DASHBOARD - CLEAN DEBUGGED VERSION
-// Maroon & White Theme | No Emojis | All History Bugs Fixed
+// Maroon & White Theme | All Multi-Day Bugs Fixed
 
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
@@ -1187,8 +1187,8 @@ function displayUnlockRequests(requests) {
         html += '<div style="display: grid; gap: 15px;">';
         
         requests.forEach(request => {
-            const statusColor = request.status === 'approved' ? '#800020' : 
-                              request.status === 'rejected' ? '#800020' : '#800020';
+            const statusColor = request.status === 'approved' ? '#28a745' : 
+                              request.status === 'rejected' ? '#dc3545' : '#ffc107';
             
             html += `
                 <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${statusColor};">
@@ -1225,7 +1225,7 @@ function displayUnlockRequests(requests) {
     document.getElementById("content").innerHTML = html;
 }
 
-// SCORING HISTORY - COMPLETELY FIXED
+// SCORING HISTORY - COMPLETELY FIXED FOR MULTI-DAY
 function showScoringHistory() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
@@ -1312,10 +1312,17 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                     participantScores[score.participant_id] = {
                         participant_name: score.participant_name,
                         performance_title: score.performance_title,
-                        average_score: parseFloat(score.total_score),
-                        segments_completed: score.segments_completed || 0
+                        segment_scores: [],
+                        segments_completed: 0
                     };
                 }
+                participantScores[score.participant_id].segment_scores.push(parseFloat(score.total_score));
+                participantScores[score.participant_id].segments_completed++;
+            });
+            
+            Object.values(participantScores).forEach(p => {
+                const sum = p.segment_scores.reduce((acc, s) => acc + s, 0);
+                p.average_score = sum / p.segment_scores.length;
             });
         } else {
             overallScores.forEach(score => {
@@ -1324,16 +1331,8 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                     participantScores[score.participant_id] = {
                         participant_name: score.participant_name,
                         performance_title: score.performance_title,
-                        scores: []
+                        average_score: parseFloat(score.total_score)
                     };
-                }
-                participantScores[score.participant_id].scores.push(parseFloat(score.total_score));
-            });
-            
-            Object.values(participantScores).forEach(p => {
-                if (p.scores) {
-                    const sum = p.scores.reduce((acc, s) => acc + s, 0);
-                    p.average_score = sum / p.scores.length;
                 }
             });
         }
@@ -1390,15 +1389,15 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                     const isComplete = scoredCount === totalParticipants;
                     
                     html += `
-                        <div style="background: white; padding: 10px; border-radius: 5px; border: 2px solid ${isComplete ? '#800020' : '#800020'};">
+                        <div style="background: white; padding: 10px; border-radius: 5px; border: 2px solid ${isComplete ? '#28a745' : '#ffc107'};">
                             <div style="font-weight: 600; color: #800020; margin-bottom: 5px;">${segment.segment_name}</div>
                             <div style="font-size: 12px; color: #666;">Day ${segment.day_number}</div>
                             <div style="margin-top: 8px; font-size: 14px;">
                                 Scored: <strong>${scoredCount}/${totalParticipants}</strong>
                             </div>
                             ${isComplete ? 
-                                '<div style="margin-top: 5px; font-size: 11px; color: #800020; font-weight: 600;">COMPLETE</div>' :
-                                '<div style="margin-top: 5px; font-size: 11px; color: #800020; font-weight: 600;">IN PROGRESS</div>'
+                                '<div style="margin-top: 5px; font-size: 11px; color: #28a745; font-weight: 600;">COMPLETE</div>' :
+                                '<div style="margin-top: 5px; font-size: 11px; color: #ffc107; font-weight: 600;">IN PROGRESS</div>'
                             }
                         </div>
                     `;
