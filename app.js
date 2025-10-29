@@ -1648,59 +1648,64 @@ function showScoringResults() {
 
 // --- REPLACE your loadScoringResults() in app.js with this ---
 function loadScoringResults() {
-    const competitionId = document.getElementById("resultsCompetition").value;
-    if (!competitionId) return;
+  const competitionId = document.getElementById("resultsCompetition").value;
+  if (!competitionId) return;
 
-    document.getElementById("resultsContent").innerHTML = '<div class="loading">Loading results...</div>';
+  const out = document.getElementById("resultsContent");
+  out.innerHTML = '<div class="loading">Loading results...</div>';
 
-    fetch(`${API_URL}/competition/${competitionId}`)
-        .then(response => response.json())
-        .then(competition => {
-            const isPageant = competition.is_pageant;
+  // helper to fetch JSON with good error messages
+  const getJSON = (url) =>
+    fetch(url).then(async (r) => {
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status} on ${url}\n${text.slice(0, 200)}`);
+      }
+      return r.json();
+    });
 
-          if (isPageant) {
-    // ✅ Use weighted endpoint to match Judge math
-    fetch(`${API_URL}/pageant-grand-total/${competitionId}`)
-        .then(response => response.json())
-        .then(leaderboard => {
-            if (!Array.isArray(leaderboard) || leaderboard.length === 0) {
-                document.getElementById("resultsContent").innerHTML = `
-                    <div class="alert alert-warning">
-                        <h3>No Scores Yet</h3>
-                        <p>No scores submitted for this pageant competition.</p>
-                    </div>
-                `;
-                return;
-            }
-            displayPageantRankings(leaderboard, competition.competition_name);
-        })
-        .catch(error => {
-            console.error('Error loading pageant rankings:', error);
-            document.getElementById("resultsContent").innerHTML = `
-                <div class="alert alert-error">
-                    <h3>Error Loading Rankings</h3>
-                    <p>Could not load pageant rankings.</p>
-                </div>
-            `;
+  getJSON(`${API_URL}/competition/${competitionId}`)
+    .then((competition) => {
+      const isPageant = competition.is_pageant;
+
+      if (isPageant) {
+        // ✅ Pageant: weighted grand total
+        return getJSON(`${API_URL}/pageant-grand-total/${competitionId}`).then((leaderboard) => {
+          if (!Array.isArray(leaderboard) || leaderboard.length === 0) {
+            out.innerHTML = `
+              <div class="alert alert-warning">
+                <h3>No Scores Yet</h3>
+                <p>No scores submitted for this pageant competition.</p>
+              </div>`;
+            return;
+          }
+          displayPageantRankings(leaderboard, competition.competition_name);
         });
-
-            } else {
-                // regular, single-day
-                fetch(`${API_URL}/overall-leaderboard/${competitionId}`)
-                    .then(response => response.json())
-                    .then(data => displayCompetitionRankings(data, competition.competition_name))
-                    .catch(error => {
-                        console.error('Error loading results:', error);
-                        document.getElementById("resultsContent").innerHTML = `
-                            <div class="alert alert-error">
-                                <h3>Error Loading Results</h3>
-                                <p>Could not load competition results.</p>
-                            </div>
-                        `;
-                    });
-            }
+      } else {
+        // ✅ Regular: overall-scores (one row per judge×participant)
+        return getJSON(`${API_URL}/overall-scores/${competitionId}`).then((scores) => {
+          if (!Array.isArray(scores) || scores.length === 0) {
+            out.innerHTML = `
+              <div class="alert alert-warning">
+                <h3>No Scores Yet</h3>
+                <p>No scores submitted for this competition.</p>
+              </div>`;
+            return;
+          }
+          displayRegularRankings(scores);
         });
+      }
+    })
+    .catch((err) => {
+      console.error("Error loading results:", err);
+      out.innerHTML = `
+        <div class="alert alert-error">
+          <h3>Error Loading Rankings</h3>
+          <pre style="white-space:pre-wrap">${String(err)}</pre>
+        </div>`;
+    });
 }
+
 
 
 function displayPageantRankings(leaderboard, competitionName) {
