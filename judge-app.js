@@ -1303,9 +1303,11 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
         const isPageant = competition.is_pageant;
         
         let participantScores = {};
+        let uniqueScoredParticipants = new Set();
         
         if (isPageant) {
             overallScores.forEach(score => {
+                uniqueScoredParticipants.add(score.participant_id);
                 if (!participantScores[score.participant_id]) {
                     participantScores[score.participant_id] = {
                         participant_name: score.participant_name,
@@ -1317,6 +1319,7 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
             });
         } else {
             overallScores.forEach(score => {
+                uniqueScoredParticipants.add(score.participant_id);
                 if (!participantScores[score.participant_id]) {
                     participantScores[score.participant_id] = {
                         participant_name: score.participant_name,
@@ -1346,6 +1349,9 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
             participant.rank = index + 1;
         });
 
+        const totalParticipantsInCompetition = participants.length;
+        const participantsScoredCount = uniqueScoredParticipants.size;
+
         html += `
             <div class="dashboard-card" style="text-align: left; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -1360,7 +1366,7 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                     <div style="text-align: right;">
                         <div style="font-size: 14px; color: #666;">Scored</div>
                         <div style="font-size: 24px; font-weight: bold; color: #800020;">
-                            ${rankedParticipants.length}/${participants.length}
+                            ${participantsScoredCount}/${totalParticipantsInCompetition}
                         </div>
                         <div style="font-size: 12px; color: #666;">participants</div>
                     </div>
@@ -1442,30 +1448,33 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
             html += '</tbody></table>';
 
             const totalScored = rankedParticipants.length;
-            const avgOfAverages = rankedParticipants.reduce((sum, p) => sum + p.average_score, 0) / totalScored;
-            const highestScore = rankedParticipants[0].average_score;
-            const lowestScore = rankedParticipants[rankedParticipants.length - 1].average_score;
+            
+            if (totalScored > 0) {
+                const avgOfAverages = rankedParticipants.reduce((sum, p) => sum + p.average_score, 0) / totalScored;
+                const highestScore = rankedParticipants[0].average_score;
+                const lowestScore = rankedParticipants[rankedParticipants.length - 1].average_score;
 
-            html += `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <div>
-                        <div style="font-size: 12px; color: #666; font-weight: 600;">PARTICIPANTS SCORED</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${totalScored}</div>
+                html += `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div>
+                            <div style="font-size: 12px; color: #666; font-weight: 600;">PARTICIPANTS SCORED</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #800020;">${totalScored}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #666; font-weight: 600;">YOUR AVERAGE</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #800020;">${avgOfAverages.toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #666; font-weight: 600;">HIGHEST SCORE</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #800020;">${highestScore.toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #666; font-weight: 600;">LOWEST SCORE</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #666;">${lowestScore.toFixed(2)}</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-size: 12px; color: #666; font-weight: 600;">YOUR AVERAGE</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${avgOfAverages.toFixed(2)}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 12px; color: #666; font-weight: 600;">HIGHEST SCORE</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${highestScore.toFixed(2)}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 12px; color: #666; font-weight: 600;">LOWEST SCORE</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #666;">${lowestScore.toFixed(2)}</div>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         }
 
         html += '</div>';
