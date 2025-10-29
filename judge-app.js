@@ -1,7 +1,5 @@
-// ==========================================
 // JUDGE DASHBOARD - CLEAN DEBUGGED VERSION
-// Maroon & White Theme | Bug-Free | Professional
-// ==========================================
+// Maroon & White Theme | No Emojis | All History Bugs Fixed
 
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
@@ -10,9 +8,7 @@ let lockCountdown = 10;
 let currentScoreData = null;
 let draftSaveTimeout = null;
 
-// ==========================================
-// 1. AUTHENTICATION & INITIALIZATION
-// ==========================================
+// AUTHENTICATION & INITIALIZATION
 document.addEventListener('DOMContentLoaded', function() {
     checkAuthentication();
 });
@@ -38,9 +34,7 @@ function logout() {
     window.location.href = 'login.html';
 }
 
-// ==========================================
-// 2. DASHBOARD
-// ==========================================
+// DASHBOARD
 function showDashboard() {
     document.getElementById("content").innerHTML = `
         <div class="dashboard-welcome">
@@ -77,20 +71,12 @@ function showDashboard() {
                     <p>View your judge profile and credentials</p>
                     <button onclick="showProfile()" class="card-button">View Profile</button>
                 </div>
-                
-                <div class="dashboard-card">
-                    <h3>Competition Rankings</h3>
-                    <p>View current standings and results</p>
-                    <button onclick="showCompetitionRankings()" class="card-button">View Rankings</button>
-                </div>
             </div>
         </div>
     `;
 }
 
-// ==========================================
-// 3. MY COMPETITIONS
-// ==========================================
+// MY COMPETITIONS
 function showMyCompetitions() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
@@ -170,9 +156,7 @@ function displayCompetitions(competitions) {
     document.getElementById("content").innerHTML = html;
 }
 
-// ==========================================
-// 4. VIEW PARTICIPANTS
-// ==========================================
+// VIEW PARTICIPANTS
 function viewCompetitionParticipants(competitionId) {
     fetch(`${API_URL}/participants/${competitionId}`)
         .then(response => response.json())
@@ -242,9 +226,7 @@ function escapeString(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
 }
 
-// ==========================================
-// 5. MAIN SCORING FUNCTION
-// ==========================================
+// MAIN SCORING FUNCTION
 function scoreParticipant(participantId, competitionId, participantName) {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
@@ -293,9 +275,7 @@ function scoreParticipant(participantId, competitionId, participantName) {
         });
 }
 
-// ==========================================
-// 6. CHECK IF SCORE IS LOCKED
-// ==========================================
+// CHECK IF SCORE IS LOCKED
 function checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, callback) {
     let url = `${API_URL}/check-score-lock/${judgeId}/${participantId}/${competitionId}`;
     
@@ -318,9 +298,7 @@ function checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, ca
         });
 }
 
-// ==========================================
-// 7. SHOW LOCKED SCORE MESSAGE
-// ==========================================
+// SHOW LOCKED SCORE MESSAGE
 function showLockedScoreMessage(judgeId, participantId, competitionId, segmentId, participantName, lockInfo) {
     const minutesLocked = Math.floor(lockInfo.seconds_since_lock / 60);
     
@@ -360,9 +338,7 @@ function showLockedScoreMessage(judgeId, participantId, competitionId, segmentId
     `;
 }
 
-// ==========================================
-// 8. PAGEANT SEGMENT SELECTION
-// ==========================================
+// PAGEANT SEGMENT SELECTION
 function showSegmentSelection(judgeId, participantId, competitionId, participantName) {
     document.getElementById("content").innerHTML = `
         <h2>Pageant Scoring - Select Segment</h2>
@@ -459,9 +435,7 @@ function displaySegments(segments, judgeId, participantId, competitionId, partic
     document.getElementById("segmentsList").innerHTML = html;
 }
 
-// ==========================================
-// 9. SEGMENT SCORING (FIXED)
-// ==========================================
+// SEGMENT SCORING
 function showSegmentScoring(judgeId, participantId, competitionId, segmentId, participantName, segmentName) {
     checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, (isLocked, lockInfo) => {
         if (isLocked) {
@@ -561,7 +535,7 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
                       style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-top: 5px; font-size: 14px;"></textarea>
             
             <div style="margin-top: 30px; text-align: center;">
-                <button type="submit" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 45px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                <button type="submit" style="background: #800020; color: white; border: none; padding: 18px 45px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px;">
                     Submit Score
                 </button>
                 <button type="button" onclick="showSegmentSelection(${judgeId}, ${participantId}, ${competitionId}, '${escapeString(participantName)}')" class="secondary" style="margin-left: 15px; padding: 18px 35px; font-size: 16px;">
@@ -677,9 +651,7 @@ function calculateSegmentTotalScore() {
     }
 }
 
-// ==========================================
-// 10. REGULAR COMPETITION SCORING (FIXED)
-// ==========================================
+// REGULAR COMPETITION SCORING
 function showRegularScoringForm(judgeId, participantId, competitionId, participantName, participant) {
     fetch(`${API_URL}/competition-criteria/${competitionId}`)
         .then(response => response.json())
@@ -756,7 +728,7 @@ function displayRegularScoringForm(judgeId, participantId, competitionId, partic
                       style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-top: 5px; font-size: 14px;"></textarea>
             
             <div style="margin-top: 30px; text-align: center;">
-                <button type="submit" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 45px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                <button type="submit" style="background: #800020; color: white; border: none; padding: 18px 45px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 18px;">
                     Submit Score
                 </button>
                 <button type="button" onclick="viewCompetitionParticipants(${competitionId})" class="secondary" style="margin-left: 15px; padding: 18px 35px; font-size: 16px;">
@@ -899,9 +871,7 @@ function generateParticipantPhotoHTML(participant) {
     `;
 }
 
-// ==========================================
-// 11. DRAFT SYSTEM (FIXED)
-// ==========================================
+// DRAFT SYSTEM
 function autoSaveDraft(judgeId, participantId, segmentId) {
     clearTimeout(draftSaveTimeout);
     showDraftStatus('Saving draft...', 'saving');
@@ -1023,16 +993,7 @@ function showDraftStatus(message, type) {
         document.body.appendChild(indicator);
     }
     
-    const colors = {
-        saving: '#ffc107',
-        success: '#28a745',
-        warning: '#ff9800',
-        error: '#dc3545'
-    };
-    
     indicator.textContent = message;
-    indicator.style.background = colors[type] || colors.saving;
-    indicator.style.color = 'white';
     indicator.style.display = 'block';
 }
 
@@ -1043,9 +1004,7 @@ function hideDraftStatus() {
     }
 }
 
-// ==========================================
-// 12. LOCK COUNTDOWN SYSTEM (FIXED)
-// ==========================================
+// LOCK COUNTDOWN SYSTEM
 function startLockCountdown(judgeId, participantId, competitionId, segmentId, scoreType) {
     if (lockTimer) {
         clearInterval(lockTimer);
@@ -1092,7 +1051,6 @@ function updateLockCountdown() {
         countdownNumber.textContent = lockCountdown;
         
         if (lockCountdown <= 3) {
-            countdownDiv.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
             countdownNumber.style.animation = 'pulse 0.5s ease-in-out';
         }
     }
@@ -1149,9 +1107,7 @@ function autoLockScore() {
     currentScoreData = null;
 }
 
-// ==========================================
-// 13. UNLOCK REQUEST SYSTEM
-// ==========================================
+// UNLOCK REQUEST SYSTEM
 function requestUnlock(judgeId, participantId, competitionId, segmentId, participantName, scoreType) {
     const reason = prompt(`Request unlock for ${participantName}?\n\nPlease explain why you need to edit this score:`);
     
@@ -1231,8 +1187,8 @@ function displayUnlockRequests(requests) {
         html += '<div style="display: grid; gap: 15px;">';
         
         requests.forEach(request => {
-            const statusColor = request.status === 'approved' ? '#28a745' : 
-                              request.status === 'rejected' ? '#dc3545' : '#ffc107';
+            const statusColor = request.status === 'approved' ? '#800020' : 
+                              request.status === 'rejected' ? '#800020' : '#800020';
             
             html += `
                 <div class="dashboard-card" style="text-align: left; border-left: 5px solid ${statusColor};">
@@ -1253,7 +1209,7 @@ function displayUnlockRequests(requests) {
                     </div>
                     
                     ${request.status !== 'pending' ? `
-                        <div style="background: ${request.status === 'approved' ? '#d4edda' : '#f8d7da'}; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;">
                             <strong>Admin Response:</strong><br>
                             ${request.admin_notes || 'No additional notes'}
                             <br><small>Reviewed: ${new Date(request.reviewed_at).toLocaleString()}</small>
@@ -1269,9 +1225,7 @@ function displayUnlockRequests(requests) {
     document.getElementById("content").innerHTML = html;
 }
 
-// ==========================================
-// 14. SCORING HISTORY (COMPLETELY FIXED)
-// ==========================================
+// SCORING HISTORY - COMPLETELY FIXED
 function showScoringHistory() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
@@ -1430,15 +1384,15 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                     const isComplete = scoredCount === totalParticipants;
                     
                     html += `
-                        <div style="background: white; padding: 10px; border-radius: 5px; border: 2px solid ${isComplete ? '#28a745' : '#800020'};">
+                        <div style="background: white; padding: 10px; border-radius: 5px; border: 2px solid ${isComplete ? '#800020' : '#800020'};">
                             <div style="font-weight: 600; color: #800020; margin-bottom: 5px;">${segment.segment_name}</div>
                             <div style="font-size: 12px; color: #666;">Day ${segment.day_number}</div>
                             <div style="margin-top: 8px; font-size: 14px;">
                                 Scored: <strong>${scoredCount}/${totalParticipants}</strong>
                             </div>
                             ${isComplete ? 
-                                '<div style="margin-top: 5px; font-size: 11px; color: #28a745; font-weight: 600;">COMPLETE</div>' :
-                                '<div style="margin-top: 5px; font-size: 11px; color: #ff9800; font-weight: 600;">IN PROGRESS</div>'
+                                '<div style="margin-top: 5px; font-size: 11px; color: #800020; font-weight: 600;">COMPLETE</div>' :
+                                '<div style="margin-top: 5px; font-size: 11px; color: #800020; font-weight: 600;">IN PROGRESS</div>'
                             }
                         </div>
                     `;
@@ -1504,7 +1458,7 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
                     </div>
                     <div>
                         <div style="font-size: 12px; color: #666; font-weight: 600;">HIGHEST SCORE</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #28a745;">${highestScore.toFixed(2)}</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #800020;">${highestScore.toFixed(2)}</div>
                     </div>
                     <div>
                         <div style="font-size: 12px; color: #666; font-weight: 600;">LOWEST SCORE</div>
@@ -1593,9 +1547,7 @@ function showParticipantScoreDetails(participantId, competitionId, judgeId, isPa
     });
 }
 
-// ==========================================
-// 15. PROFILE
-// ==========================================
+// PROFILE
 function showProfile() {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
@@ -1650,194 +1602,7 @@ function showProfile() {
         });
 }
 
-// ==========================================
-// 16. COMPETITION RANKINGS
-// ==========================================
-function showCompetitionRankings() {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (!user) return;
-
-    document.getElementById("content").innerHTML = `
-        <h2>Competition Rankings</h2>
-        <div class="loading">Loading rankings...</div>
-    `;
-
-    fetch(`${API_URL}/judges`)
-        .then(response => response.json())
-        .then(judges => {
-            const currentJudge = judges.find(j => j.user_id === user.user_id);
-            if (!currentJudge) {
-                showNotification('Judge profile not found', 'error');
-                return;
-            }
-
-            fetch(`${API_URL}/judge-competitions/${currentJudge.judge_id}`)
-                .then(response => response.json())
-                .then(competitions => {
-                    displayCompetitionRankingsList(competitions);
-                })
-                .catch(error => {
-                    console.error('Error loading competitions:', error);
-                    showNotification('Error loading competitions', 'error');
-                });
-        });
-}
-
-function displayCompetitionRankingsList(competitions) {
-    let html = `
-        <h2>Competition Rankings</h2>
-        <p style="margin-bottom: 20px;">Select a competition to view current standings:</p>
-        <div style="display: grid; gap: 15px;">
-    `;
-
-    competitions.forEach(comp => {
-        html += `
-            <div class="dashboard-card" style="text-align: left;">
-                <h3>${comp.competition_name}</h3>
-                <p><strong>Type:</strong> ${comp.type_name}</p>
-                <p><strong>Date:</strong> ${comp.competition_date}</p>
-                <button onclick="viewCompetitionLeaderboard(${comp.competition_id}, ${comp.is_pageant})" class="card-button">
-                    View Rankings
-                </button>
-            </div>
-        `;
-    });
-
-    html += '</div>';
-    document.getElementById("content").innerHTML = html;
-}
-
-function viewCompetitionLeaderboard(competitionId, isPageant) {
-    document.getElementById("content").innerHTML = `
-        <h2>Competition Rankings</h2>
-        <div class="loading">Loading leaderboard...</div>
-    `;
-
-    const endpoint = isPageant 
-        ? `${API_URL}/pageant-leaderboard/${competitionId}`
-        : `${API_URL}/overall-scores/${competitionId}`;
-
-    Promise.all([
-        fetch(endpoint).then(r => r.json()),
-        fetch(`${API_URL}/competition/${competitionId}`).then(r => r.json())
-    ])
-    .then(([scores, competition]) => {
-        displayLeaderboard(scores, competition, isPageant);
-    })
-    .catch(error => {
-        console.error('Error loading leaderboard:', error);
-        showNotification('Error loading leaderboard', 'error');
-    });
-}
-
-function displayLeaderboard(scores, competition, isPageant) {
-    if (scores.length === 0) {
-        document.getElementById("content").innerHTML = `
-            <h2>${competition.competition_name} - Rankings</h2>
-            <div style="margin-bottom: 20px;">
-                <button onclick="showCompetitionRankings()" class="secondary">Back to Competitions</button>
-            </div>
-            <p class="alert alert-warning">No scores have been submitted yet for this competition.</p>
-        `;
-        return;
-    }
-
-    const participantScores = {};
-    
-    if (isPageant) {
-        scores.forEach(score => {
-            if (!participantScores[score.participant_id]) {
-                participantScores[score.participant_id] = {
-                    participant_name: score.participant_name,
-                    contestant_number: score.contestant_number,
-                    average_score: parseFloat(score.average_score),
-                    judge_count: score.judge_count || 0,
-                    segments_completed: score.segments_completed || 0
-                };
-            }
-        });
-    } else {
-        scores.forEach(score => {
-            if (!participantScores[score.participant_id]) {
-                participantScores[score.participant_id] = {
-                    participant_name: score.participant_name,
-                    contestant_number: score.contestant_number,
-                    scores: []
-                };
-            }
-            participantScores[score.participant_id].scores.push(parseFloat(score.total_score));
-        });
-        
-        Object.values(participantScores).forEach(p => {
-            if (p.scores && p.scores.length > 0) {
-                const sum = p.scores.reduce((acc, s) => acc + s, 0);
-                p.average_score = sum / p.scores.length;
-                p.judge_count = p.scores.length;
-            }
-        });
-    }
-
-    const rankedParticipants = Object.entries(participantScores)
-        .map(([id, data]) => ({
-            participant_id: id,
-            ...data
-        }))
-        .filter(p => p.average_score > 0)
-        .sort((a, b) => b.average_score - a.average_score);
-
-    rankedParticipants.forEach((participant, index) => {
-        participant.rank = index + 1;
-    });
-
-    let html = `
-        <h2>${competition.competition_name} - Rankings</h2>
-        <div style="margin-bottom: 20px;">
-            <button onclick="showCompetitionRankings()" class="secondary">Back to Competitions</button>
-        </div>
-
-        <table style="width: 100%;">
-            <thead>
-                <tr>
-                    <th style="width: 60px;">Rank</th>
-                    <th style="width: 100px;">Number</th>
-                    <th>Participant Name</th>
-                    <th style="width: 120px;">Average Score</th>
-                    <th style="width: 100px;">Judges</th>
-                    ${isPageant ? '<th style="width: 100px;">Segments</th>' : ''}
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    rankedParticipants.forEach(participant => {
-        const rankColor = participant.rank <= 3 ? '#800020' : '#666';
-        
-        html += `
-            <tr>
-                <td style="text-align: center; font-weight: bold; font-size: 20px; color: ${rankColor};">
-                    ${participant.rank}
-                </td>
-                <td style="text-align: center; font-weight: bold;">
-                    ${participant.contestant_number || 'N/A'}
-                </td>
-                <td><strong>${participant.participant_name}</strong></td>
-                <td style="text-align: center;">
-                    <span class="score-display" style="font-size: 20px;">${participant.average_score.toFixed(2)}</span>
-                </td>
-                <td style="text-align: center;">${participant.judge_count}</td>
-                ${isPageant ? `<td style="text-align: center;">${participant.segments_completed || 0}</td>` : ''}
-            </tr>
-        `;
-    });
-
-    html += '</tbody></table>';
-
-    document.getElementById("content").innerHTML = html;
-}
-
-// ==========================================
-// 17. NOTIFICATION SYSTEM
-// ==========================================
+// NOTIFICATION SYSTEM
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
@@ -1851,7 +1616,4 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// ==========================================
-// INITIALIZATION
-// ==========================================
 console.log('Judge Dashboard - Clean Fixed Version Loaded Successfully');
