@@ -2527,76 +2527,92 @@ app.get('/pageant-grand-total/:competitionId', (req, res) => {
         }
         
         // Process results in JavaScript
-        const participantMap = {};
-        
-        result.forEach(row => {
-            if (!participantMap[row.participant_id]) {
-                participantMap[row.participant_id] = {
-                    participant_id: row.participant_id,
-                    participant_name: row.participant_name,
-                    contestant_number: row.contestant_number,
-                    photo_url: row.photo_url,
-                    segments: {},
-                    judges: new Set(),
-                    segments_completed: new Set()
-                };
-            }
-            
-            const participant = participantMap[row.participant_id];
-            
-            // Track unique segments and judges
-            participant.segments_completed.add(row.segment_id);
-            participant.judges.add(row.judge_id);
-            
-            // Group scores by segment
-            if (!participant.segments[row.segment_id]) {
-                participant.segments[row.segment_id] = {
-                    name: row.segment_name,
-                    weight: row.segment_weight,
-                    scores: []
-                };
-            }
-            
-            participant.segments[row.segment_id].scores.push(row.total_score);
-        });
-        
-        // Calculate averages and weighted totals
-        const leaderboard = Object.values(participantMap).map(participant => {
-            let weighted_grand_total = 0;
-            const segments = [];
-            
-            Object.values(participant.segments).forEach(segment => {
-                // Calculate average score for this segment
-                const sum = segment.scores.reduce((acc, score) => acc + score, 0);
-                const average_score = sum / segment.scores.length;
-                const weighted_contribution = (average_score * segment.weight) / 100;
-                
-                weighted_grand_total += weighted_contribution;
-                
-                segments.push({
-                    name: segment.name,
-                    average_score: average_score.toFixed(2),
-                    weight: segment.weight,
-                    weighted_contribution: weighted_contribution.toFixed(2)
-                });
-            });
-            
-            return {
-                participant_id: participant.participant_id,
-                participant_name: participant.participant_name,
-                contestant_number: participant.contestant_number,
-                photo_url: participant.photo_url,
-                segments: segments,
-                weighted_grand_total: weighted_grand_total.toFixed(2),
-                segments_completed: participant.segments_completed.size,
-                judge_count: participant.judges.size
-            };
-        });
-        
-        // Sort by weighted_grand_total descending
-        leaderboard.sort((a, b) => parseFloat(b.weighted_grand_total) - parseFloat(a.weighted_grand_total));
-        
-        res.json(leaderboard);
+const participantMap = {};
+
+result.forEach(row => {
+  if (!participantMap[row.participant_id]) {
+    participantMap[row.participant_id] = {
+      participant_id: row.participant_id,
+      participant_name: row.participant_name,
+      contestant_number: row.contestant_number,
+      photo_url: row.photo_url,
+      segments: {},
+      judges: new Set(),
+      segments_completed: new Set()
+    };
+  }
+
+  const participant = participantMap[row.participant_id];
+
+  // Coerce the score safely; keep only finite numbers
+  const val = Number(row.total_score);
+  const isFiniteScore = Number.isFinite(val);
+
+  if (isFiniteScore) {
+    participant.judges.add(row.judge_id);
+    participant.segments_completed.add(row.segment_id);
+  }
+
+  if (!participant.segments[row.segment_id]) {
+    participant.segments[row.segment_id] = {
+      name: row.segment_name,
+      weight: Number(row.segment_weight) || 0,
+      scores: []
+    };
+  }
+
+  if (isFiniteScore) {
+    participant.segments[row.segment_id].scores.push(val);
+  }
+});
+
+// Calculate averages and weighted totals (SAFE)
+const leaderboard = Object.values(participantMap).map(participant => {
+  let weighted_grand_total_num = 0;
+  const segments = [];
+
+  Object.values(participant.segments).forEach(segment => {
+    const valid = segment.scores.filter(Number.isFinite);
+    if (valid.length === 0) {
+      // no valid scores for this segment; contributes 0
+      segments.push({
+        name: segment.name,
+        average_score: '0.00',
+        weight: segment.weight,
+        weighted_contribution: '0.00'
+      });
+      return;
+    }
+
+    const sum = valid.reduce((acc, s) => acc + s, 0);
+    const average_score = sum / valid.length;
+    const weighted_contribution = (average_score * segment.weight) / 100;
+
+    weighted_grand_total_num += weighted_contribution;
+
+    segments.push({
+      name: segment.name,
+      average_score: average_score.toFixed(2),
+      weight: segment.weight,
+      weighted_contribution: weighted_contribution.toFixed(2)
+    });
+  });
+
+  return {
+    participant_id: participant.participant_id,
+    participant_name: participant.participant_name,
+    contestant_number: participant.contestant_number,
+    photo_url: participant.photo_url,
+    segments,
+    weighted_grand_total: weighted_grand_total_num.toFixed(2),
+    segments_completed: participant.segments_completed.size,
+    judge_count: participant.judges.size
+  };
+});
+
+// Sort and respond
+leaderboard.sort((a, b) => parseFloat(b.weighted_grand_total) - parseFloat(a.weighted_grand_total));
+res.json(leaderboard);
     });
 });
 
