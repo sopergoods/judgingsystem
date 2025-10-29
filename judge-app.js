@@ -1259,6 +1259,7 @@ function showScoringHistory() {
         });
 }
 
+// --- REPLACE loadDetailedScoringHistory() in judge-app.js with this ---
 function loadDetailedScoringHistory(competitions, judgeId) {
     if (competitions.length === 0) {
         document.getElementById("content").innerHTML = `
@@ -1271,15 +1272,29 @@ function loadDetailedScoringHistory(competitions, judgeId) {
     Promise.all(
         competitions.map(comp => {
             return Promise.all([
-                fetch(`${API_URL}/overall-scores/${comp.competition_id}`).then(r => r.json()),
+                // ✅ use granular rows with judge_id, segment_id, weighted_score
+                fetch(`${API_URL}/competition-segment-scores/${comp.competition_id}`).then(r => r.json()),
                 fetch(`${API_URL}/pageant-segments/${comp.competition_id}`).then(r => r.json()).catch(() => []),
                 fetch(`${API_URL}/participants/${comp.competition_id}`).then(r => r.json())
-            ]).then(([overallScores, segments, participants]) => ({
-                competition: comp,
-                overallScores: overallScores.filter(s => s.judge_id === judgeId),
-                segments: segments,
-                participants: participants
-            }));
+            ]).then(([rows, segments, participants]) => {
+                // keep only this judge's rows, then aggregate per (participant, segment)
+                const mine = rows.filter(r => r.judge_id === judgeId);
+                const byPS = {};
+                mine.forEach(r => {
+                    const key = `${r.participant_id}-${r.segment_id}`;
+                    if (!byPS[key]) {
+                        byPS[key] = {
+                            participant_id: r.participant_id,
+                            segment_id: r.segment_id,
+                            total_score: 0,
+                            submitted_at: r.updated_at || r.created_at
+                        };
+                    }
+                    byPS[key].total_score += parseFloat(r.weighted_score || 0);
+                });
+                const overallScores = Object.values(byPS);
+                return { competition: comp, overallScores, segments, participants };
+            });
         })
     )
     .then(competitionData => {
@@ -1290,6 +1305,7 @@ function loadDetailedScoringHistory(competitions, judgeId) {
         showNotification('Error loading scoring history', 'error');
     });
 }
+
 
 function displayEnhancedScoringHistory(competitionData, judgeId) {
     let html = `
@@ -1482,6 +1498,7 @@ function displayEnhancedScoringHistory(competitionData, judgeId) {
     document.getElementById("content").innerHTML = html;
 }
 
+// --- REPLACE showParticipantScoreDetails() in judge-app.js with this ---
 function showParticipantScoreDetails(participantId, competitionId, judgeId, isPageant) {
     document.getElementById("content").innerHTML = `
         <h2>Score Details</h2>
@@ -1491,69 +1508,47 @@ function showParticipantScoreDetails(participantId, competitionId, judgeId, isPa
     Promise.all([
         fetch(`${API_URL}/participant/${participantId}`).then(r => r.json()),
         fetch(`${API_URL}/competition/${competitionId}`).then(r => r.json()),
-        fetch(`${API_URL}/overall-scores/${competitionId}`).then(r => r.json()),
+        // ✅ pageant uses granular route; regular can keep overall-scores
+        (isPageant
+            ? fetch(`${API_URL}/competition-segment-scores/${competitionId}`).then(r => r.json())
+            : fetch(`${API_URL}/overall-scores/${competitionId}`).then(r => r.json())),
         fetch(`${API_URL}/detailed-scores/${competitionId}`).then(r => r.json()).catch(() => []),
         isPageant ? fetch(`${API_URL}/pageant-segments/${competitionId}`).then(r => r.json()) : Promise.resolve([])
     ])
-    .then(([participant, competition, overallScores, detailedScores, segments]) => {
-        const myScores = overallScores.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
-        const myDetailedScores = detailedScores.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
+    .then(([participant, competition, scoresOrRows, detailedScores, segments]) => {
+        let myScores;
 
-        let html = `
-            <h2>Score Details - ${participant.participant_name}</h2>
-            <div style="margin-bottom: 20px;">
-                <button onclick="showScoringHistory()" class="secondary">Back to History</button>
-            </div>
-
-            ${generateParticipantPhotoHTML(participant)}
-
-            <div class="dashboard-card" style="max-width: 900px; margin: 20px auto;">
-                <h3 style="color: #800020;">Competition: ${competition.competition_name}</h3>
-        `;
-
-        if (myScores.length === 0) {
-            html += '<p>No scores found for this participant.</p>';
-        } else {
-            myScores.forEach(score => {
-                const segment = segments.find(s => s.segment_id === score.segment_id);
-                
-                html += `
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #800020;">
-                        ${segment ? `<h4 style="color: #800020; margin-bottom: 10px;">Segment: ${segment.segment_name}</h4>` : '<h4 style="color: #800020; margin-bottom: 10px;">Overall Score</h4>'}
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
-                            <div>
-                                <div style="font-size: 14px; color: #666;">Your Score</div>
-                                <div style="font-size: 32px; font-weight: bold; color: #800020;">${parseFloat(score.total_score).toFixed(2)}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 14px; color: #666;">Submitted</div>
-                                <div style="font-size: 16px; font-weight: 600;">${new Date(score.submitted_at || score.updated_at).toLocaleString()}</div>
-                            </div>
-                        </div>
-
-                        ${score.general_comments ? `
-                            <div style="margin-top: 15px;">
-                                <strong>Your Comments:</strong>
-                                <div style="background: white; padding: 12px; border-radius: 5px; margin-top: 5px;">
-                                    ${score.general_comments}
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+        if (isPageant) {
+            // aggregate per segment for this judge & participant
+            const mine = scoresOrRows.filter(r => r.judge_id === judgeId && r.participant_id == participantId);
+            const bySeg = {};
+            mine.forEach(r => {
+                if (!bySeg[r.segment_id]) {
+                    bySeg[r.segment_id] = {
+                        segment_id: r.segment_id,
+                        total_score: 0,
+                        submitted_at: r.updated_at || r.created_at
+                    };
+                }
+                bySeg[r.segment_id].total_score += parseFloat(r.weighted_score || 0);
             });
+            myScores = Object.values(bySeg);
+        } else {
+            myScores = scoresOrRows.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
         }
 
-        html += '</div>';
-        document.getElementById("content").innerHTML = html;
+        const myDetailedScores = detailedScores.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
+
+        // … your existing rendering below can stay the same, it just reads myScores[].total_score
+        // and lists myDetailedScores for the criteria table.
+        renderScoreDetailsView(participant, competition, myScores, myDetailedScores, segments, judgeId);
     })
-    .catch(error => {
-        console.error('Error loading score details:', error);
+    .catch(err => {
+        console.error('Error loading details:', err);
         showNotification('Error loading score details', 'error');
-        showScoringHistory();
     });
 }
+
 
 // PROFILE
 function showProfile() {
