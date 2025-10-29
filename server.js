@@ -164,6 +164,39 @@ app.post('/create-event-type', (req, res) => {
     });
 });
 
+// Delete an event type (only if not used by any competitions)
+app.delete('/delete-event-type/:id', (req, res) => {
+  const { id } = req.params;
+
+  // First, check if any competitions are using this event type
+  const checkSql = 'SELECT COUNT(*) AS cnt FROM competitions WHERE event_type_id = ?';
+  db.query(checkSql, [id], (err, rows) => {
+    if (err) {
+      console.error('Error checking event type usage:', err);
+      return res.status(500).json({ success: false, error: 'Database error checking usage' });
+    }
+
+    const count = rows?.[0]?.cnt || 0;
+    if (count > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot delete: this event type is used by ${count} competition(s).`
+      });
+    }
+
+    // Safe to delete
+    const delSql = 'DELETE FROM event_types WHERE event_type_id = ?';
+    db.query(delSql, [id], (err2, result) => {
+      if (err2) {
+        console.error('Error deleting event type:', err2);
+        return res.status(500).json({ success: false, error: 'Error deleting event type' });
+      }
+      return res.json({ success: true, message: 'Event type deleted successfully!' });
+    });
+  });
+});
+
+
 // ================================================
 // ENHANCED COMPETITION ENDPOINTS
 // ================================================

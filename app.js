@@ -185,19 +185,32 @@ function showCreateEventTypeForm() {
 }
 
 function deleteEventType(id) {
-    if (confirm('Delete this event type? This action cannot be undone.')) {
-        fetch(`${API_URL}/delete-event-type/${id}`, { method: 'DELETE' })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Event type deleted successfully!');
-                showEventTypes();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        });
-    }
+  if (!confirm('Delete this event type? This action cannot be undone.')) return;
+
+  fetch(`${API_URL}/delete-event-type/${id}`, { method: 'DELETE' })
+    .then(async (res) => {
+      // If not OK, try to read JSON; otherwise read text and throw
+      if (!res.ok) {
+        let msg = '';
+        try { const j = await res.json(); msg = j.error || JSON.stringify(j); }
+        catch { msg = await res.text(); }
+        throw new Error(`HTTP ${res.status}: ${msg}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      if (data.success) {
+        alert('Event type deleted successfully!');
+        showEventTypes();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      alert('Delete failed: ' + String(err));
+    });
 }
+
 
 // ================================================
 // COMPETITIONS
