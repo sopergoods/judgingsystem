@@ -1658,31 +1658,32 @@ function loadScoringResults() {
         .then(competition => {
             const isPageant = competition.is_pageant;
 
-            if (isPageant) {
-                // ✅ Use weighted totals; avoids NaN on missing segments
-                fetch(`${API_URL}/pageant-grand-total/${competitionId}`)
-                    .then(response => response.json())
-                    .then(leaderboard => {
-                        if (leaderboard.length === 0) {
-                            document.getElementById("resultsContent").innerHTML = `
-                                <div class="alert alert-warning">
-                                    <h3>No Scores Yet</h3>
-                                    <p>No scores submitted for this pageant competition.</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        displayPageantRankings(leaderboard, competition.competition_name);
-                    })
-                    .catch(error => {
-                        console.error('Error loading pageant rankings:', error);
-                        document.getElementById("resultsContent").innerHTML = `
-                            <div class="alert alert-error">
-                                <h3>Error Loading Rankings</h3>
-                                <p>Could not load pageant rankings.</p>
-                            </div>
-                        `;
-                    });
+          if (isPageant) {
+    // ✅ Use weighted endpoint to match Judge math
+    fetch(`${API_URL}/pageant-grand-total/${competitionId}`)
+        .then(response => response.json())
+        .then(leaderboard => {
+            if (!Array.isArray(leaderboard) || leaderboard.length === 0) {
+                document.getElementById("resultsContent").innerHTML = `
+                    <div class="alert alert-warning">
+                        <h3>No Scores Yet</h3>
+                        <p>No scores submitted for this pageant competition.</p>
+                    </div>
+                `;
+                return;
+            }
+            displayPageantRankings(leaderboard, competition.competition_name);
+        })
+        .catch(error => {
+            console.error('Error loading pageant rankings:', error);
+            document.getElementById("resultsContent").innerHTML = `
+                <div class="alert alert-error">
+                    <h3>Error Loading Rankings</h3>
+                    <p>Could not load pageant rankings.</p>
+                </div>
+            `;
+        });
+
             } else {
                 // regular, single-day
                 fetch(`${API_URL}/overall-leaderboard/${competitionId}`)
@@ -1702,14 +1703,15 @@ function loadScoringResults() {
 }
 
 
-// --- REPLACE your displayPageantRankings() in app.js with this ---
 function displayPageantRankings(leaderboard, competitionName) {
     let html = `
         <div class="dashboard-card" style="text-align: left;">
             <h3>Competition Rankings - ${competitionName}</h3>
             <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 15px 0;">
                 <strong>Multi-Segment Competition Scoring:</strong>
-                <p style="margin-top: 8px;">Scores are <b>weighted by segment</b> and summed for the final total.</p>
+                <p style="margin-top: 8px;">
+                    Final totals are <b>weighted by segment</b> (segment average × weight%) and summed.
+                </p>
             </div>
             <table style="width: 100%; margin-top: 15px;">
                 <tr>
@@ -1731,9 +1733,9 @@ function displayPageantRankings(leaderboard, competitionName) {
                 <td style="text-align: center; font-size: 18px; color: ${rankColor}; font-weight: bold;">${rankText}</td>
                 <td><strong>${participant.participant_name}</strong></td>
                 <td>${participant.performance_title || 'N/A'}</td>
-                <!-- ✅ Use weighted_grand_total returned by /pageant-grand-total -->
+                <!-- ✅ weighted_grand_total comes from /pageant-grand-total -->
                 <td style="text-align: center; font-weight: bold; font-size: 18px;">
-                    ${parseFloat(participant.weighted_grand_total).toFixed(2)}
+                    ${Number(participant.weighted_grand_total || 0).toFixed(2)}
                 </td>
                 <td style="text-align: center;">${participant.judge_count || 0}</td>
                 <td style="text-align: center;">${participant.segments_completed || 0}</td>
