@@ -702,7 +702,7 @@ function showViewParticipants() {
                 <select id="filterStatus" onchange="filterParticipants()" class="filter-select">
                     <option value="">All Statuses</option>
                     <option value="Active">Active</option>
-                    <option value="Done">Done</option>
+                    <option value="done">Done</option>
                     
                 </select>
             </div>
@@ -744,9 +744,9 @@ function filterParticipants() {
         filtered = filtered.filter(p => p.competition_id == competitionId);
     }
     
-    if (status) {
-        filtered = filtered.filter(p => p.status === status);
-    }
+ if (status) {
+   filtered = filtered.filter(p => (p.status || '').toLowerCase() === status.toLowerCase());
+ }
     
     displayParticipants(filtered);
 }
