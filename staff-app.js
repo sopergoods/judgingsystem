@@ -701,9 +701,9 @@ function showViewParticipants() {
                 <label for="filterStatus" style="font-weight: 600; color: #800020;">Status:</label>
                 <select id="filterStatus" onchange="filterParticipants()" class="filter-select">
                     <option value="">All Statuses</option>
-                    <option value="done">Done</option>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="pending">Pending</option>
+                    <option value="Active">Active</option>
+                    <option value="Done">Done</option>
+                    
                 </select>
             </div>
         </div>
