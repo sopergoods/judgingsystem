@@ -52,7 +52,7 @@ function logout() {
 
 // =====================================================
 // DASHBOARD HOME
-// =====================================================
+// =====================================================${createDashboardCard('Scoring Progress', 'Real-time scoring status', 'showScoringOverview()')}
 
 function showDashboard() {
     clearAllIntervals();
@@ -69,7 +69,7 @@ function showDashboard() {
                 ${createDashboardCard('Manage Participants', 'View and edit all participants', 'showViewParticipants()')}
                 ${createDashboardCard('Judges', 'View judge assignments', 'showViewJudges()')}
                 ${createDashboardCard('Reports', 'Generate analytics reports', 'showReports()')}
-                ${createDashboardCard('Scoring Progress', 'Real-time scoring status', 'showScoringOverview()')}
+                
                 ${createDashboardCard('Rankings', 'View competition rankings', 'showCompetitionRankings()')}
             </div>
         </div>
