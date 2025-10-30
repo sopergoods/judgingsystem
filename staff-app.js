@@ -640,9 +640,9 @@ function handleCompetitionChange() {
 function setupParticipantFormSubmit() {
     const form = document.getElementById('addParticipantForm');
     if (!form) return;
-    
-    form.onsubmit = function(event) {
-        event.preventDefault();
+
+    form.onsubmit = function(e) {
+        e.preventDefault();
 
         const participantData = {
             participant_name: getInputValue('participant_name'),
@@ -656,25 +656,31 @@ function setupParticipantFormSubmit() {
             performance_title: getInputValue('performance_title'),
             performance_description: getInputValue('performance_description'),
             competition_id: getInputValue('competition'),
-            status: getInputValue('status'),
-            height: getInputValue('height'),
+            status: 'Active',
+            height: null,
             measurements: null,
             talents: getInputValue('talents'),
             special_awards: getInputValue('special_awards')
         };
 
-        postData(`${API_URL}/add-participant`, participantData)
-            .then(data => {
-                if (data.success) {
-                    showNotification('Participant registered successfully', 'success');
-                    setTimeout(() => showViewParticipants(), 1500);
-                } else {
-                    showNotification(data.error || 'Error registering participant', 'error');
-                }
-            })
-            .catch(() => showNotification('Error registering participant', 'error'));
+        fetch(`${API_URL}/add-participant`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(participantData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Participant added with Active status successfully!');
+                showViewParticipants();
+            } else {
+                alert('Error: ' + (data.error || 'Error adding participant'));
+            }
+        })
+        .catch(() => alert('Error adding participant!'));
     };
 }
+
 
 function registerParticipantForCompetition(competitionId) {
     showAddParticipantForm(competitionId);
@@ -1048,9 +1054,9 @@ function populateCompetitionSelectForEdit(competitions) {
 function setupEditFormSubmit(participantId) {
     const form = document.getElementById('editParticipantForm');
     if (!form) return;
-    
-    form.onsubmit = function(event) {
-        event.preventDefault();
+
+    form.onsubmit = function(e) {
+        e.preventDefault();
 
         const participantData = {
             participant_name: getInputValue('participant_name'),
@@ -1065,22 +1071,27 @@ function setupEditFormSubmit(participantId) {
             performance_description: getInputValue('performance_description'),
             competition_id: getInputValue('competition'),
             status: getInputValue('status'),
-            height: getInputValue('height'),
+            height: null,
             measurements: null,
             talents: getInputValue('talents'),
             special_awards: getInputValue('special_awards')
         };
 
-        putData(`${API_URL}/update-participant/${participantId}`, participantData)
-            .then(data => {
-                if (data.success) {
-                    showNotification('Participant updated successfully', 'success');
-                    setTimeout(() => showViewParticipants(), 1500);
-                } else {
-                    showNotification(data.error || 'Error updating participant', 'error');
-                }
-            })
-            .catch(() => showNotification('Error updating participant', 'error'));
+        fetch(`${API_URL}/update-participant/${participantId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(participantData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Participant updated successfully!');
+                showViewParticipants();
+            } else {
+                alert('Error: ' + (data.error || 'Error updating participant'));
+            }
+        })
+        .catch(() => alert('Error updating participant!'));
     };
 }
 
