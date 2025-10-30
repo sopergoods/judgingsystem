@@ -2046,5 +2046,18 @@ function loadCompetitionsDropdown(selectId, selectedId = null) {
         });
 }
 
+// Open Admin-style edit form by fetching the participant by ID
+function editParticipantById(participantId) {
+  fetch(`${API_URL}/participant/${participantId}`)
+    .then(res => res.json())
+    .then(participant => {
+      showEditParticipantForm(participant); // uses the Admin-style form you added
+    })
+    .catch(err => {
+      console.error('Error loading participant', err);
+      alert('Error loading participant');
+    });
+}
+
 // Initialize dashboard on load
 showDashboard();
