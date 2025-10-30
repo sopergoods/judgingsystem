@@ -443,25 +443,59 @@ function displayCriteria(criteria) {
 // PARTICIPANTS - ADD FORM
 // =====================================================
 
-function showAddParticipantForm(preselectedCompetitionId = null) {
-    clearAllIntervals();
-    
+function showAddParticipantForm() {
     setContent(`
-        <h2>Register New Participant</h2>
-        <form id="addParticipantForm" style="max-width: 800px;">
-            ${getBasicInfoSection()}
-            ${getCompetitionDetailsSection()}
-            ${getPageantSection()}
-            ${getFormButtons('showViewParticipants()')}
+        <form id="addParticipantForm">
+            <h2>Add New Participant</h2>
+
+            <label for="participant_name">Full Name</label>
+            <input type="text" id="participant_name" placeholder="Enter participant full name" required>
+
+            <label for="contestant_number">Contestant Number</label>
+            <input type="text" id="contestant_number" placeholder="e.g., 01, 02, etc." required>
+
+            <label for="photo_url">Photo URL</label>
+            <input type="url" id="photo_url" placeholder="Paste image link or leave blank">
+
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Optional email address">
+
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" placeholder="Optional phone number">
+
+            <label for="age">Age</label>
+            <input type="number" id="age" placeholder="Optional age">
+
+            <label for="gender">Gender</label>
+            <select id="gender">
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+
+            <label for="school_organization">School / Organization</label>
+            <input type="text" id="school_organization" placeholder="Enter school or organization">
+
+            <label for="performance_title">Performance Title</label>
+            <input type="text" id="performance_title" placeholder="Enter performance title">
+
+            <label for="performance_description">Performance Description</label>
+            <textarea id="performance_description" placeholder="Short description of performance"></textarea>
+
+            <label for="talents">Talent / Skills</label>
+            <input type="text" id="talents" placeholder="Optional talents or skills">
+
+            <label for="special_awards">Awards / Achievements</label>
+            <textarea id="special_awards" placeholder="Optional awards and achievements"></textarea>
+
+            <label for="competition">Select Competition</label>
+            <select id="competition" required></select>
+
+            <button type="submit">Add Participant</button>
         </form>
     `);
 
-    fetchData(`${API_URL}/competitions`)
-        .then(competitions => {
-            populateCompetitionSelect(competitions, preselectedCompetitionId);
-            setupCompetitionChangeHandler();
-        });
-
+    loadCompetitionsDropdown("competition");
     setupParticipantFormSubmit();
 }
 
@@ -806,7 +840,8 @@ function displayParticipants(participants) {
                 ` : ''}
                 <div style="margin-top: 15px;">
                     <button onclick="viewParticipantDetails(${participant.participant_id})" class="card-button">View Details</button>
-                    <button onclick="editParticipant(${participant.participant_id})" class="card-button">Edit</button>
+                    <button onclick='showEditParticipantForm(${JSON.stringify(p)})'>Edit</button>
+
                     <button onclick="updateRegistrationStatus(${participant.participant_id}, '${participant.status}')" class="card-button">Update Status</button>
                 </div>
             </div>
@@ -890,7 +925,8 @@ function viewParticipantDetails(id) {
                 </div>
                 <div style="text-align: center; margin-top: 20px;">
                     <button onclick="showViewParticipants()" class="secondary">Back to Participants</button>
-                    <button onclick="editParticipant(${participant.participant_id})" class="card-button">Edit Participant</button>
+                    <button onclick='showEditParticipantForm(${JSON.stringify(p)})'>Edit Participants</button>
+
                     <button onclick="updateRegistrationStatus(${participant.participant_id}, '${participant.status}')" class="card-button">Update Status</button>
                 </div>
             `;
@@ -920,29 +956,65 @@ function updateRegistrationStatus(participantId, currentStatus) {
 }
 
 
-function editParticipant(participantId) {
-    clearAllIntervals();
-    
-    fetchData(`${API_URL}/participant/${participantId}`)
-        .then(participant => {
-            setContent(`
-                <h2>Edit Participant</h2>
-                <form id="editParticipantForm" style="max-width: 800px;">
-                    ${getBasicInfoSectionWithValues(participant)}
-                    ${getCompetitionDetailsSectionWithValues(participant)}
-                    ${getAdditionalInfoSectionWithValues(participant)}
-                    ${getFormButtons('showViewParticipants()')}
-                </form>
-            `);
+// =====================================================
+// SHOW EDIT PARTICIPANT FORM (Admin-style)
+// =====================================================
+function showEditParticipantForm(participant) {
+    setContent(`
+        <form id="editParticipantForm">
+            <h2>Edit Participant</h2>
 
-            return fetchData(`${API_URL}/competitions`);
-        })
-        .then(competitions => {
-            populateCompetitionSelectForEdit(competitions);
-            setupEditFormSubmit(participantId);
-        })
-        .catch(() => showNotification('Error loading participant', 'error'));
+            <label for="participant_name">Full Name</label>
+            <input type="text" id="participant_name" value="${participant.participant_name || ''}" required>
+
+            <label for="contestant_number">Contestant Number</label>
+            <input type="text" id="contestant_number" value="${participant.contestant_number || ''}" required>
+
+            <label for="photo_url">Photo URL</label>
+            <input type="url" id="photo_url" value="${participant.photo_url || ''}">
+
+            <label for="email">Email</label>
+            <input type="email" id="email" value="${participant.email || ''}">
+
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" value="${participant.phone || ''}">
+
+            <label for="age">Age</label>
+            <input type="number" id="age" value="${participant.age || ''}">
+
+            <label for="gender">Gender</label>
+            <select id="gender">
+                <option value="">Select gender</option>
+                <option value="Male" ${participant.gender === 'Male' ? 'selected' : ''}>Male</option>
+                <option value="Female" ${participant.gender === 'Female' ? 'selected' : ''}>Female</option>
+            </select>
+
+            <label for="school_organization">School / Organization</label>
+            <input type="text" id="school_organization" value="${participant.school_organization || ''}">
+
+            <label for="performance_title">Performance Title</label>
+            <input type="text" id="performance_title" value="${participant.performance_title || ''}">
+
+            <label for="performance_description">Performance Description</label>
+            <textarea id="performance_description">${participant.performance_description || ''}</textarea>
+
+            <label for="talents">Talent / Skills</label>
+            <input type="text" id="talents" value="${participant.talents || ''}">
+
+            <label for="special_awards">Awards / Achievements</label>
+            <textarea id="special_awards">${participant.special_awards || ''}</textarea>
+
+            <label for="competition">Select Competition</label>
+            <select id="competition"></select>
+
+            <button type="submit">Save Changes</button>
+        </form>
+    `);
+
+    loadCompetitionsDropdown("competition", participant.competition_id);
+    setupEditFormSubmit(participant.participant_id);
 }
+
 
 function getBasicInfoSectionWithValues(participant) {
     return `
@@ -1948,6 +2020,30 @@ function setupGlobalErrorHandling() {
     window.addEventListener('unhandledrejection', function(e) {
         console.error('Unhandled promise rejection:', e.reason);
     });
+}
+
+function loadCompetitionsDropdown(selectId, selectedId = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    fetch(`${API_URL}/competitions`)
+        .then(res => res.json())
+        .then(data => {
+            select.innerHTML = '<option value="">Select competition</option>';
+            data.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.competition_id;
+                option.textContent = `${c.competition_name} (${c.type_name || ''})`;
+                if (selectedId && String(selectedId) === String(c.competition_id)) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading competitions:', err);
+            select.innerHTML = '<option value="">Error loading competitions</option>';
+        });
 }
 
 // Initialize dashboard on load
