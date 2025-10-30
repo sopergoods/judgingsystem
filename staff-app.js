@@ -840,7 +840,7 @@ function displayParticipants(participants) {
                 ` : ''}
                 <div style="margin-top: 15px;">
                     <button onclick="viewParticipantDetails(${participant.participant_id})" class="card-button">View Details</button>
-                    <button onclick='showEditParticipantForm(${JSON.stringify(p)})'>Edit</button>
+                   <button onclick="editParticipantById(${participant.participant_id})" class="card-button">Edit</button>
 
                     <button onclick="updateRegistrationStatus(${participant.participant_id}, '${participant.status}')" class="card-button">Update Status</button>
                 </div>
@@ -925,7 +925,7 @@ function viewParticipantDetails(id) {
                 </div>
                 <div style="text-align: center; margin-top: 20px;">
                     <button onclick="showViewParticipants()" class="secondary">Back to Participants</button>
-                    <button onclick='showEditParticipantForm(${JSON.stringify(p)})'>Edit Participants</button>
+                   <button onclick="editParticipantById(${participant.participant_id})" class="card-button">Edit Participant</button>
 
                     <button onclick="updateRegistrationStatus(${participant.participant_id}, '${participant.status}')" class="card-button">Update Status</button>
                 </div>
