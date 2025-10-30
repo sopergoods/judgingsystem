@@ -1124,48 +1124,68 @@ function populateCompetitionSelectForEdit(competitions) {
 }
 
 function setupEditFormSubmit(participantId) {
-    const form = document.getElementById('editParticipantForm');
-    if (!form) return;
+  const form = document.getElementById('editParticipantForm');
+  if (!form) return;
 
-    form.onsubmit = function(e) {
-        e.preventDefault();
+  form.onsubmit = function (e) {
+    e.preventDefault();
 
-        const participantData = {
-            participant_name: getInputValue('participant_name'),
-            contestant_number: getInputValue('contestant_number'),
-            photo_url: getInputValue('photo_url'),
-            email: getInputValue('email'),
-            phone: getInputValue('phone'),
-            age: getInputValue('age'),
-            gender: getInputValue('gender'),
-            school_organization: getInputValue('school_organization'),
-            performance_title: getInputValue('performance_title'),
-            performance_description: getInputValue('performance_description'),
-            competition_id: getInputValue('competition'),
-            status: getInputValue('status'),
-            height: null,
-            measurements: null,
-            talents: getInputValue('talents'),
-            special_awards: getInputValue('special_awards')
-        };
+    // Read values
+    const name = getInputValue('participant_name')?.trim();
+    const email = getInputValue('email')?.trim();
+    const ageVal = getInputValue('age');
+    const genderVal = getInputValue('gender');
+    const compVal = getInputValue('competition');
 
-        fetch(`${API_URL}/update-participant/${participantId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(participantData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert('Participant updated successfully!');
-                showViewParticipants();
-            } else {
-                alert('Error: ' + (data.error || 'Error updating participant'));
-            }
-        })
-        .catch(() => alert('Error updating participant!'));
+    // Normalize
+    const age = ageVal ? parseInt(ageVal, 10) : null;
+    const gender = (genderVal || '').toString().trim().toLowerCase(); // 'male' | 'female' | 'other'
+    const competition_id = compVal ? parseInt(compVal, 10) : null;
+
+    // Validate required fields (these are what the server requires)
+    if (!name || !email || !age || !gender || !competition_id) {
+      alert('Please complete Name, Email, Age, Gender, and Competition.');
+      return;
+    }
+
+    // Build payload
+    const participantData = {
+      participant_name: name,
+      contestant_number: getInputValue('contestant_number') || null,
+      photo_url: getInputValue('photo_url') || null,
+      email,
+      phone: getInputValue('phone') || null,
+      age,
+      gender, // send normalized lowercase
+      school_organization: getInputValue('school_organization') || null,
+      performance_title: getInputValue('performance_title') || null,
+      performance_description: getInputValue('performance_description') || '',
+      competition_id, // send as number
+      status: (getInputValue('status') || 'active'), // fallback to active
+      height: getInputValue('height') || null,
+      measurements: null,
+      talents: getInputValue('talents') || null,
+      special_awards: getInputValue('special_awards') || null
     };
+
+    fetch(`${API_URL}/update-participant/${participantId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(participantData)
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          alert('Participant updated successfully!');
+          showViewParticipants();
+        } else {
+          alert('Error: ' + (data.error || 'Error updating participant'));
+        }
+      })
+      .catch(() => alert('Error updating participant!'));
+  };
 }
+
 
 // =====================================================
 // JUDGES
