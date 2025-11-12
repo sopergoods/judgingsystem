@@ -1010,7 +1010,7 @@ function startLockCountdown(judgeId, participantId, competitionId, segmentId, sc
         clearInterval(lockTimer);
     }
     
-    lockCountdown = 10;
+    lockCountdown = 20;
     currentScoreData = { judgeId, participantId, competitionId, segmentId, scoreType };
     
     showLockCountdown();
