@@ -944,21 +944,34 @@ app.get('/participant-scores/:participantId/:competitionId', (req, res) => {
 
 app.get('/detailed-scores/:competitionId', (req, res) => {
     const { competitionId } = req.params;
+    
+    // Get the LATEST detailed scores by getting the most recent updated_at per judge-participant
     const sql = `
         SELECT ds.*, cc.criteria_name, cc.percentage, cc.max_score, 
-               j.judge_name, p.participant_name, p.performance_title
+               j.judge_name, p.participant_name, p.performance_title, p.contestant_number
         FROM detailed_scores ds
         JOIN competition_criteria cc ON ds.criteria_id = cc.criteria_id
         JOIN judges j ON ds.judge_id = j.judge_id
         JOIN participants p ON ds.participant_id = p.participant_id
         WHERE ds.competition_id = ?
+        AND ds.created_at IN (
+            SELECT MAX(created_at) 
+            FROM detailed_scores 
+            WHERE judge_id = ds.judge_id 
+            AND participant_id = ds.participant_id 
+            AND competition_id = ds.competition_id
+            GROUP BY judge_id, participant_id
+        )
         ORDER BY p.participant_name, cc.order_number, j.judge_name
     `;
+    
     db.query(sql, [competitionId], (err, result) => {
         if (err) {
             console.error('Error fetching detailed scores:', err);
             return res.status(500).json({ error: 'Error fetching detailed scores' });
         }
+        
+        console.log(`✅ Fetched ${result.length} detailed score records`);
         res.json(result);
     });
 });
@@ -1482,7 +1495,6 @@ app.get('/pageant-leaderboard/:competitionId', (req, res) => {
 });
 
 
-
 app.get('/overall-scores/:competitionId', (req, res) => {
     const { competitionId } = req.params;
     
@@ -1498,7 +1510,7 @@ app.get('/overall-scores/:competitionId', (req, res) => {
         const isPageant = compResult[0].is_pageant;
         
         if (isPageant) {
-            // FOR PAGEANTS: Use the SAME calculation as /pageant-leaderboard
+            // FOR PAGEANTS: Use the segment averaging logic
             console.log('📊 Fetching PAGEANT scores with segment averaging for competition:', competitionId);
             
             const sql = `
@@ -1512,7 +1524,8 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     ps.day_number,
                     os.judge_id,
                     j.judge_name,
-                    os.total_score
+                    os.total_score,
+                    os.updated_at
                 FROM participants p
                 JOIN overall_scores os ON p.participant_id = os.participant_id
                 JOIN judges j ON os.judge_id = j.judge_id
@@ -1531,7 +1544,6 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     return res.json([]);
                 }
                 
-                // STEP 1: Group by participant and segment
                 const participantMap = {};
                 
                 result.forEach(row => {
@@ -1549,7 +1561,6 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     const participant = participantMap[row.participant_id];
                     participant.all_judges.add(row.judge_id);
                     
-                    // Group by segment
                     if (!participant.segments[row.segment_id]) {
                         participant.segments[row.segment_id] = {
                             segment_name: row.segment_name,
@@ -1564,18 +1575,15 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     });
                 });
                 
-                // STEP 2: Calculate SEGMENT AVERAGES first, then OVERALL AVERAGE
                 const finalScores = Object.values(participantMap).map(participant => {
                     const segmentAverages = [];
                     
-                    // For each segment, calculate average of judge scores
                     Object.values(participant.segments).forEach(segment => {
                         const sum = segment.scores.reduce((acc, s) => acc + s.score, 0);
                         const average = sum / segment.scores.length;
                         segmentAverages.push(average);
                     });
                     
-                    // Overall average is the average of segment averages
                     const overallAverage = segmentAverages.reduce((acc, avg) => acc + avg, 0) / segmentAverages.length;
                     
                     return {
@@ -1590,21 +1598,33 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     };
                 });
                 
-                console.log('✅ Pageant scores calculated with CORRECT segment averaging');
+                console.log('✅ Pageant scores calculated');
                 res.json(finalScores);
             });
             
         } else {
-            // FOR REGULAR COMPETITIONS: Standard query
+            // FOR REGULAR COMPETITIONS: Get LATEST scores only (fixed to use updated_at)
             console.log('📊 Fetching REGULAR competition scores for competition:', competitionId);
             
             const sql = `
-                SELECT os.*, j.judge_name, p.participant_name, p.performance_title
+                SELECT 
+                    os.score_id,
+                    os.judge_id,
+                    os.participant_id,
+                    os.competition_id,
+                    os.total_score,
+                    os.general_comments,
+                    os.updated_at,
+                    os.created_at,
+                    j.judge_name, 
+                    p.participant_name, 
+                    p.contestant_number,
+                    p.performance_title
                 FROM overall_scores os
                 JOIN judges j ON os.judge_id = j.judge_id
                 JOIN participants p ON os.participant_id = p.participant_id
                 WHERE os.competition_id = ? AND os.segment_id IS NULL
-                ORDER BY p.participant_name, os.total_score DESC
+                ORDER BY p.participant_name, os.updated_at DESC
             `;
             
             db.query(sql, [competitionId], (err, result) => {
@@ -1612,6 +1632,8 @@ app.get('/overall-scores/:competitionId', (req, res) => {
                     console.error('❌ Error fetching regular scores:', err);
                     return res.status(500).json({ error: 'Error fetching scores' });
                 }
+                
+                console.log(`✅ Found ${result.length} regular scores`);
                 res.json(result);
             });
         }
@@ -1784,16 +1806,20 @@ app.post('/submit-detailed-scores', (req, res) => {
         return res.status(400).json({ error: 'Required fields missing' });
     }
 
-    // Delete old detailed scores
-    db.query('DELETE FROM detailed_scores WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL', 
-        [judge_id, participant_id, competition_id], (err) => {
-        if (err) {
-            console.error('❌ Error deleting old scores:', err);
+    // STEP 1: Delete ALL old scores for this judge-participant-competition combination
+    const deleteDetailedSql = 'DELETE FROM detailed_scores WHERE judge_id = ? AND participant_id = ? AND competition_id = ? AND segment_id IS NULL';
+    
+    db.query(deleteDetailedSql, [judge_id, participant_id, competition_id], (deleteErr) => {
+        if (deleteErr) {
+            console.error('❌ Error deleting old detailed scores:', deleteErr);
             return res.status(500).json({ error: 'Error updating scores' });
         }
+        
+        console.log('✅ Old detailed scores deleted');
 
         let totalScore = 0;
         
+        // STEP 2: Insert new detailed scores
         const insertPromises = scores.map(score => {
             const weightedScore = (score.score * score.percentage) / 100;
             totalScore += weightedScore;
@@ -1823,7 +1849,7 @@ app.post('/submit-detailed-scores', (req, res) => {
             .then(() => {
                 console.log('✅ All detailed scores inserted. Total:', totalScore.toFixed(2));
                 
-                // CRITICAL: Insert into overall_scores with segment_id = NULL
+                // STEP 3: UPSERT overall_scores (update if exists, insert if not)
                 const overallSql = `
                     INSERT INTO overall_scores 
                     (judge_id, participant_id, competition_id, segment_id, total_score, general_comments, is_locked, locked_at)

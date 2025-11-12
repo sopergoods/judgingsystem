@@ -1260,92 +1260,132 @@ function showScoringHistory() {
 }
 // === REPLACE the whole function with this ===
 function loadDetailedScoringHistory(competitions, judgeId) {
-  if (competitions.length === 0) {
-    document.getElementById("content").innerHTML = `
-      <h2>My Scoring History</h2>
-      <p class="alert alert-warning">No competitions assigned yet.</p>
-    `;
-    return;
-  }
+    if (competitions.length === 0) {
+        document.getElementById("content").innerHTML = `
+            <h2>My Scoring History</h2>
+            <p class="alert alert-warning">No competitions assigned yet.</p>
+        `;
+        return;
+    }
 
-  const noStore = { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } };
+    const timestamp = Date.now(); // Cache busting
+    const noCache = { 
+        cache: 'no-store', 
+        headers: { 'Cache-Control': 'no-cache, must-revalidate' } 
+    };
 
-  Promise.all(
-    competitions.map(comp => {
-      const ts = Date.now();
+    Promise.all(
+        competitions.map(comp => {
+            if (comp.is_pageant) {
+                // PAGEANT LOGIC
+                return Promise.all([
+                    fetch(`${API_URL}/competition-segment-scores/${comp.competition_id}?t=${timestamp}`, noCache).then(r => r.json()),
+                    fetch(`${API_URL}/pageant-segments/${comp.competition_id}?t=${timestamp}`, noCache).then(r => r.json()).catch(() => []),
+                    fetch(`${API_URL}/participants/${comp.competition_id}?t=${timestamp}`, noCache).then(r => r.json())
+                ]).then(([rows, segments, participants]) => {
+                    const mine = rows.filter(r => r.judge_id === judgeId);
 
-      if (comp.is_pageant) {
-        // multi-day/pageant
-        return Promise.all([
-          fetch(`${API_URL}/competition-segment-scores/${comp.competition_id}?t=${ts}`, noStore).then(r => r.json()),
-          fetch(`${API_URL}/pageant-segments/${comp.competition_id}?t=${ts}`, noStore).then(r => r.json()).catch(() => []),
-          fetch(`${API_URL}/participants/${comp.competition_id}?t=${ts}`, noStore).then(r => r.json())
-        ]).then(([rows, segments, participants]) => {
-          const mine = rows.filter(r => r.judge_id === judgeId);
+                    const pmap = {};
+                    participants.forEach(p => {
+                        pmap[p.participant_id] = {
+                            participant_name: p.participant_name,
+                            performance_title: p.performance_title
+                        };
+                    });
 
-          const pmap = {};
-          participants.forEach(p => {
-            pmap[p.participant_id] = {
-              participant_name: p.participant_name,
-              performance_title: p.performance_title
-            };
-          });
+                    const byPS = {};
+                    mine.forEach(r => {
+                        const key = `${r.participant_id}-${r.segment_id}`;
+                        if (!byPS[key]) {
+                            byPS[key] = {
+                                participant_id: r.participant_id,
+                                segment_id: r.segment_id,
+                                total_score: 0,
+                                submitted_at: r.updated_at || r.created_at,
+                                participant_name: pmap[r.participant_id]?.participant_name || r.participant_name || '',
+                                performance_title: pmap[r.participant_id]?.performance_title || ''
+                            };
+                        }
+                        byPS[key].total_score += parseFloat(r.weighted_score || 0);
+                    });
 
-          const byPS = {};
-          mine.forEach(r => {
-            const key = `${r.participant_id}-${r.segment_id}`;
-            if (!byPS[key]) {
-              byPS[key] = {
-                participant_id: r.participant_id,
-                segment_id: r.segment_id,
-                total_score: 0,
-                submitted_at: r.updated_at || r.created_at,
-                participant_name: pmap[r.participant_id]?.participant_name || r.participant_name || '',
-                performance_title: pmap[r.participant_id]?.performance_title || ''
-              };
+                    return { 
+                        competition: comp, 
+                        overallScores: Object.values(byPS), 
+                        segments, 
+                        participants 
+                    };
+                });
+            } else {
+                // REGULAR COMPETITION LOGIC - FIXED TO GET LATEST SCORES ONLY
+                return Promise.all([
+                    fetch(`${API_URL}/overall-scores/${comp.competition_id}?t=${timestamp}`, noCache).then(r => r.json()),
+                    fetch(`${API_URL}/participants/${comp.competition_id}?t=${timestamp}`, noCache).then(r => r.json())
+                ]).then(([allScores, participants]) => {
+                    // Filter for THIS judge only
+                    const judgeScores = allScores.filter(r => r.judge_id === judgeId);
+                    
+                    console.log(`📊 Regular competition ${comp.competition_name}:`, {
+                        total_scores: allScores.length,
+                        judge_scores: judgeScores.length,
+                        judge_id: judgeId
+                    });
+
+                    const pmap = {};
+                    participants.forEach(p => {
+                        pmap[p.participant_id] = {
+                            participant_name: p.participant_name,
+                            performance_title: p.performance_title,
+                            contestant_number: p.contestant_number
+                        };
+                    });
+
+                    // Group by participant and keep ONLY the latest score
+                    const latestScores = {};
+                    judgeScores.forEach(score => {
+                        const pid = score.participant_id;
+                        const scoreTime = new Date(score.updated_at || score.created_at).getTime();
+                        
+                        if (!latestScores[pid] || scoreTime > new Date(latestScores[pid].updated_at || latestScores[pid].created_at).getTime()) {
+                            latestScores[pid] = score;
+                        }
+                    });
+
+                    const overallScores = Object.values(latestScores).map(score => ({
+                        participant_id: score.participant_id,
+                        total_score: parseFloat(score.total_score || 0),
+                        submitted_at: score.updated_at || score.created_at,
+                        participant_name: pmap[score.participant_id]?.participant_name || score.participant_name || '',
+                        performance_title: pmap[score.participant_id]?.performance_title || '',
+                        contestant_number: pmap[score.participant_id]?.contestant_number || ''
+                    }));
+                    
+                    console.log(`✅ Filtered to ${overallScores.length} latest scores for judge ${judgeId}`);
+
+                    return { 
+                        competition: comp, 
+                        overallScores, 
+                        segments: [], 
+                        participants 
+                    };
+                });
             }
-            byPS[key].total_score += parseFloat(r.weighted_score || 0);
-          });
-
-          return { competition: comp, overallScores: Object.values(byPS), segments, participants };
-        });
-      } else {
-        // regular/single-day
-        return Promise.all([
-          fetch(`${API_URL}/overall-scores/${comp.competition_id}?t=${ts}`, noStore).then(r => r.json()),
-          fetch(`${API_URL}/participants/${comp.competition_id}?t=${ts}`, noStore).then(r => r.json())
-        ]).then(([rows, participants]) => {
-          const mine = rows.filter(r => r.judge_id === judgeId);
-
-          const pmap = {};
-          participants.forEach(p => {
-            pmap[p.participant_id] = {
-              participant_name: p.participant_name,
-              performance_title: p.performance_title
-            };
-          });
-
-          const overallScores = mine.map(r => ({
-            participant_id: r.participant_id,
-            total_score: parseFloat(r.total_score || 0),
-            submitted_at: r.updated_at || r.created_at,
-            participant_name: pmap[r.participant_id]?.participant_name || r.participant_name || '',
-            performance_title: pmap[r.participant_id]?.performance_title || ''
-          }));
-
-          return { competition: comp, overallScores, segments: [], participants };
-        });
-      }
+        })
+    )
+    .then(competitionData => {
+        displayEnhancedScoringHistory(competitionData, judgeId);
     })
-  )
-  .then(competitionData => {
-    // re-use your existing renderer
-    displayEnhancedScoringHistory(competitionData, judgeId);
-  })
-  .catch(error => {
-    console.error('Error fetching scoring history:', error);
-    showNotification('Error loading scoring history', 'error');
-  });
+    .catch(error => {
+        console.error('❌ Error fetching scoring history:', error);
+        showNotification('Error loading scoring history', 'error');
+        document.getElementById("content").innerHTML = `
+            <h2>Scoring History</h2>
+            <div class="alert alert-error">
+                <p>Error loading scoring history. Please refresh the page.</p>
+                <p style="font-size: 12px; color: #666;">${error.message}</p>
+            </div>
+        `;
+    });
 }
 
 
@@ -1560,21 +1600,26 @@ function showParticipantScoreDetails(participantId, competitionId, judgeId, isPa
         <div class="loading">Loading detailed scores...</div>
     `;
 
+    const timestamp = Date.now();
+    const noCache = { 
+        cache: 'no-store', 
+        headers: { 'Cache-Control': 'no-cache, must-revalidate' } 
+    };
+
     Promise.all([
-        fetch(`${API_URL}/participant/${participantId}`).then(r => r.json()),
-        fetch(`${API_URL}/competition/${competitionId}`).then(r => r.json()),
-        // 🔁 pageant uses granular rows; regular keeps overall-scores
-        (isPageant
-            ? fetch(`${API_URL}/competition-segment-scores/${competitionId}`).then(r => r.json())
-            : fetch(`${API_URL}/overall-scores/${competitionId}`).then(r => r.json())),
-        fetch(`${API_URL}/detailed-scores/${competitionId}`).then(r => r.json()).catch(() => []),
-        isPageant ? fetch(`${API_URL}/pageant-segments/${competitionId}`).then(r => r.json()) : Promise.resolve([])
+        fetch(`${API_URL}/participant/${participantId}?t=${timestamp}`, noCache).then(r => r.json()),
+        fetch(`${API_URL}/competition/${competitionId}?t=${timestamp}`, noCache).then(r => r.json()),
+        isPageant
+            ? fetch(`${API_URL}/competition-segment-scores/${competitionId}?t=${timestamp}`, noCache).then(r => r.json())
+            : fetch(`${API_URL}/overall-scores/${competitionId}?t=${timestamp}`, noCache).then(r => r.json()),
+        fetch(`${API_URL}/detailed-scores/${competitionId}?t=${timestamp}`, noCache).then(r => r.json()).catch(() => []),
+        isPageant ? fetch(`${API_URL}/pageant-segments/${competitionId}?t=${timestamp}`, noCache).then(r => r.json()) : Promise.resolve([])
     ])
     .then(([participant, competition, scoresOrRows, detailedScores, segments]) => {
         let myScores;
 
         if (isPageant) {
-            // Build one total per segment for THIS judge & participant
+            // PAGEANT: Build segment totals
             const mine = scoresOrRows.filter(r => r.judge_id === judgeId && r.participant_id == participantId);
             const bySeg = {};
             mine.forEach(r => {
@@ -1583,20 +1628,34 @@ function showParticipantScoreDetails(participantId, competitionId, judgeId, isPa
                         segment_id: r.segment_id,
                         total_score: 0,
                         submitted_at: r.updated_at || r.created_at,
-                        general_comments: r.general_comments // keep if you show it
+                        general_comments: r.general_comments
                     };
                 }
                 bySeg[r.segment_id].total_score += parseFloat(r.weighted_score || 0);
             });
             myScores = Object.values(bySeg);
         } else {
-            // Regular competitions already return one row per judge/participant
-            myScores = scoresOrRows.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
+            // REGULAR: Get ONLY the latest score for this judge-participant
+            const judgeScores = scoresOrRows.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
+            
+            // Sort by updated_at descending and take the first (latest)
+            judgeScores.sort((a, b) => {
+                const timeA = new Date(a.updated_at || a.created_at).getTime();
+                const timeB = new Date(b.updated_at || b.created_at).getTime();
+                return timeB - timeA;
+            });
+            
+            myScores = judgeScores.length > 0 ? [judgeScores[0]] : [];
+            
+            console.log('📊 Regular score details:', {
+                total_scores_found: judgeScores.length,
+                displaying_latest: myScores.length
+            });
         }
 
+        // Get the latest detailed scores for this judge-participant
         const myDetailedScores = detailedScores.filter(s => s.judge_id === judgeId && s.participant_id == participantId);
 
-        // ---- keep your existing HTML rendering below ----
         let html = `
             <h2>Score Details - ${participant.participant_name}</h2>
             <div style="margin-bottom: 20px;">
@@ -1626,7 +1685,7 @@ function showParticipantScoreDetails(participantId, competitionId, judgeId, isPa
                                 <div style="font-size: 32px; font-weight: bold; color: #800020;">${parseFloat(score.total_score).toFixed(2)}</div>
                             </div>
                             <div>
-                                <div style="font-size: 14px; color: #666;">Submitted</div>
+                                <div style="font-size: 14px; color: #666;">Last Updated</div>
                                 <div style="font-size: 16px; font-weight: 500;">${new Date(score.submitted_at || score.updated_at).toLocaleString()}</div>
                             </div>
                         </div>
@@ -1642,16 +1701,56 @@ function showParticipantScoreDetails(participantId, competitionId, judgeId, isPa
                     </div>
                 `;
             });
+
+            // Show detailed criteria breakdown if available
+            if (myDetailedScores.length > 0 && !isPageant) {
+                html += `
+                    <div style="margin-top: 30px;">
+                        <h4 style="color: #800020;">Criteria Breakdown</h4>
+                        <table style="width: 100%; margin-top: 15px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Criterion</th>
+                                    <th style="text-align: center;">Weight</th>
+                                    <th style="text-align: center;">Score</th>
+                                    <th style="text-align: center;">Weighted Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                myDetailedScores.forEach(detail => {
+                    html += `
+                        <tr>
+                            <td>${detail.criteria_name}</td>
+                            <td style="text-align: center;">${detail.percentage}%</td>
+                            <td style="text-align: center; font-weight: bold;">${parseFloat(detail.score).toFixed(2)}</td>
+                            <td style="text-align: center; color: #800020; font-weight: bold;">${parseFloat(detail.weighted_score).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
         }
 
         html += '</div>';
         document.getElementById("content").innerHTML = html;
-        // ---- end of your existing renderer ----
     })
     .catch(error => {
-        console.error('Error loading score details:', error);
+        console.error('❌ Error loading score details:', error);
         showNotification('Error loading score details', 'error');
-        showScoringHistory();
+        document.getElementById("content").innerHTML = `
+            <h2>Score Details</h2>
+            <div class="alert alert-error">
+                <p>Error loading score details. Please try again.</p>
+                <button onclick="showScoringHistory()" class="secondary">Back to History</button>
+            </div>
+        `;
     });
 }
 
