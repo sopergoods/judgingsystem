@@ -1845,8 +1845,8 @@ function viewUnlockRequests() {
         <div class="alert alert-info">
             <strong>About Unlock Requests:</strong>
             <ul style="margin-top: 10px;">
-                <li>Judges can edit scores for 45 seconds after submission</li>
-                <li>After 45 seconds, scores are locked</li>
+                <li>Judges can edit scores for 10 seconds after submission</li>
+                <li>After 10 seconds, scores are locked</li>
                 <li>Judges must request unlock permission</li>
             </ul>
         </div>
