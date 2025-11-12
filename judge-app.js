@@ -552,10 +552,10 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
         submitSegmentScores(judgeId, participantId, competitionId, segmentId, criteria, participantName, segmentName);
     };
     
-    setTimeout(() => {
-        loadDraft(judgeId, participantId, segmentId);
-        addAutoSaveListeners('segmentScoreForm', judgeId, participantId, segmentId);
-    }, 500);
+ setTimeout(() => {
+    loadDraft(judgeId, participantId, segmentId, true); // true = pageant/multi-day
+    addAutoSaveListeners('segmentScoreForm', judgeId, participantId, segmentId, true);
+}, 500);
 }
 
 function submitSegmentScores(judgeId, participantId, competitionId, segmentId, criteria, participantName, segmentName) {
@@ -745,10 +745,10 @@ function displayRegularScoringForm(judgeId, participantId, competitionId, partic
         submitRegularScores(judgeId, participantId, competitionId, criteria);
     };
 
-    setTimeout(() => {
-        loadRegularDraft(judgeId, participantId, competitionId);
-        addAutoSaveListeners('detailedScoreForm', judgeId, participantId, competitionId);
-    }, 500);
+  setTimeout(() => {
+    loadDraft(judgeId, participantId, competitionId, false); // false = regular competition
+    addAutoSaveListeners('detailedScoreForm', judgeId, participantId, competitionId, false);
+}, 500);
 }
 
 function submitRegularScores(judgeId, participantId, competitionId, criteria) {
