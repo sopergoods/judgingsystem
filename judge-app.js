@@ -286,11 +286,11 @@ function checkIfScoreLocked(judgeId, participantId, competitionId, segmentId, ca
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            if (data.is_locked && data.seconds_since_lock > 10) {
-                callback(true, data);
-            } else {
-                callback(false, data);
-            }
+          if (data.is_locked) {
+    callback(true, data);
+} else {
+    callback(false, data);
+}
         })
         .catch(error => {
             console.error('Error checking lock:', error);

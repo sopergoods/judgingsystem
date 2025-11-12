@@ -2141,9 +2141,12 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId/:segmentId', (
         }
         
         const score = result[0];
-        const secondsSinceLock = score.seconds_since_lock || 0;
-        const canEdit = !score.is_locked || secondsSinceLock < 10;
-        const secondsRemaining = Math.max(0, 10 - secondsSinceLock);
+       const secondsSinceLock = score.seconds_since_lock || 0;
+// Treat ANY locked score as non-editable immediately
+const canEdit = !score.is_locked;
+// The frontend owns the pre-lock countdown; report 0 here
+const secondsRemaining = 0;
+
         
         res.json({
             is_locked: score.is_locked,
@@ -2179,9 +2182,12 @@ app.get('/check-score-lock/:judgeId/:participantId/:competitionId', (req, res) =
         }
         
         const score = result[0];
-        const secondsSinceLock = score.seconds_since_lock || 0;
-        const canEdit = !score.is_locked || secondsSinceLock < 10;
-        const secondsRemaining = Math.max(0, 10 - secondsSinceLock);
+       const secondsSinceLock = score.seconds_since_lock || 0;
+// Treat ANY locked score as non-editable immediately
+const canEdit = !score.is_locked;
+// The frontend owns the pre-lock countdown; report 0 here
+const secondsRemaining = 0;
+
         
         res.json({
             is_locked: score.is_locked,
