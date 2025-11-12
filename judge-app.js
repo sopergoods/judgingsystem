@@ -1019,7 +1019,7 @@ function startLockCountdown(judgeId, participantId, competitionId, segmentId, sc
         lockCountdown--;
         updateLockCountdown();
         
-        if (lockCountdown <= 10) {
+        if (lockCountdown <= 0) {
             clearInterval(lockTimer);
             autoLockScore();
         }
