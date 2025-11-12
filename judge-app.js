@@ -787,31 +787,29 @@ function submitRegularScores(judgeId, participantId, competitionId, criteria) {
         general_comments: document.getElementById("general_comments").value
     };
 
-    fetch(`${API_URL}/submit-detailed-scores`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submissionData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Scores submitted successfully!', 'success');
-            
-            if (data.should_start_countdown) {
-                startLockCountdown(judgeId, participantId, competitionId, null, 'overall');
-            }
-            
-            clearRegularDraft(judgeId, participantId, competitionId);
-            
-            setTimeout(() => {
-                viewCompetitionParticipants(competitionId);
-            }, 2000);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Error submitting scores', 'error');
-    });
+fetch(`${API_URL}/submit-detailed-scores`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+})
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) throw new Error(data.error || 'Save failed');
+    showNotification('Scores updated successfully!', 'success');
+
+    // Immediately refresh "My Scoring History"
+    if (Array.isArray(window._judgeCompetitions) && typeof loadDetailedScoringHistory === 'function') {
+      loadDetailedScoringHistory(window._judgeCompetitions, window._currentJudgeId);
+    }
+
+    // (Optional) refresh "My Rankings" if your UI shows it
+    if (typeof loadMyRankings === 'function') loadMyRankings();
+  })
+  .catch(err => {
+    console.error(err);
+    showNotification('Error saving scores', 'error');
+  });
+
 }
 
 function calculateTotalScore() {
@@ -1260,6 +1258,9 @@ function showScoringHistory() {
 }
 // === REPLACE the whole function with this ===
 function loadDetailedScoringHistory(competitions, judgeId) {
+
+      window._judgeCompetitions = competitions;
+    window._currentJudgeId = judgeId
     if (competitions.length === 0) {
         document.getElementById("content").innerHTML = `
             <h2>My Scoring History</h2>
