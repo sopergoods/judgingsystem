@@ -4,7 +4,7 @@
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
 let lockTimer = null;
-let lockCountdown = 10;
+let lockCountdown = 20;
 let currentScoreData = null;
 let draftSaveTimeout = null;
 
