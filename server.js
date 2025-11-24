@@ -446,7 +446,7 @@ app.post('/add-participant', (req, res) => {
         height, measurements, talents, special_awards
     } = req.body;
 
-    if (!participant_name || !email || !age || !gender || !competition_id) {
+    if (!participant_name || !age || !gender || !competition_id) {
         return res.status(400).json({ error: 'Required fields missing' });
     }
 
