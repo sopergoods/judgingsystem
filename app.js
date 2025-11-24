@@ -2474,6 +2474,273 @@ function viewWeightedLeaderboard(competitionId, competitionName) {
         `;
     });
 }
+function displayCompetitions(competitions) {
+    let html = `
+        <h2>Manage Competitions</h2>
+        <button onclick="showCreateCompetitionForm()" style="margin-bottom: 20px; background: #28a745; color: white;">
+            + Create New Competition
+        </button>
+    `;
+    
+    if (competitions.length === 0) {
+        html += '<p>No competitions created yet.</p>';
+    } else {
+        html += '<table><thead><tr>';
+        html += '<th>Status</th><th>Competition Name</th><th>Event Type</th><th>Date</th>';
+        html += '<th>Participants</th><th>Judges</th><th>Actions</th>';
+        html += '</tr></thead><tbody>';
+        
+        competitions.forEach(comp => {
+            // Status badge with color
+            let statusBadge = '';
+            let statusColor = '#ffc107'; // yellow for ongoing
+            let statusText = comp.status || 'ongoing';
+            
+            if (statusText === 'done') {
+                statusColor = '#28a745'; // green
+                statusBadge = '<span style="background: #28a745; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">DONE</span>';
+            } else if (statusText === 'upcoming') {
+                statusColor = '#007bff'; // blue
+                statusBadge = '<span style="background: #007bff; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">UPCOMING</span>';
+            } else {
+                statusBadge = '<span style="background: #ffc107; color: #000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">ONGOING</span>';
+            }
+            
+            html += '<tr>';
+            html += `<td style="text-align: center;">${statusBadge}</td>`;
+            html += `<td><strong>${comp.competition_name}</strong></td>`;
+            html += `<td>${comp.type_name}${comp.is_pageant ? ' <span style="background: #e7f3ff; color: #0066cc; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold;">PAGEANT</span>' : ''}</td>`;
+            html += `<td>${comp.competition_date}</td>`;
+            html += `<td style="text-align: center;">${comp.participant_count || 0}</td>`;
+            html += `<td style="text-align: center;">${comp.judge_count || 0}</td>`;
+            html += '<td style="text-align: center;">';
+            
+            // If DONE, show limited actions
+            if (comp.status === 'done') {
+                html += `<span style="color: #28a745; font-weight: bold;">✓ Completed</span><br>`;
+                html += `<button onclick="viewJudgeTabulation(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px;">View Tabulation</button>`;
+                if (comp.is_pageant) {
+                    html += `<button onclick="manageSpecialAwards(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px;">View Awards</button>`;
+                }
+            } else {
+                // Normal actions for ongoing competitions
+                html += `<button onclick="showEditCompetitionForm(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px;">Edit</button>`;
+                html += `<button onclick="manageCriteria(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px;">Criteria</button>`;
+                
+                if (comp.is_pageant) {
+                    html += `<button onclick="managePageantSegments(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px; background: #17a2b8;">Segments</button>`;
+                    html += `<button onclick="manageSpecialAwards(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px; background: #ffc107; color: #000;">Special Awards</button>`;
+                }
+                
+                html += `<button onclick="viewJudgeTabulation(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px; background: #6c757d;">Judge Tabulation</button>`;
+                html += `<br>`;
+                html += `<button onclick="markCompetitionDone(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px; background: #28a745; color: white;">Mark as DONE</button>`;
+                html += `<button onclick="deleteCompetition(${comp.competition_id})" style="padding: 5px 10px; font-size: 12px; margin: 2px; background: #dc3545; color: white;">Delete</button>`;
+            }
+            
+            html += '</td></tr>';
+        });
+        
+        html += '</tbody></table>';
+    }
+    
+    document.getElementById("content").innerHTML = html;
+}
+function markCompetitionDone(competitionId) {
+    if (!confirm('Mark this competition as DONE?\n\nThis will:\n- Lock the competition from further editing\n- Move it to event history\n- Prevent new participants/judges from being added\n\nThis action cannot be easily undone.')) {
+        return;
+    }
+    
+    // Ask if they want to select a winner
+    const selectWinner = confirm('Do you want to select a winner for this competition?');
+    
+    if (selectWinner) {
+        // Load participants to select winner
+        fetch(`${API_URL}/participants/${competitionId}`)
+            .then(response => response.json())
+            .then(participants => {
+                if (participants.length === 0) {
+                    showNotification('No participants in this competition', 'warning');
+                    finalizeCompetitionDone(competitionId, null);
+                    return;
+                }
+                
+                let html = `
+                    <h2>Select Winner</h2>
+                    <p>Choose the winner for this competition:</p>
+                    <div style="max-width: 600px; margin: 0 auto;">
+                `;
+                
+                participants.forEach(p => {
+                    html += `
+                        <div style="background: white; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; cursor: pointer;" 
+                             onclick="finalizeCompetitionDone(${competitionId}, ${p.participant_id})">
+                            <strong>${p.contestant_number ? `#${p.contestant_number} - ` : ''}${p.participant_name}</strong>
+                            <p style="margin: 5px 0; color: #666;">Age: ${p.age}, Year: ${p.year_level || 'N/A'}</p>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        <button onclick="finalizeCompetitionDone(${competitionId}, null)" style="margin-top: 20px; background: #6c757d; color: white;">
+                            Skip - No Winner
+                        </button>
+                        <button onclick="showViewCompetitions()" style="margin-top: 20px; margin-left: 10px;">
+                            Cancel
+                        </button>
+                    </div>
+                `;
+                
+                document.getElementById("content").innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error loading participants', 'error');
+            });
+    } else {
+        finalizeCompetitionDone(competitionId, null);
+    }
+}
+function finalizeCompetitionDone(competitionId, winnerId) {
+    const notes = prompt('Add notes about this event (optional):');
+    
+    // First update status to DONE
+    fetch(`${API_URL}/update-competition-status/${competitionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Then archive it
+        return fetch(`${API_URL}/archive-competition`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                competition_id: competitionId,
+                winner_participant_id: winnerId,
+                notes: notes
+            })
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Competition marked as DONE and archived!', 'success');
+            showViewCompetitions();
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error marking competition as done', 'error');
+    });
+}
+function showEditCompetitionForm(competitionId) {
+    // Check if competition is done
+    fetch(`${API_URL}/check-competition-status/${competitionId}`)
+        .then(response => response.json())
+        .then(statusData => {
+            if (statusData.is_done) {
+                showNotification('Cannot edit: This competition is marked as DONE', 'error');
+                return;
+            }
+            
+            // Load competition for editing
+            fetch(`${API_URL}/competition/${competitionId}`)
+                .then(response => response.json())
+                .then(competition => {
+                    fetch(`${API_URL}/event-types`)
+                        .then(response => response.json())
+                        .then(eventTypes => {
+                            displayEditCompetitionForm(competition, eventTypes);
+                        });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error loading competition', 'error');
+                });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error checking competition status', 'error');
+        });
+}
+
+function displayEditCompetitionForm(competition, eventTypes) {
+    let html = `
+        <h2>Edit Competition</h2>
+        <form id="editCompetitionForm" onsubmit="updateCompetition(event, ${competition.competition_id})" style="max-width: 600px; margin: 0 auto;">
+            
+            <label>Competition Name: *</label>
+            <input type="text" id="competition_name" value="${competition.competition_name}" required 
+                   style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+            
+            <label>Event Type: *</label>
+            <select id="event_type_id" required 
+                    style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+    `;
+    
+    eventTypes.forEach(type => {
+        const selected = type.event_type_id === competition.event_type_id ? 'selected' : '';
+        html += `<option value="${type.event_type_id}" ${selected}>${type.type_name}</option>`;
+    });
+    
+    html += `
+            </select>
+            
+            <label>Competition Date: *</label>
+            <input type="date" id="competition_date" value="${competition.competition_date}" required 
+                   style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+            
+            <label>Event Description:</label>
+            <textarea id="event_description" rows="4" 
+                      style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">${competition.event_description || ''}</textarea>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" style="background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                    Update Competition
+                </button>
+                <button type="button" onclick="showViewCompetitions()" style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    `;
+    
+    document.getElementById("content").innerHTML = html;
+}
+
+function updateCompetition(event, competitionId) {
+    event.preventDefault();
+    
+    const competitionData = {
+        competition_name: document.getElementById('competition_name').value,
+        event_type_id: document.getElementById('event_type_id').value,
+        competition_date: document.getElementById('competition_date').value,
+        event_description: document.getElementById('event_description').value
+    };
+    
+    fetch(`${API_URL}/update-competition/${competitionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(competitionData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            showViewCompetitions();
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error updating competition', 'error');
+    });
+}
 
 // ================================================
 // ADD THESE FUNCTIONS TO YOUR app.js FILE
