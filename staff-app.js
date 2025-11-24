@@ -1039,7 +1039,43 @@ function showEditParticipantForm(participantId) {
     });
 }
 
-
+function updateParticipant(event, participantId) {
+    event.preventDefault();
+    
+    const participantData = {
+        participant_name: document.getElementById('participant_name').value,
+        contestant_number: document.getElementById('contestant_number').value || null,
+        age: document.getElementById('age').value,
+        gender: document.getElementById('gender').value,
+        year_level: document.getElementById('year_level').value,
+        competition_id: document.getElementById('competition_id').value,
+        photo_url: document.getElementById('photo_url').value || null,
+        email: null,
+        phone: null,
+        school_organization: null,
+        performance_title: null,
+        performance_description: null
+    };
+    
+    fetch(`${API_URL}/update-participant/${participantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(participantData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            showViewParticipants();
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error updating participant', 'error');
+    });
+}
 function getBasicInfoSectionWithValues(participant) {
     return `
         <div class="form-section">

@@ -43,6 +43,25 @@ function logout() {
 // DASHBOARD
 // ===============================================
 // =
+
+function showEventHistory() {
+    document.getElementById("content").innerHTML = `
+        <h2>Event History</h2>
+        <p>View all completed and archived events</p>
+        <div class="loading">Loading event history...</div>
+    `;
+    
+    fetch(`${API_URL}/event-history`)
+        .then(response => response.json())
+        .then(history => {
+            displayEventHistory(history);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error loading event history', 'error');
+        });
+}
+
 function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
@@ -2483,23 +2502,6 @@ function viewWeightedLeaderboard(competitionId, competitionName) {
 // EVENT HISTORY FUNCTIONS
 // ================================================
 
-function showEventHistory() {
-    document.getElementById("content").innerHTML = `
-        <h2>Event History</h2>
-        <p>View all completed and archived events</p>
-        <div class="loading">Loading event history...</div>
-    `;
-    
-    fetch(`${API_URL}/event-history`)
-        .then(response => response.json())
-        .then(history => {
-            displayEventHistory(history);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error loading event history', 'error');
-        });
-}
 
 function displayEventHistory(history) {
     let html = `
