@@ -813,7 +813,7 @@ app.post('/add-judge', (req, res) => {
         experience_years = 0, credentials, competition_id 
     } = req.body;
 
-    if (!judge_name || !email || !expertise) {
+    if (!judge_name || !email || !credentials) {
         return res.status(400).json({ error: 'Required fields missing' });
     }
 
