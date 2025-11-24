@@ -231,47 +231,84 @@ function scoreParticipant(participantId, competitionId, participantName) {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
 
-    fetch(`${API_URL}/judges`)
+    // ✅ FIRST: Check if competition is DONE
+    fetch(`${API_URL}/check-competition-status/${competitionId}`)
         .then(response => response.json())
-        .then(judges => {
-            const currentJudge = judges.find(j => j.user_id === user.user_id);
-            if (!currentJudge) {
-                showNotification('Judge profile not found', 'error');
+        .then(statusData => {
+            if (statusData.is_done) {
+                // Show DONE message
+                document.getElementById("content").innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 60px; color: #28a745; margin-bottom: 20px;">✓ COMPLETED</div>
+                        <h2>Competition Has Ended</h2>
+                        <h3 style="color: #800020;">${participantName}</h3>
+                        
+                        <div style="max-width: 600px; margin: 30px auto; padding: 20px; background: #d4edda; border-radius: 8px; border: 2px solid #28a745;">
+                            <p style="font-size: 16px; margin-bottom: 15px; color: #155724;">
+                                <strong>This competition has been marked as DONE by the administrator.</strong>
+                            </p>
+                            <p style="font-size: 14px; color: #155724;">
+                                Scoring is no longer available for this competition. All results have been finalized.
+                            </p>
+                        </div>
+                        
+                        <div style="margin-top: 30px;">
+                            <button onclick="showMyCompetitions()" class="secondary" style="padding: 15px 30px; font-size: 16px;">
+                                Back to My Competitions
+                            </button>
+                        </div>
+                    </div>
+                `;
                 return;
             }
+            
+            // Competition is not done, proceed with normal scoring
+            fetch(`${API_URL}/judges`)
+                .then(response => response.json())
+                .then(judges => {
+                    const currentJudge = judges.find(j => j.user_id === user.user_id);
+                    if (!currentJudge) {
+                        showNotification('Judge profile not found', 'error');
+                        return;
+                    }
 
-            checkIfScoreLocked(currentJudge.judge_id, participantId, competitionId, null, (isLocked, lockInfo) => {
-                if (isLocked) {
-                    showLockedScoreMessage(currentJudge.judge_id, participantId, competitionId, null, participantName, lockInfo);
-                    return;
-                }
-                
-                fetch(`${API_URL}/participant/${participantId}`)
-                    .then(response => response.json())
-                    .then(participant => {
-                        fetch(`${API_URL}/competition/${competitionId}`)
+                    checkIfScoreLocked(currentJudge.judge_id, participantId, competitionId, null, (isLocked, lockInfo) => {
+                        if (isLocked) {
+                            showLockedScoreMessage(currentJudge.judge_id, participantId, competitionId, null, participantName, lockInfo);
+                            return;
+                        }
+                        
+                        fetch(`${API_URL}/participant/${participantId}`)
                             .then(response => response.json())
-                            .then(competition => {
-                                if (competition.is_pageant) {
-                                    showSegmentSelection(currentJudge.judge_id, participantId, competitionId, participantName);
-                                } else {
-                                    showRegularScoringForm(currentJudge.judge_id, participantId, competitionId, participantName, participant);
-                                }
+                            .then(participant => {
+                                fetch(`${API_URL}/competition/${competitionId}`)
+                                    .then(response => response.json())
+                                    .then(competition => {
+                                        if (competition.is_pageant) {
+                                            showSegmentSelection(currentJudge.judge_id, participantId, competitionId, participantName);
+                                        } else {
+                                            showRegularScoringForm(currentJudge.judge_id, participantId, competitionId, participantName, participant);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error fetching competition:', error);
+                                        showNotification('Error loading competition details', 'error');
+                                    });
                             })
                             .catch(error => {
-                                console.error('Error fetching competition:', error);
-                                showNotification('Error loading competition details', 'error');
+                                console.error('Error fetching participant:', error);
+                                showNotification('Error loading participant details', 'error');
                             });
-                    })
-                    .catch(error => {
-                        console.error('Error fetching participant:', error);
-                        showNotification('Error loading participant details', 'error');
                     });
-            });
+                })
+                .catch(error => {
+                    console.error('Error fetching judge:', error);
+                    showNotification('Error loading judge profile', 'error');
+                });
         })
         .catch(error => {
-            console.error('Error fetching judge:', error);
-            showNotification('Error loading judge profile', 'error');
+            console.error('Error checking competition status:', error);
+            showNotification('Error checking competition status', 'error');
         });
 }
 

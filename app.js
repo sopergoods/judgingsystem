@@ -325,18 +325,114 @@ function showCreateCompetitionForm() {
 }
 
 function showViewCompetitions() {
-    document.getElementById("content").innerHTML = '<h2>Competitions</h2><div class="loading">Loading competitions...</div>';
-    
+    document.getElementById("content").innerHTML = `
+        <h2>Manage Competitions</h2>
+        <div style="margin-bottom: 20px;">
+            <button onclick="showCreateCompetitionForm()" class="card-button">Add New Competition</button>
+            <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
+        </div>
+        <div id="competitionsList"><div class="loading">Loading...</div></div>
+    `;
+
     fetch(`${API_URL}/competitions`)
-        .then(response => response.json())
-        .then(competitions => {
-            displayCompetitions(competitions);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error loading competitions', 'error');
+    .then(response => response.json())
+    .then(competitions => {
+        let html = '<div style="display: grid; gap: 20px;">';
+        
+        competitions.forEach(comp => {
+            // Status badge
+            let statusBadge = '';
+            let statusText = comp.status || 'ongoing';
+            
+            if (statusText === 'done') {
+                statusBadge = '<span style="background: #28a745; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">DONE</span>';
+            } else if (statusText === 'upcoming') {
+                statusBadge = '<span style="background: #007bff; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">UPCOMING</span>';
+            } else {
+                statusBadge = '<span style="background: #ffc107; color: #000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">ONGOING</span>';
+            }
+            
+            const badge = comp.is_pageant ? 
+                '<span style="background: #800020; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">PAGEANT</span>' :
+                '<span style="background: white; color: #800020; padding: 4px 8px; border-radius: 12px; font-size: 12px; border: 2px solid #800020;">REGULAR</span>';
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">${comp.competition_name} ${badge}</h3>
+                        ${statusBadge}
+                    </div>
+                    
+                    <div class="grid-2" style="margin: 15px 0;">
+                        <div>
+                            <p><strong>Event Type:</strong> ${comp.type_name}</p>
+                            <p><strong>Date:</strong> ${comp.competition_date}</p>
+                        </div>
+                        <div>
+                            <p><strong>Participants:</strong> ${comp.participant_count || 0}</p>
+                            <p><strong>Judges:</strong> ${comp.judge_count || 0}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+            `;
+            
+            // If DONE - show limited actions
+            if (statusText === 'done') {
+                html += `
+                    <div style="background: #d4edda; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin-bottom: 15px;">
+                        <strong style="color: #155724;">✓ Competition Completed</strong>
+                        <p style="margin: 5px 0 0 0; color: #155724;">This competition is locked and cannot be edited.</p>
+                    </div>
+                    <button onclick="viewJudgeTabulation(${comp.competition_id})" style="padding: 8px 15px;">View Tabulation</button>
+                `;
+                
+                if (comp.is_pageant) {
+                    html += `<button onclick="manageSpecialAwards(${comp.competition_id})" style="padding: 8px 15px; margin-left: 5px;">View Awards</button>`;
+                }
+            } else {
+                // Normal actions for ongoing competitions
+                html += `
+                    <button onclick="manageCriteria(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">Manage Criteria</button>
+                `;
+                
+                if (comp.is_pageant) {
+                    html += `
+                        <button onclick="setupPageant(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">Setup Pageant</button>
+                        <button onclick="viewPageantSegments(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">View Schedule</button>
+                        <button onclick="manageSpecialAwards(${comp.competition_id})" style="background: #ffc107; color: #000;">Special Awards</button>
+                    `;
+                }
+                
+                html += `
+                    <button onclick="viewJudgeTabulation(${comp.competition_id})" style="background: #6c757d;">Tabulation</button>
+                    <br>
+                    <button onclick="markCompetitionDone(${comp.competition_id})" style="background: #28a745; color: white; margin-top: 10px;">Mark as DONE</button>
+                    <button onclick="deleteCompetition(${comp.competition_id})" style="background: #800020; margin-top: 10px;">Delete</button>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
         });
+        
+        html += '</div>';
+        
+        if (competitions.length === 0) {
+            html = `
+                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                    <h3>No Competitions Yet</h3>
+                    <button onclick="showCreateCompetitionForm()" class="card-button">Create Competition</button>
+                </div>
+            `;
+        }
+        
+        document.getElementById("competitionsList").innerHTML = html;
+    });
 }
+
 function displayCompetitions(competitions) {
     let html = `
         <h2>Manage Competitions</h2>
@@ -3120,6 +3216,89 @@ function displayJudgeTabulation(participants, competitionId) {
     
     document.getElementById("content").innerHTML = html;
 }
+function markCompetitionDone(competitionId) {
+    if (!confirm('Mark this competition as DONE?\n\nThis will:\n- Lock the competition (judges cannot score)\n- Move it to event history\n- Prevent new participants/judges from being added\n\nThis action cannot be easily undone.')) {
+        return;
+    }
+    
+    const selectWinner = confirm('Do you want to select a winner for this competition?');
+    
+    if (selectWinner) {
+        fetch(`${API_URL}/participants/${competitionId}`)
+            .then(response => response.json())
+            .then(participants => {
+                if (participants.length === 0) {
+                    alert('No participants in this competition');
+                    finalizeCompetitionDone(competitionId, null);
+                    return;
+                }
+                
+                let html = `
+                    <h2>Select Winner</h2>
+                    <p>Choose the winner for this competition:</p>
+                    <div style="max-width: 600px; margin: 0 auto;">
+                `;
+                
+                participants.forEach(p => {
+                    html += `
+                        <div style="background: white; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; cursor: pointer; border-left: 4px solid #800020;" 
+                             onclick="finalizeCompetitionDone(${competitionId}, ${p.participant_id})"
+                             onmouseover="this.style.background='#f8f9fa'" 
+                             onmouseout="this.style.background='white'">
+                            <strong>${p.contestant_number ? `#${p.contestant_number} - ` : ''}${p.participant_name}</strong>
+                            <p style="margin: 5px 0; color: #666;">Age: ${p.age}, Year: ${p.year_level || 'N/A'}</p>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        <button onclick="finalizeCompetitionDone(${competitionId}, null)" style="margin-top: 20px; background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer;">
+                            Skip - No Winner
+                        </button>
+                        <button onclick="showViewCompetitions()" style="margin-top: 20px; margin-left: 10px; padding: 12px 30px;">
+                            Cancel
+                        </button>
+                    </div>
+                `;
+                
+                document.getElementById("content").innerHTML = html;
+            });
+    } else {
+        finalizeCompetitionDone(competitionId, null);
+    }
+}
+
+function finalizeCompetitionDone(competitionId, winnerId) {
+    const notes = prompt('Add notes about this event (optional):');
+    
+    fetch(`${API_URL}/update-competition-status/${competitionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        return fetch(`${API_URL}/archive-competition`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                competition_id: competitionId,
+                winner_participant_id: winnerId,
+                notes: notes
+            })
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Competition marked as DONE and archived!\n\nJudges can no longer score for this competition.');
+            showViewCompetitions();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
 
 console.log('✅ Event History, Special Awards, and Judge Tabulation functions loaded');
 
