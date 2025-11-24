@@ -110,52 +110,7 @@ function showMyCompetitions() {
 }
 
 
-function displayCompetitions(competitions) {
-    let html = `
-        <h2>My Competitions</h2>
-        <div style="margin-bottom: 20px;">
-            <p>You are assigned to judge the following competitions:</p>
-        </div>
-    `;
 
-    if (competitions.length === 0) {
-        html += '<p class="alert alert-warning">No competitions assigned to you yet.</p>';
-    } else {
-        html += '<div style="display: grid; gap: 20px;">';
-        
-        competitions.forEach(competition => {
-            const progressPercent = competition.total_required > 0 
-                ? Math.round((competition.scored_count / competition.total_required) * 100)
-                : 0;
-            
-            html += `
-                <div class="dashboard-card" style="text-align: left;">
-                    <h3>${competition.competition_name}</h3>
-                    <p><strong>Event Type:</strong> ${competition.type_name}</p>
-                    <p><strong>Date:</strong> ${competition.competition_date}</p>
-                    <p><strong>Progress:</strong> ${competition.scored_count} / ${competition.total_required} completed (${progressPercent}%)</p>
-                    
-                    <div style="background: #f0f0f0; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden;">
-                        <div style="background: linear-gradient(135deg, #800020 0%, #a0002a 100%); height: 100%; width: ${progressPercent}%; transition: width 0.3s ease;"></div>
-                    </div>
-                    
-                    <div style="margin-top: 15px;">
-                        <button onclick="viewCompetitionParticipants(${competition.competition_id})" class="card-button">
-                            View Participants
-                        </button>
-                        <button onclick="startScoring(${competition.competition_id})" class="card-button">
-                            Start Scoring
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-    }
-
-    document.getElementById("content").innerHTML = html;
-}
 
 function displayCompetitions(competitions) {
     let html = `

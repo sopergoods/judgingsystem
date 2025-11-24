@@ -41,7 +41,55 @@ function logout() {
 
 // ================================================
 // DASHBOARD
-// ================================================
+// ===============================================
+// =
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+        color: white;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 10000;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Add CSS animation styles
+if (!document.getElementById('notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'notification-styles';
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
 
 function showDashboard() {
     document.getElementById("content").innerHTML = `
@@ -288,6 +336,104 @@ function showViewCompetitions() {
             console.error('Error:', error);
             showNotification('Error loading competitions', 'error');
         });
+}
+function displayCompetitions(competitions) {
+    let html = `
+        <h2>Manage Competitions</h2>
+        <div style="margin-bottom: 30px;">
+            <button onclick="showCreateCompetitionForm()" class="card-button">Create New Competition</button>
+            <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
+        </div>
+    `;
+    
+    if (competitions.length === 0) {
+        html += `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>No Competitions Found</h3>
+                <p>Create your first competition to get started!</p>
+                <button onclick="showCreateCompetitionForm()" class="card-button">Create Competition</button>
+            </div>
+        `;
+    } else {
+        html += '<div style="display: grid; gap: 20px;">';
+        
+        competitions.forEach(comp => {
+            const statusBadge = comp.status === 'done' ? 
+                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #28a745;">DONE</span>' :
+                comp.status === 'ongoing' ?
+                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #ffc107;">ONGOING</span>' :
+                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #800020;">UPCOMING</span>';
+            
+            const typeBadge = comp.is_pageant ? 
+                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #800020; margin-left: 10px;">PAGEANT</span>' :
+                '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #800020; background: white; border: 2px solid #800020; margin-left: 10px;">REGULAR</span>';
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                        <div>
+                            <h3 style="margin: 0;">${comp.competition_name}</h3>
+                            <p style="color: #666; margin: 5px 0 0 0;">${comp.type_name}</p>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                            ${typeBadge}
+                        </div>
+                    </div>
+                    
+                    <div class="grid-3" style="margin: 15px 0;">
+                        <div>
+                            <p><strong>Date:</strong> ${new Date(comp.competition_date).toLocaleDateString()}</p>
+                            <p><strong>Participants:</strong> ${comp.participant_count || 0}</p>
+                        </div>
+                        <div>
+                            <p><strong>Judges:</strong> ${comp.judge_count || 0}</p>
+                            <p><strong>Event Type:</strong> ${comp.is_pageant ? 'Multi-Day Pageant' : 'Single Event'}</p>
+                        </div>
+                        <div>
+                            ${comp.event_description ? `<p><strong>Description:</strong> ${comp.event_description}</p>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        ${comp.is_pageant ? `
+                            <button onclick="viewPageantSegments(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">
+                                Manage Segments
+                            </button>
+                            <button onclick="setupPageant(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">
+                                Setup Schedule
+                            </button>
+                            <button onclick="manageSegmentWeights(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">
+                                Set Weights
+                            </button>
+                            <button onclick="manageSpecialAwards(${comp.competition_id})">
+                                Special Awards
+                            </button>
+                        ` : `
+                            <button onclick="manageCriteria(${comp.competition_id}, '${comp.competition_name.replace(/'/g, "\\'")}')">
+                                Manage Criteria
+                            </button>
+                        `}
+                        <button onclick="viewJudgeTabulation(${comp.competition_id})">
+                            View Tabulation
+                        </button>
+                        ${comp.status !== 'done' ? `
+                            <button onclick="archiveCompetition(${comp.competition_id})" style="background: #28a745;">
+                                Archive
+                            </button>
+                        ` : ''}
+                        <button onclick="deleteCompetition(${comp.competition_id})" style="background: #800020;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    document.getElementById("content").innerHTML = html;
 }
 
 function submitParticipant(event) {
