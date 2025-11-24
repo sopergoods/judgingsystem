@@ -2778,7 +2778,281 @@ app.get('/debug-scores/:judgeId/:competitionId', (req, res) => {
     });
 });
 
+app.get('/event-history', (req, res) => {
+    const sql = `
+        SELECT 
+            eh.*,
+            et.type_name,
+            et.is_pageant,
+            COUNT(DISTINCT sa.award_id) as total_awards
+        FROM event_history eh
+        LEFT JOIN event_types et ON eh.event_type_id = et.event_type_id
+        LEFT JOIN special_awards sa ON eh.competition_id = sa.competition_id
+        GROUP BY eh.history_id
+        ORDER BY eh.completion_date DESC
+    `;
+    
+    db.query(sql, (err, result) => {
+        if (err) {
+            console.error('Error fetching event history:', err);
+            return res.status(500).json({ error: 'Error fetching event history' });
+        }
+        res.json(result);
+    });
+});
 
+app.get('/event-history/:historyId', (req, res) => {
+    const { historyId } = req.params;
+    
+    const sql = `
+        SELECT eh.*, et.type_name, et.is_pageant
+        FROM event_history eh
+        LEFT JOIN event_types et ON eh.event_type_id = et.event_type_id
+        WHERE eh.history_id = ?
+    `;
+    
+    db.query(sql, [historyId], (err, result) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error fetching event history details' });
+        }
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Event history not found' });
+        }
+        res.json(result[0]);
+    });
+});
+
+app.post('/archive-competition', (req, res) => {
+    const { competition_id, winner_participant_id, notes } = req.body;
+    
+    if (!competition_id) {
+        return res.status(400).json({ error: 'Competition ID required' });
+    }
+    
+    const getCompSql = `
+        SELECT 
+            c.*,
+            et.type_name,
+            (SELECT COUNT(*) FROM participants WHERE competition_id = c.competition_id) as total_participants,
+            (SELECT COUNT(*) FROM judges WHERE competition_id = c.competition_id) as total_judges
+        FROM competitions c
+        JOIN event_types et ON c.event_type_id = et.event_type_id
+        WHERE c.competition_id = ?
+    `;
+    
+    db.query(getCompSql, [competition_id], (err, compResult) => {
+        if (err || compResult.length === 0) {
+            return res.status(500).json({ error: 'Competition not found' });
+        }
+        
+        const comp = compResult[0];
+        let winnerName = null;
+        
+        const insertHistory = () => {
+            const insertSql = `
+                INSERT INTO event_history 
+                (competition_id, competition_name, event_type_id, event_type_name, competition_date, 
+                 winner_participant_id, winner_name, total_participants, total_judges, event_status, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
+            `;
+            
+            db.query(insertSql, [
+                comp.competition_id, comp.competition_name, comp.event_type_id, comp.type_name,
+                comp.competition_date, winner_participant_id || null, winnerName,
+                comp.total_participants, comp.total_judges, notes || null
+            ], (err, result) => {
+                if (err) {
+                    console.error('Error archiving competition:', err);
+                    return res.status(500).json({ error: 'Error archiving competition' });
+                }
+                
+                db.query('UPDATE competitions SET status = "done" WHERE competition_id = ?', [competition_id]);
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Competition archived successfully!',
+                    history_id: result.insertId
+                });
+            });
+        };
+        
+        if (winner_participant_id) {
+            db.query('SELECT participant_name FROM participants WHERE participant_id = ?', [winner_participant_id], (err, winnerResult) => {
+                if (!err && winnerResult.length > 0) {
+                    winnerName = winnerResult[0].participant_name;
+                }
+                insertHistory();
+            });
+        } else {
+            insertHistory();
+        }
+    });
+});
+
+// ================================================
+// SPECIAL AWARDS ENDPOINTS
+// ================================================
+
+app.get('/special-awards/:competitionId', (req, res) => {
+    const { competitionId } = req.params;
+    
+    const sql = `
+        SELECT 
+            sa.*,
+            ps.segment_name,
+            ps.day_number,
+            p.participant_name,
+            p.contestant_number,
+            j.judge_name as awarded_by
+        FROM special_awards sa
+        JOIN pageant_segments ps ON sa.segment_id = ps.segment_id
+        JOIN participants p ON sa.participant_id = p.participant_id
+        LEFT JOIN judges j ON sa.awarded_by_judge_id = j.judge_id
+        WHERE sa.competition_id = ?
+        ORDER BY ps.day_number, ps.order_number
+    `;
+    
+    db.query(sql, [competitionId], (err, result) => {
+        if (err) {
+            console.error('Error fetching special awards:', err);
+            return res.status(500).json({ error: 'Error fetching special awards' });
+        }
+        res.json(result);
+    });
+});
+
+app.post('/create-special-award', (req, res) => {
+    const { competition_id, segment_id, award_name, participant_id, awarded_by_judge_id, notes } = req.body;
+    
+    if (!competition_id || !segment_id || !award_name || !participant_id) {
+        return res.status(400).json({ error: 'Required fields missing' });
+    }
+    
+    const sql = `
+        INSERT INTO special_awards 
+        (competition_id, segment_id, award_name, participant_id, awarded_by_judge_id, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.query(sql, [competition_id, segment_id, award_name, participant_id, awarded_by_judge_id || null, notes || null], 
+        (err, result) => {
+        if (err) {
+            console.error('Error creating special award:', err);
+            return res.status(500).json({ error: 'Error creating special award' });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Special award created successfully!',
+            award_id: result.insertId
+        });
+    });
+});
+
+app.delete('/delete-special-award/:awardId', (req, res) => {
+    const { awardId } = req.params;
+    
+    db.query('DELETE FROM special_awards WHERE award_id = ?', [awardId], (err, result) => {
+        if (err) {
+            console.error('Error deleting special award:', err);
+            return res.status(500).json({ error: 'Error deleting special award' });
+        }
+        res.json({ success: true, message: 'Special award deleted successfully!' });
+    });
+});
+
+// ================================================
+// JUDGE TABULATION ENDPOINT
+// ================================================
+
+app.get('/judge-tabulation/:competitionId', (req, res) => {
+    const { competitionId } = req.params;
+    
+    const sql = `
+        SELECT 
+            c.competition_id,
+            c.competition_name,
+            j.judge_id,
+            j.judge_name,
+            p.participant_id,
+            p.participant_name,
+            p.contestant_number,
+            os.total_score,
+            os.is_locked,
+            os.updated_at as score_date
+        FROM competitions c
+        JOIN judges j ON c.competition_id = j.competition_id
+        JOIN participants p ON c.competition_id = p.competition_id
+        LEFT JOIN overall_scores os ON j.judge_id = os.judge_id 
+            AND p.participant_id = os.participant_id 
+            AND os.segment_id IS NULL
+        WHERE c.competition_id = ?
+        ORDER BY p.contestant_number, j.judge_name
+    `;
+    
+    db.query(sql, [competitionId], (err, result) => {
+        if (err) {
+            console.error('Error fetching judge tabulation:', err);
+            return res.status(500).json({ error: 'Error fetching judge tabulation' });
+        }
+        
+        // Group by participant
+        const participants = {};
+        result.forEach(row => {
+            if (!participants[row.participant_id]) {
+                participants[row.participant_id] = {
+                    participant_id: row.participant_id,
+                    participant_name: row.participant_name,
+                    contestant_number: row.contestant_number,
+                    judge_scores: []
+                };
+            }
+            
+            participants[row.participant_id].judge_scores.push({
+                judge_id: row.judge_id,
+                judge_name: row.judge_name,
+                total_score: row.total_score,
+                is_locked: row.is_locked,
+                score_date: row.score_date
+            });
+        });
+        
+        res.json(Object.values(participants));
+    });
+});
+
+// ================================================
+// COMPETITION STATUS ENDPOINTS
+// ================================================
+
+app.put('/update-competition-status/:id', (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['upcoming', 'ongoing', 'done'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    db.query('UPDATE competitions SET status = ? WHERE competition_id = ?', [status, id], (err, result) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error updating status' });
+        }
+        res.json({ success: true, message: 'Competition status updated!' });
+    });
+});
+
+app.get('/check-competition-status/:id', (req, res) => {
+    const { id } = req.params;
+    
+    db.query('SELECT status FROM competitions WHERE competition_id = ?', [id], (err, result) => {
+        if (err || result.length === 0) {
+            return res.status(500).json({ error: 'Competition not found' });
+        }
+        res.json({ status: result[0].status, is_done: result[0].status === 'done' });
+    });
+});
+
+console.log('✅ New endpoints loaded: Event History, Special Awards, Judge Tabulation, Competition Status');
 app.listen(PORT, '0.0.0.0', () => {  // ✅ Use the PORT from line 11
   console.log(`🚀 Server running on port ${PORT}`);
 });

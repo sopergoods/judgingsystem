@@ -959,60 +959,84 @@ function updateRegistrationStatus(participantId, currentStatus) {
 // =====================================================
 // SHOW EDIT PARTICIPANT FORM (Admin-style)
 // =====================================================
-function showEditParticipantForm(participant) {
-    setContent(`
-        <form id="editParticipantForm">
+function showEditParticipantForm(participantId) {
+    Promise.all([
+        fetch(`${API_URL}/participant/${participantId}`).then(r => r.json()),
+        fetch(`${API_URL}/competitions`).then(r => r.json())
+    ])
+    .then(([participant, competitions]) => {
+        let html = `
             <h2>Edit Participant</h2>
-
-            <label for="participant_name">Full Name</label>
-            <input type="text" id="participant_name" value="${participant.participant_name || ''}" required>
-
-            <label for="contestant_number">Contestant Number</label>
-            <input type="text" id="contestant_number" value="${participant.contestant_number || ''}" required>
-
-            <label for="photo_url">Photo URL</label>
-            <input type="url" id="photo_url" value="${participant.photo_url || ''}">
-
-            <label for="email">Email</label>
-            <input type="email" id="email" value="${participant.email || ''}">
-
-            <label for="phone">Phone</label>
-            <input type="tel" id="phone" value="${participant.phone || ''}">
-
-            <label for="age">Age</label>
-            <input type="number" id="age" value="${participant.age || ''}">
-
-            <label for="gender">Gender</label>
-            <select id="gender">
-                <option value="">Select gender</option>
-                <option value="Male" ${participant.gender === 'Male' ? 'selected' : ''}>Male</option>
-                <option value="Female" ${participant.gender === 'Female' ? 'selected' : ''}>Female</option>
-            </select>
-
-            <label for="school_organization">School / Organization</label>
-            <input type="text" id="school_organization" value="${participant.school_organization || ''}">
-
-            <label for="performance_title">Performance Title</label>
-            <input type="text" id="performance_title" value="${participant.performance_title || ''}">
-
-            <label for="performance_description">Performance Description</label>
-            <textarea id="performance_description">${participant.performance_description || ''}</textarea>
-
-            <label for="talents">Talent / Skills</label>
-            <input type="text" id="talents" value="${participant.talents || ''}">
-
-            <label for="special_awards">Awards / Achievements</label>
-            <textarea id="special_awards">${participant.special_awards || ''}</textarea>
-
-            <label for="competition">Select Competition</label>
-            <select id="competition"></select>
-
-            <button type="submit">Save Changes</button>
-        </form>
-    `);
-
-    loadCompetitionsDropdown("competition", participant.competition_id);
-    setupEditFormSubmit(participant.participant_id);
+            <form id="editParticipantForm" onsubmit="updateParticipant(event, ${participantId})" style="max-width: 600px; margin: 0 auto;">
+                
+                <label>Participant Name: *</label>
+                <input type="text" id="participant_name" value="${participant.participant_name}" required 
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                
+                <label>Contestant Number:</label>
+                <input type="text" id="contestant_number" value="${participant.contestant_number || ''}"
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Age: *</label>
+                        <input type="number" id="age" value="${participant.age}" required min="1" max="100"
+                               style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div>
+                        <label>Gender: *</label>
+                        <select id="gender" required 
+                                style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="male" ${participant.gender === 'male' ? 'selected' : ''}>Male</option>
+                            <option value="female" ${participant.gender === 'female' ? 'selected' : ''}>Female</option>
+                            <option value="other" ${participant.gender === 'other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <label>Year Level: *</label>
+                <select id="year_level" required 
+                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="1st Year" ${participant.year_level === '1st Year' ? 'selected' : ''}>1st Year</option>
+                    <option value="2nd Year" ${participant.year_level === '2nd Year' ? 'selected' : ''}>2nd Year</option>
+                    <option value="3rd Year" ${participant.year_level === '3rd Year' ? 'selected' : ''}>3rd Year</option>
+                    <option value="4th Year" ${participant.year_level === '4th Year' ? 'selected' : ''}>4th Year</option>
+                </select>
+                
+                <label>Competition: *</label>
+                <select id="competition_id" required 
+                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+        `;
+        
+        competitions.forEach(comp => {
+            const selected = comp.competition_id === participant.competition_id ? 'selected' : '';
+            html += `<option value="${comp.competition_id}" ${selected}>${comp.competition_name}</option>`;
+        });
+        
+        html += `
+                </select>
+                
+                <label>Photo URL (optional):</label>
+                <input type="url" id="photo_url" value="${participant.photo_url || ''}"
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                
+                <div style="margin-top: 20px;">
+                    <button type="submit" style="background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                        Update Participant
+                    </button>
+                    <button type="button" onclick="showViewParticipants()" style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer;">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        `;
+        
+        document.getElementById("content").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error loading participant', 'error');
+    });
 }
 
 
