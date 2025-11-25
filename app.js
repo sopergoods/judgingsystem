@@ -1,6 +1,14 @@
-// Admin Dashboard - Clean & Bug-Free Version
-// Maroon & White Theme Only
-// No Emojis - Professional Code
+
+(function() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        // Prevent page from rendering
+        document.addEventListener('DOMContentLoaded', () => {
+            window.location.href = 'login.html';
+        });
+        throw new Error('Not authenticated'); // Stop script execution
+    }
+})();
 
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
