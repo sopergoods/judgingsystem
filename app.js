@@ -1390,58 +1390,111 @@ function showViewParticipants() {
             <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
         </div>
         
+        <!-- FILTER BY COMPETITION -->
+        <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; border: 2px solid #800020;">
+            <label style="font-weight: 600; margin-right: 10px;">Filter by Competition:</label>
+            <select id="participantCompetitionFilter" onchange="filterParticipantsByCompetition()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 300px;">
+                <option value="all">All Competitions</option>
+            </select>
+            <span id="participantCount" style="margin-left: 15px; color: #666; font-weight: 600;"></span>
+        </div>
+        
         <div id="participantsList"><div class="loading">Loading...</div></div>
     `;
 
+    // Load competitions for filter
+    fetch(`${API_URL}/competitions`)
+    .then(response => response.json())
+    .then(competitions => {
+        const select = document.getElementById('participantCompetitionFilter');
+        competitions.forEach(comp => {
+            const option = document.createElement('option');
+            option.value = comp.competition_id;
+            option.textContent = comp.competition_name;
+            select.appendChild(option);
+        });
+    });
+
+    // Load all participants
     fetch(`${API_URL}/participants`)
     .then(response => response.json())
     .then(participants => {
-        let html = '';
+        window.allParticipants = participants; // Store globally for filtering
+        displayFilteredParticipants(participants);
+    });
+}
+
+function filterParticipantsByCompetition() {
+    const filterValue = document.getElementById('participantCompetitionFilter').value;
+    
+    if (filterValue === 'all') {
+        displayFilteredParticipants(window.allParticipants);
+    } else {
+        const filtered = window.allParticipants.filter(p => p.competition_id == filterValue);
+        displayFilteredParticipants(filtered);
+    }
+}
+
+function displayFilteredParticipants(participants) {
+    let html = '';
+    
+    // Update count
+    const countSpan = document.getElementById('participantCount');
+    if (countSpan) {
+        countSpan.textContent = `Showing ${participants.length} participant(s)`;
+    }
+    
+    if (participants.length === 0) {
+        html = `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>No Participants Found</h3>
+                <p>No participants match the selected filter.</p>
+                <button onclick="showAddParticipantForm()" class="card-button">Add Participant</button>
+            </div>
+        `;
+    } else {
+        html = '<div style="display: grid; gap: 20px;">';
         
-        if (participants.length === 0) {
-            html = `
-                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
-                    <h3>No Participants</h3>
-                    <button onclick="showAddParticipantForm()" class="card-button">Add Participant</button>
-                </div>
-            `;
-        } else {
-            html = '<div style="display: grid; gap: 20px;">';
+        participants.forEach(p => {
+            const statusColor = p.status === 'Done' ? '#28a745' : p.status === 'Active' ? '#17a2b8' : '#800020';
             
-            participants.forEach(p => {
-                const statusColor = p.status === 'Done' ? '#28a745' : p.status === 'Active' ? '#17a2b8' : '#800020';
-                
-                html += `
-                    <div class="dashboard-card" style="text-align: left;">
-                        <h3>${p.participant_name}</h3>
-                        <div class="grid-3" style="margin: 15px 0;">
-                            <div>
-                                <p><strong>Age:</strong> ${p.age}</p>
-                                <p><strong>Gender:</strong> ${p.gender}</p>
-                                <p><strong>Email:</strong> ${p.email}</p>
-                            </div>
-                            <div>
-                                <p><strong>Competition:</strong> ${p.competition_name}</p>
-                                <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${p.status.toUpperCase()}</span></p>
-                            </div>
-                            <div>
-                                <p><strong>Year & Course:</strong> ${p.school_organization || 'N/A'}</p>
-                                <p><strong>Contestant #:</strong> ${p.contestant_number || 'N/A'}</p>
-                            </div>
+            html += `
+                <div class="dashboard-card" style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <h3 style="margin: 0;">${p.participant_name}</h3>
+                        ${p.contestant_number ? `<span style="background: #800020; color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: bold;">#${p.contestant_number}</span>` : ''}
+                    </div>
+                    
+                    <div class="grid-3" style="margin: 15px 0;">
+                        <div>
+                            <p><strong>Age:</strong> ${p.age}</p>
+                            <p><strong>Gender:</strong> ${p.gender}</p>
+                            <p><strong>Year Level:</strong> ${p.year_level || 'N/A'}</p>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <button onclick="editParticipant(${p.participant_id})">Edit</button>
-                            <button onclick="deleteParticipant(${p.participant_id})" style="background: #800020;">Delete</button>
+                        <div>
+                            <p><strong>Competition:</strong> <span style="color: #800020; font-weight: 600;">${p.competition_name}</span></p>
+                            <p><strong>Event Type:</strong> ${p.type_name}</p>
+                            <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${p.status.toUpperCase()}</span></p>
+                        </div>
+                        <div>
+                            ${p.email ? `<p><strong>Email:</strong> ${p.email}</p>` : ''}
+                            ${p.phone ? `<p><strong>Phone:</strong> ${p.phone}</p>` : ''}
+                            ${p.school_organization ? `<p><strong>School:</strong> ${p.school_organization}</p>` : ''}
                         </div>
                     </div>
-                `;
-            });
-            
-            html += '</div>';
-        }
+                    
+                    <div style="margin-top: 20px;">
+                        <button onclick="editParticipant(${p.participant_id})">Edit</button>
+                        <button onclick="deleteParticipant(${p.participant_id})" style="background: #800020;">Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
 
-        document.getElementById("participantsList").innerHTML = html;
-    });
+    document.getElementById("participantsList").innerHTML = html;
 }
 
 function editParticipant(id) {
@@ -1783,55 +1836,131 @@ function showViewJudges() {
             <button onclick="showAddJudgeForm()" class="card-button">Add Judge</button>
             <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
         </div>
+        
+        <!-- FILTER BY COMPETITION -->
+        <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; border: 2px solid #800020;">
+            <label style="font-weight: 600; margin-right: 10px;">Filter by Competition:</label>
+            <select id="judgeCompetitionFilter" onchange="filterJudgesByCompetition()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 300px;">
+                <option value="all">All Competitions</option>
+                <option value="unassigned">Unassigned</option>
+            </select>
+            <span id="judgeCount" style="margin-left: 15px; color: #666; font-weight: 600;"></span>
+        </div>
+        
         <div id="judgesList"><div class="loading">Loading...</div></div>
     `;
+    
+    // Load competitions for filter
+    fetch(`${API_URL}/competitions`)
+    .then(response => response.json())
+    .then(competitions => {
+        const select = document.getElementById('judgeCompetitionFilter');
+        competitions.forEach(comp => {
+            const option = document.createElement('option');
+            option.value = comp.competition_id;
+            option.textContent = comp.competition_name;
+            select.appendChild(option);
+        });
+    });
 
+    // Load all judges
     fetch(`${API_URL}/judges`)
     .then(response => response.json())
     .then(judges => {
-        let html = '';
-        
-        if (judges.length === 0) {
-            html = `
-                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
-                    <h3>No Judges</h3>
-                    <button onclick="showAddJudgeForm()" class="card-button">Add Judge</button>
-                </div>
-            `;
-        } else {
-            html = '<div style="display: grid; gap: 20px;">';
-            
-            judges.forEach(j => {
-                html += `
-                    <div class="dashboard-card" style="text-align: left;">
-                        <h3>${j.judge_name}</h3>
-                        <div class="grid-3" style="margin: 15px 0;">
-                            <div>
-                                <p><strong>Email:</strong> ${j.email}</p>
-                                <p><strong>Phone:</strong> ${j.phone || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p><strong>Experience:</strong> ${j.experience_years} years</p>
-                                <p><strong>Competition:</strong> ${j.competition_name || 'Not assigned'}</p>
-                            </div>
-                            <div>
-                                <p><strong>Expertise:</strong> ${j.expertise}</p>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px;">
-                            <button onclick="editJudge(${j.judge_id})">Edit</button>
-                            <button onclick="deleteJudge(${j.judge_id})" style="background: #800020;">Delete</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += '</div>';
-        }
-
-        document.getElementById("judgesList").innerHTML = html;
+        window.allJudges = judges; // Store globally for filtering
+        displayFilteredJudges(judges);
     });
 }
+
+function filterJudgesByCompetition() {
+    const filterValue = document.getElementById('judgeCompetitionFilter').value;
+    
+    if (filterValue === 'all') {
+        displayFilteredJudges(window.allJudges);
+    } else if (filterValue === 'unassigned') {
+        const filtered = window.allJudges.filter(j => !j.competition_id);
+        displayFilteredJudges(filtered);
+    } else {
+        const filtered = window.allJudges.filter(j => j.competition_id == filterValue);
+        displayFilteredJudges(filtered);
+    }
+}
+
+function displayFilteredJudges(judges) {
+    let html = '';
+    
+    // Update count
+    const countSpan = document.getElementById('judgeCount');
+    if (countSpan) {
+        countSpan.textContent = `Showing ${judges.length} judge(s)`;
+    }
+    
+    if (judges.length === 0) {
+        html = `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>No Judges Found</h3>
+                <p>No judges match the selected filter.</p>
+                <button onclick="showAddJudgeForm()" class="card-button">Add Judge</button>
+            </div>
+        `;
+    } else {
+        html = '<div style="display: grid; gap: 20px;">';
+        
+        judges.forEach(j => {
+            const isAssigned = j.competition_name ? true : false;
+            const assignmentBadge = isAssigned ? 
+                `<span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: bold;">ASSIGNED</span>` :
+                `<span style="background: #6c757d; color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: bold;">UNASSIGNED</span>`;
+            
+            html += `
+                <div class="dashboard-card" style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">${j.judge_name}</h3>
+                        ${assignmentBadge}
+                    </div>
+                    
+                    <div class="grid-3" style="margin: 15px 0;">
+                        <div>
+                            ${j.email ? `<p><strong>Email:</strong> ${j.email}</p>` : '<p><strong>Email:</strong> <span style="color: #999;">Not provided</span></p>'}
+                            ${j.phone ? `<p><strong>Phone:</strong> ${j.phone}</p>` : '<p><strong>Phone:</strong> <span style="color: #999;">Not provided</span></p>'}
+                            ${j.username ? `<p><strong>Username:</strong> ${j.username}</p>` : ''}
+                        </div>
+                        <div>
+                            <p><strong>Assigned to:</strong></p>
+                            ${j.competition_name ? 
+                                `<p style="color: #800020; font-weight: 600; margin-top: 5px;">${j.competition_name}</p>` : 
+                                `<p style="color: #999; font-style: italic; margin-top: 5px;">Not assigned to any competition</p>`
+                            }
+                            ${j.type_name ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">(${j.type_name})</p>` : ''}
+                        </div>
+                        <div>
+                            ${j.experience_years ? `<p><strong>Experience:</strong> ${j.experience_years} years</p>` : ''}
+                            ${j.expertise ? `<p><strong>Expertise:</strong> ${j.expertise}</p>` : ''}
+                            ${j.credentials ? `<p><strong>Has Credentials:</strong> Yes</p>` : ''}
+                        </div>
+                    </div>
+                    
+                    ${j.credentials ? `
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; border-left: 3px solid #800020;">
+                            <strong style="color: #800020;">Credentials:</strong>
+                            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">${j.credentials}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 20px;">
+                        <button onclick="editJudge(${j.judge_id})">Edit</button>
+                        <button onclick="deleteJudge(${j.judge_id})" style="background: #800020;">Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+
+    document.getElementById("judgesList").innerHTML = html;
+}
+
 
 function editJudge(id) {
     fetch(`${API_URL}/judge/${id}`)
