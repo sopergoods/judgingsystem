@@ -328,32 +328,38 @@
                 console.log('Login response:', data);
                 
                 if (data.success) {
-                    // Store user data in sessionStorage
-                    sessionStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    // Show success message
-                    document.getElementById('successMessage').textContent = 'Login successful! Redirecting...';
-                    document.getElementById('successMessage').style.display = 'block';
-                    
-                    // Debug the user role
-                    console.log('User role detected:', data.user.role);
-                    
-                    // Redirect based on role with explicit checks
-                    setTimeout(() => {
-                        if (data.user.role === 'admin') {
-                            console.log('Redirecting to admin dashboard');
-                            window.location.href = 'index.html';
-                        } else if (data.user.role === 'staff') {
-                            console.log('Redirecting to staff dashboard');
-                            window.location.href = 'staff-dashboard.html';
-                        } else if (data.user.role === 'judge') {
-                            console.log('Redirecting to judge dashboard');
-                            window.location.href = 'judge-dashboard.html';
-                        } else {
-                            console.error('Unknown role:', data.user.role);
-                            alert('Unknown user role: ' + data.user.role);
-                        }
-                    }, 1000);
+    // Store BOTH in localStorage (what dashboards expect)
+    localStorage.setItem('token', 'authenticated');
+    localStorage.setItem('user', JSON.stringify(data.user));
+    
+    // Also keep in sessionStorage for compatibility
+    sessionStorage.setItem('user', JSON.stringify(data.user));
+    
+    // Show success message
+    document.getElementById('successMessage').textContent = 'Login successful! Redirecting...';
+    document.getElementById('successMessage').style.display = 'block';
+    
+    // Debug the user role
+    console.log('User role detected:', data.user.role);
+    console.log('Token stored:', localStorage.getItem('token'));
+    
+    // Redirect based on role with explicit checks
+    setTimeout(() => {
+        if (data.user.role === 'admin') {
+            console.log('Redirecting to admin dashboard');
+            window.location.href = '/index.html';
+        } else if (data.user.role === 'staff') {
+            console.log('Redirecting to staff dashboard');
+            window.location.href = '/staff-dashboard.html';
+        } else if (data.user.role === 'judge') {
+            console.log('Redirecting to judge dashboard');
+            window.location.href = '/judge-dashboard.html';
+        } else {
+            console.error('Unknown role:', data.user.role);
+            alert('Unknown user role: ' + data.user.role);
+        }
+    }, 1000);
+
                 } else {
                     // Show error message
                     console.error('Login failed:', data.message);
