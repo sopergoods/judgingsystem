@@ -443,60 +443,130 @@ function displayCriteria(criteria) {
 // PARTICIPANTS - ADD FORM
 // =====================================================
 
-function showAddParticipantForm() {
-    setContent(`
-        <form id="addParticipantForm">
-            <h2>Add New Participant</h2>
+function showAddParticipantForm(competitionId = null) {
+    fetch(`${API_URL}/competitions`)
+        .then(response => response.json())
+        .then(competitions => {
+            let html = `
+                <h2>Add New Participant</h2>
+                <form id="participantForm" onsubmit="submitParticipant(event)" style="max-width: 600px; margin: 0 auto;">
+                    
+                    <label>Participant Name: *</label>
+                    <input type="text" id="participant_name" required 
+                           placeholder="Full Name" 
+                           style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    
+                    <label>Contestant Number:</label>
+                    <input type="text" id="contestant_number" 
+                           placeholder="e.g., 001, P-01" 
+                           style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label>Age: *</label>
+                            <input type="number" id="age" required min="1" max="100"
+                                   style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <div>
+                            <label>Gender: *</label>
+                            <select id="gender" required 
+                                    style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                                <option value="">-- Select --</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <label>Year Level: *</label>
+                    <select id="year_level" required 
+                            style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <option value="">-- Select Year Level --</option>
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                    </select>
+                    
+                    <label>Competition: *</label>
+                    <select id="competition_id" required 
+                            style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <option value="">-- Select Competition --</option>
+            `;
+            
+            competitions.forEach(comp => {
+                // Don't allow adding participants to DONE competitions
+                if (comp.status !== 'done') {
+                    const selected = competitionId && comp.competition_id == competitionId ? 'selected' : '';
+                    html += `<option value="${comp.competition_id}" ${selected}>${comp.competition_name}</option>`;
+                }
+            });
+            
+            html += `
+                    </select>
+                    
+                    <label>Photo URL (optional):</label>
+                    <input type="url" id="photo_url" 
+                           placeholder="https://example.com/photo.jpg" 
+                           style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    
+                    <div style="margin-top: 20px;">
+                        <button type="submit" style="background: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                            Add Participant
+                        </button>
+                        <button type="button" onclick="showViewParticipants()" style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            setContent(html);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error loading competitions', 'error');
+        });
+}
 
-            <label for="participant_name">Full Name</label>
-            <input type="text" id="participant_name" placeholder="Enter participant full name" required>
-
-            <label for="contestant_number">Contestant Number</label>
-            <input type="text" id="contestant_number" placeholder="e.g., 01, 02, etc." required>
-
-            <label for="photo_url">Photo URL</label>
-            <input type="url" id="photo_url" placeholder="Paste image link or leave blank">
-
-            <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Optional email address">
-
-            <label for="phone">Phone</label>
-            <input type="tel" id="phone" placeholder="Optional phone number">
-
-            <label for="age">Age</label>
-            <input type="number" id="age" placeholder="Optional age">
-
-            <label for="gender">Gender</label>
-            <select id="gender">
-                <option value="">Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-            </select>
-
-            <label for="school_organization">School / Organization</label>
-            <input type="text" id="school_organization" placeholder="Enter school or organization">
-
-            <label for="performance_title">Performance Title</label>
-            <input type="text" id="performance_title" placeholder="Enter performance title">
-
-            <label for="performance_description">Performance Description</label>
-            <textarea id="performance_description" placeholder="Short description of performance"></textarea>
-
-            <label for="talents">Talent / Skills</label>
-            <input type="text" id="talents" placeholder="Optional talents or skills">
-
-            <label for="special_awards">Awards / Achievements</label>
-            <textarea id="special_awards" placeholder="Optional awards and achievements"></textarea>
-
-            <label for="competition">Select Competition</label>
-            <select id="competition" required></select>
-
-            <button type="submit">Add Participant</button>
-        </form>
-    `);
-
-    loadCompetitionsDropdown("competition");
-    setupParticipantFormSubmit();
+function submitParticipant(event) {
+    event.preventDefault();
+    
+    const participantData = {
+        participant_name: document.getElementById('participant_name').value,
+        contestant_number: document.getElementById('contestant_number').value || null,
+        age: document.getElementById('age').value,
+        gender: document.getElementById('gender').value,
+        year_level: document.getElementById('year_level').value,
+        competition_id: document.getElementById('competition_id').value,
+        photo_url: document.getElementById('photo_url').value || null,
+        // Set optional fields as null
+        email: null,
+        phone: null,
+        school_organization: null,
+        performance_title: null,
+        performance_description: null
+    };
+    
+    fetch(`${API_URL}/add-participant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(participantData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Participant added successfully!', 'success');
+            showViewParticipants();
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error adding participant', 'error');
+    });
 }
 
 function getBasicInfoSection() {

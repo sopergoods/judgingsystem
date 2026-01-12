@@ -329,15 +329,61 @@ function showViewCompetitions() {
             <button onclick="showCreateCompetitionForm()" class="card-button">Add New Competition</button>
             <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
         </div>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: auto auto 1fr; gap: 15px; align-items: center;">
+                <label for="filterStatus" style="font-weight: 600; color: #800020;">Filter by Status:</label>
+                <select id="filterStatus" onchange="filterCompetitions()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 150px;">
+                    <option value="all">All Statuses</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="done">Done</option>
+                </select>
+                <label for="filterEventType" style="font-weight: 600; color: #800020; margin-left: 20px;">Event Type:</label>
+                <select id="filterEventType" onchange="filterCompetitions()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 150px;">
+                    <option value="all">All Types</option>
+                    <option value="pageant">Pageant</option>
+                    <option value="regular">Regular</option>
+                </select>
+            </div>
+        </div>
         <div id="competitionsList"><div class="loading">Loading...</div></div>
     `;
 
-    fetch(`${API_URL}/competitions`)
-    .then(response => response.json())
-    .then(competitions => {
-        let html = '<div style="display: grid; gap: 20px;">';
-        
-        competitions.forEach(comp => {
+    Promise.all([
+        fetch(`${API_URL}/competitions`).then(r => r.json()),
+        fetch(`${API_URL}/event-types`).then(r => r.json())
+    ])
+    .then(([competitions, eventTypes]) => {
+        window.allCompetitions = competitions;
+        displayCompetitionsList(competitions);
+    });
+}
+
+function filterCompetitions() {
+    const statusFilter = document.getElementById('filterStatus').value;
+    const eventTypeFilter = document.getElementById('filterEventType').value;
+    
+    let filtered = window.allCompetitions || [];
+    
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(comp => (comp.status || 'ongoing') === statusFilter);
+    }
+    
+    if (eventTypeFilter !== 'all') {
+        if (eventTypeFilter === 'pageant') {
+            filtered = filtered.filter(comp => comp.is_pageant === 1 || comp.is_pageant === true);
+        } else if (eventTypeFilter === 'regular') {
+            filtered = filtered.filter(comp => !comp.is_pageant || comp.is_pageant === 0);
+        }
+    }
+    
+    displayCompetitionsList(filtered);
+}
+
+function displayCompetitionsList(competitions) {
+    let html = '<div style="display: grid; gap: 20px;">';
+    
+    competitions.forEach(comp => {
             // Status badge
             let statusBadge = '';
             let statusText = comp.status || 'ongoing';
@@ -388,6 +434,11 @@ function showViewCompetitions() {
                 if (comp.is_pageant) {
                     html += `<button onclick="manageSpecialAwards(${comp.competition_id})" style="padding: 8px 15px; margin-left: 5px;">View Awards</button>`;
                 }
+                
+                html += `
+                    <br>
+                    <button onclick="deleteCompetition(${comp.competition_id})" style="background: #dc3545; color: white; margin-top: 10px;">Delete Competition</button>
+                `;
             } else {
                 // Normal actions for ongoing competitions
                 html += `
@@ -416,19 +467,19 @@ function showViewCompetitions() {
             `;
         });
         
-        html += '</div>';
-        
-        if (competitions.length === 0) {
-            html = `
-                <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
-                    <h3>No Competitions Yet</h3>
-                    <button onclick="showCreateCompetitionForm()" class="card-button">Create Competition</button>
-                </div>
-            `;
-        }
-        
-        document.getElementById("competitionsList").innerHTML = html;
-    });
+    html += '</div>';
+    
+    if (competitions.length === 0) {
+        html = `
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+                <h3>No Competitions Found</h3>
+                <p>No competitions match the current filters.</p>
+                <button onclick="showCreateCompetitionForm()" class="card-button">Create Competition</button>
+            </div>
+        `;
+    }
+    
+    document.getElementById("competitionsList").innerHTML = html;
 }
 
 function displayCompetitions(competitions) {
@@ -575,11 +626,15 @@ function deleteCompetition(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Competition deleted successfully!');
+                showNotification('Competition deleted successfully!', 'success');
                 showViewCompetitions();
             } else {
-                alert('Error: ' + data.error);
+                showNotification('Error: ' + data.error, 'error');
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error deleting competition', 'error');
         });
     }
 }

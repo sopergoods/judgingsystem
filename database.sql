@@ -550,3 +550,152 @@ GROUP BY ps.segment_id, ps.segment_name, ps.segment_date, ps.day_number,
 --   Staff: username: staff1, password: staff123
 --   Judges: username: judge1-5, password: judge123
 -- =====================================================
+
+-- =====================================================
+-- MINIMAL DATABASE UPDATES - ESSENTIAL ONLY
+-- Run this if you just want the new features without sample data
+-- =====================================================
+
+-- =====================================================
+-- 1. ADD YEAR_LEVEL TO PARTICIPANTS
+-- =====================================================
+-- If this gives "Duplicate column" error, that's OK - skip to next step
+ALTER TABLE participants 
+ADD COLUMN year_level ENUM('1st Year', '2nd Year', '3rd Year', '4th Year') 
+DEFAULT '1st Year' AFTER gender;
+
+-- =====================================================
+-- 2. MAKE FIELDS OPTIONAL
+-- =====================================================
+ALTER TABLE participants MODIFY COLUMN email VARCHAR(255) NULL;
+ALTER TABLE participants MODIFY COLUMN phone VARCHAR(50) NULL;
+ALTER TABLE participants MODIFY COLUMN school_organization VARCHAR(255) NULL;
+ALTER TABLE participants MODIFY COLUMN performance_title VARCHAR(255) NULL;
+ALTER TABLE participants MODIFY COLUMN performance_description TEXT NULL;
+
+ALTER TABLE judges MODIFY COLUMN email VARCHAR(255) NULL;
+ALTER TABLE judges MODIFY COLUMN phone VARCHAR(50) NULL;
+ALTER TABLE judges MODIFY COLUMN expertise TEXT NULL;
+ALTER TABLE judges MODIFY COLUMN experience_years INT NULL DEFAULT 0;
+
+-- =====================================================
+-- 3. CREATE EVENT_HISTORY TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS event_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    competition_id INT NOT NULL,
+    competition_name VARCHAR(255) NOT NULL,
+    event_type_id INT NOT NULL,
+    event_type_name VARCHAR(100) NOT NULL,
+    competition_date DATE NOT NULL,
+    completion_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    winner_participant_id INT,
+    winner_name VARCHAR(255),
+    total_participants INT DEFAULT 0,
+    total_judges INT DEFAULT 0,
+    event_status ENUM('completed', 'cancelled') DEFAULT 'completed',
+    notes TEXT,
+    archived_data JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_competition_date (competition_date),
+    INDEX idx_completion_date (completion_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 4. CREATE SPECIAL_AWARDS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS special_awards (
+    award_id INT AUTO_INCREMENT PRIMARY KEY,
+    competition_id INT NOT NULL,
+    segment_id INT NOT NULL,
+    award_name VARCHAR(255) NOT NULL,
+    participant_id INT NOT NULL,
+    awarded_by_judge_id INT,
+    award_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    FOREIGN KEY (competition_id) REFERENCES competitions(competition_id) ON DELETE CASCADE,
+    FOREIGN KEY (segment_id) REFERENCES pageant_segments(segment_id) ON DELETE CASCADE,
+    FOREIGN KEY (participant_id) REFERENCES participants(participant_id) ON DELETE CASCADE,
+    FOREIGN KEY (awarded_by_judge_id) REFERENCES judges(judge_id) ON DELETE SET NULL,
+    INDEX idx_competition (competition_id),
+    INDEX idx_segment (segment_id),
+    INDEX idx_participant (participant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 5. ADD STATUS TO COMPETITIONS
+-- =====================================================
+-- If this gives "Duplicate column" error, that's OK - skip to next step
+ALTER TABLE competitions 
+ADD COLUMN status ENUM('upcoming', 'ongoing', 'done') 
+DEFAULT 'ongoing';
+
+-- =====================================================
+-- 6. CREATE VIEWS
+-- =====================================================
+DROP VIEW IF EXISTS vw_judge_tabulation;
+CREATE VIEW vw_judge_tabulation AS
+SELECT 
+    c.competition_id,
+    c.competition_name,
+    j.judge_id,
+    j.judge_name,
+    p.participant_id,
+    p.participant_name,
+    p.contestant_number,
+    os.total_score,
+    os.is_locked,
+    os.updated_at as score_date
+FROM competitions c
+JOIN judges j ON c.competition_id = j.competition_id
+JOIN participants p ON c.competition_id = p.competition_id
+LEFT JOIN overall_scores os ON j.judge_id = os.judge_id 
+    AND p.participant_id = os.participant_id 
+    AND os.segment_id IS NULL
+ORDER BY c.competition_id, p.contestant_number, j.judge_name;
+
+DROP VIEW IF EXISTS vw_special_awards_summary;
+CREATE VIEW vw_special_awards_summary AS
+SELECT 
+    sa.competition_id,
+    c.competition_name,
+    ps.segment_name,
+    ps.day_number,
+    sa.award_name,
+    p.participant_name,
+    p.contestant_number,
+    j.judge_name as awarded_by,
+    sa.award_date
+FROM special_awards sa
+JOIN competitions c ON sa.competition_id = c.competition_id
+JOIN pageant_segments ps ON sa.segment_id = ps.segment_id
+JOIN participants p ON sa.participant_id = p.participant_id
+LEFT JOIN judges j ON sa.awarded_by_judge_id = j.judge_id
+ORDER BY sa.competition_id, ps.day_number, ps.order_number;
+
+DROP VIEW IF EXISTS vw_event_history_overview;
+CREATE VIEW vw_event_history_overview AS
+SELECT 
+    eh.*,
+    et.type_name,
+    et.is_pageant,
+    COUNT(DISTINCT sa.award_id) as total_awards
+FROM event_history eh
+LEFT JOIN event_types et ON eh.event_type_id = et.event_type_id
+LEFT JOIN special_awards sa ON eh.competition_id = sa.competition_id
+GROUP BY eh.history_id
+ORDER BY eh.completion_date DESC;
+
+-- =====================================================
+-- DONE! 
+-- =====================================================
+-- You can now:
+-- 1. Add special awards through the admin UI
+-- 2. Mark competitions as DONE
+-- 3. Register participants with year level
+-- 4. Register judges without email/phone
+-- =====================================================
+
+SELECT 'Database successfully updated!' as Status;
+SELECT 'New tables: event_history, special_awards' as Tables_Added;
+SELECT 'New columns: participants.year_level, competitions.status' as Columns_Added;
