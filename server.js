@@ -863,17 +863,20 @@ app.post('/add-judge', (req, res) => {
 app.put('/update-judge/:id', (req, res) => {
     const { id } = req.params;
     const { 
-        judge_name, email, phone, expertise, 
-        experience_years, credentials, competition_id 
+        judge_name, credentials, competition_id 
     } = req.body;
 
+    if (!judge_name) {
+        return res.status(400).json({ error: 'Judge name is required' });
+    }
+
     const sql = `UPDATE judges 
-                 SET judge_name = ?, email = ?, phone = ?, expertise = ?, 
-                     experience_years = ?, credentials = ?, competition_id = ? 
+                 SET judge_name = ?, credentials = ?, competition_id = ? 
                  WHERE judge_id = ?`;
     
-    db.query(sql, [judge_name, email, phone, expertise, experience_years, credentials, competition_id, id], (err, result) => {
+    db.query(sql, [judge_name, credentials || null, competition_id || null, id], (err, result) => {
         if (err) {
+            console.error('Error updating judge:', err);
             return res.status(500).json({ error: 'Error updating judge' });
         }
         res.json({ success: true, message: 'Judge updated successfully!' });

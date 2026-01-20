@@ -803,7 +803,7 @@ function showViewParticipants() {
             <button onclick="showAddParticipantForm()" class="card-button">Add New Participant</button>
         </div>
         <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <div style="display: grid; grid-template-columns: auto auto auto auto auto 1fr; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div style="display: grid; grid-template-columns: auto auto auto 1fr; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <label for="filterCompetition" style="font-weight: 600; color: #800020;">Competition:</label>
                 <select id="filterCompetition" onchange="filterParticipants()" class="filter-select">
                     <option value="">All Competitions</option>
@@ -815,10 +815,6 @@ function showViewParticipants() {
                     <option value="2nd Year">2nd Year</option>
                     <option value="3rd Year">3rd Year</option>
                     <option value="4th Year">4th Year</option>
-                </select>
-                <label for="filterCourse" style="font-weight: 600; color: #800020;">Course/Org:</label>
-                <select id="filterCourse" onchange="filterParticipants()" class="filter-select">
-                    <option value="">All Courses</option>
                 </select>
                 <label for="filterStatus" style="font-weight: 600; color: #800020;">Status:</label>
                 <select id="filterStatus" onchange="filterParticipants()" class="filter-select">
@@ -837,7 +833,6 @@ function showViewParticipants() {
     ])
     .then(([competitions, participants]) => {
         populateCompetitionFilter(competitions);
-        populateCourseFilter(participants);
         allParticipants = participants;
         displayParticipants(participants);
     })
@@ -859,7 +854,6 @@ function populateCompetitionFilter(competitions) {
 function filterParticipants() {
     const competitionId = document.getElementById('filterCompetition').value;
     const year = document.getElementById('filterYear').value;
-    const course = document.getElementById('filterCourse').value;
     const status = document.getElementById('filterStatus').value;
     
     let filtered = allParticipants;
@@ -872,34 +866,11 @@ function filterParticipants() {
         filtered = filtered.filter(p => (p.year_level || '').toLowerCase() === year.toLowerCase());
     }
     
-    if (course) {
-        filtered = filtered.filter(p => (p.school_organization || '').toLowerCase().includes(course.toLowerCase()));
-    }
-    
     if (status) {
         filtered = filtered.filter(p => (p.status || '').toLowerCase() === status.toLowerCase());
     }
     
     displayParticipants(filtered);
-}
-
-function populateCourseFilter(participants) {
-    const courseSelect = document.getElementById('filterCourse');
-    if (!courseSelect) return;
-    
-    // Get unique courses/organizations
-    const courses = [...new Set(participants
-        .map(p => p.school_organization)
-        .filter(c => c && c.trim())
-        .sort()
-    )];
-    
-    courses.forEach(course => {
-        const option = document.createElement('option');
-        option.value = course;
-        option.textContent = course;
-        courseSelect.appendChild(option);
-    });
 }
 
 function displayParticipants(participants) {
@@ -1071,37 +1042,54 @@ function updateRegistrationStatus(participantId, currentStatus) {
 // =====================================================
 // SHOW EDIT PARTICIPANT FORM (Admin-style)
 // =====================================================
-function showEditParticipantForm(participantId) {
+function showEditParticipantForm(participant) {
+    // Handle both participant object and participantId
+    const participantId = participant.participant_id || participant;
+    const isObject = typeof participant === 'object' && participant.participant_id;
+    
+    if (!isObject) {
+        // If just ID was passed, fetch the participant data
+        fetch(`${API_URL}/participant/${participantId}`)
+            .then(r => r.json())
+            .then(p => showEditParticipantForm(p))
+            .catch(err => {
+                console.error('Error loading participant', err);
+                showNotification('Error loading participant', 'error');
+            });
+        return;
+    }
+    
     Promise.all([
-        fetch(`${API_URL}/participant/${participantId}`).then(r => r.json()),
+        Promise.resolve(participant),
         fetch(`${API_URL}/competitions`).then(r => r.json())
     ])
-    .then(([participant, competitions]) => {
+    .then(([participantData, competitions]) => {
         let html = `
             <h2>Edit Participant</h2>
-            <form id="editParticipantForm" onsubmit="updateParticipant(event, ${participantId})" style="max-width: 600px; margin: 0 auto;">
+            <form id="editParticipantForm" onsubmit="updateParticipant(event, ${participantData.participant_id})" style="max-width: 600px; margin: 0 auto;">
                 
                 <label>Participant Name: *</label>
-                <input type="text" id="participant_name" value="${participant.participant_name}" required 
+                <input type="text" id="participant_name" value="${participantData.participant_name || ''}" required 
                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                 
                 <label>Contestant Number:</label>
-                <input type="text" id="contestant_number" value="${participant.contestant_number || ''}"
+                <input type="text" id="contestant_number" value="${participantData.contestant_number || ''}"
                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
                         <label>Age: *</label>
-                        <input type="number" id="age" value="${participant.age}" required min="1" max="100"
+                        <input type="number" id="age" value="${participantData.age || ''}" required min="1" max="100"
                                style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                     </div>
                     <div>
                         <label>Gender: *</label>
                         <select id="gender" required 
                                 style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
-                            <option value="male" ${participant.gender === 'male' ? 'selected' : ''}>Male</option>
-                            <option value="female" ${participant.gender === 'female' ? 'selected' : ''}>Female</option>
-                            <option value="other" ${participant.gender === 'other' ? 'selected' : ''}>Other</option>
+                            <option value="">-- Select --</option>
+                            <option value="male" ${participantData.gender === 'male' ? 'selected' : ''}>Male</option>
+                            <option value="female" ${participantData.gender === 'female' ? 'selected' : ''}>Female</option>
+                            <option value="other" ${participantData.gender === 'other' ? 'selected' : ''}>Other</option>
                         </select>
                     </div>
                 </div>
@@ -1109,19 +1097,21 @@ function showEditParticipantForm(participantId) {
                 <label>Year Level: *</label>
                 <select id="year_level" required 
                         style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
-                    <option value="1st Year" ${participant.year_level === '1st Year' ? 'selected' : ''}>1st Year</option>
-                    <option value="2nd Year" ${participant.year_level === '2nd Year' ? 'selected' : ''}>2nd Year</option>
-                    <option value="3rd Year" ${participant.year_level === '3rd Year' ? 'selected' : ''}>3rd Year</option>
-                    <option value="4th Year" ${participant.year_level === '4th Year' ? 'selected' : ''}>4th Year</option>
+                    <option value="">-- Select Year Level --</option>
+                    <option value="1st Year" ${participantData.year_level === '1st Year' ? 'selected' : ''}>1st Year</option>
+                    <option value="2nd Year" ${participantData.year_level === '2nd Year' ? 'selected' : ''}>2nd Year</option>
+                    <option value="3rd Year" ${participantData.year_level === '3rd Year' ? 'selected' : ''}>3rd Year</option>
+                    <option value="4th Year" ${participantData.year_level === '4th Year' ? 'selected' : ''}>4th Year</option>
                 </select>
                 
                 <label>Competition: *</label>
                 <select id="competition_id" required 
                         style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">-- Select Competition --</option>
         `;
         
         competitions.forEach(comp => {
-            const selected = comp.competition_id === participant.competition_id ? 'selected' : '';
+            const selected = comp.competition_id === participantData.competition_id ? 'selected' : '';
             html += `<option value="${comp.competition_id}" ${selected}>${comp.competition_name}</option>`;
         });
         
@@ -1129,11 +1119,11 @@ function showEditParticipantForm(participantId) {
                 </select>
                 
                 <label>Photo URL (optional):</label>
-                <input type="url" id="photo_url" value="${participant.photo_url || ''}"
+                <input type="url" id="photo_url" value="${participantData.photo_url || ''}"
                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                 
                 <div style="margin-top: 20px;">
-                    <button type="submit" style="background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                    <button type="submit" style="background: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
                         Update Participant
                     </button>
                     <button type="button" onclick="showViewParticipants()" style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer;">
@@ -1162,11 +1152,14 @@ function updateParticipant(event, participantId) {
         year_level: document.getElementById('year_level').value,
         competition_id: document.getElementById('competition_id').value,
         photo_url: document.getElementById('photo_url').value || null,
+        // Set optional fields as null (removed: email, phone, school_organization, performance_title, talents, special_awards)
         email: null,
         phone: null,
         school_organization: null,
         performance_title: null,
-        performance_description: null
+        performance_description: null,
+        talents: null,
+        special_awards: null
     };
     
     fetch(`${API_URL}/update-participant/${participantId}`, {
@@ -1177,7 +1170,7 @@ function updateParticipant(event, participantId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message, 'success');
+            showNotification(data.message || 'Participant updated successfully!', 'success');
             showViewParticipants();
         } else {
             showNotification('Error: ' + data.error, 'error');
@@ -1390,22 +1383,14 @@ function displayJudges(judges) {
             <div class="dashboard-card" style="text-align: left;">
                 <h3>${sanitizeHTML(judge.judge_name)}</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 15px 0;">
-                    <div>
-                        <p><strong>Email:</strong> ${sanitizeHTML(judge.email)}</p>
-                        <p><strong>Phone:</strong> ${sanitizeHTML(judge.phone) || 'Not provided'}</p>
-                        <p><strong>Experience:</strong> ${judge.experience_years} years</p>
-                    </div>
-                    <div>
-                        <p><strong>Competition:</strong> ${sanitizeHTML(judge.competition_name) || 'Not assigned'}</p>
-                        <p><strong>Event Type:</strong> ${sanitizeHTML(judge.type_name) || 'N/A'}</p>
-                        <p><strong>Username:</strong> ${sanitizeHTML(judge.username) || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p><strong>Expertise:</strong></p>
-                        <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; font-size: 14px;">
-                            ${sanitizeHTML(judge.expertise) || 'Not specified'}
+                        <div>
+                            <p><strong>Competition:</strong> ${sanitizeHTML(judge.competition_name) || 'Not assigned'}</p>
+                            <p><strong>Event Type:</strong> ${sanitizeHTML(judge.type_name) || 'N/A'}</p>
+                            <p><strong>Username:</strong> ${sanitizeHTML(judge.username) || 'Not set'}</p>
                         </div>
-                    </div>
+                        <div>
+                            <p><strong>Account Status:</strong> <span style="color: #28a745; font-weight: bold;">Active</span></p>
+                        </div>
                 </div>
                 ${judge.credentials ? `
                     <div style="margin-top: 15px;">
@@ -1448,12 +1433,6 @@ function viewJudgeDetails(id) {
                             <p><strong>Assigned Competition:</strong> ${sanitizeHTML(judge.competition_name) || 'Not assigned'}</p>
                             <p><strong>Event Type:</strong> ${sanitizeHTML(judge.type_name) || 'N/A'}</p>
                             <p><strong>Account Status:</strong> <span style="color: #28a745; font-weight: bold;">Active</span></p>
-                        </div>
-                    </div>
-                    <div style="margin-top: 25px;">
-                        <h4 style="color: #800020; border-bottom: 1px solid #800020; padding-bottom: 5px;">Areas of Expertise</h4>
-                        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 10px;">
-                            ${sanitizeHTML(judge.expertise) || 'No expertise specified'}
                         </div>
                     </div>
                     <div style="margin-top: 25px;">

@@ -355,13 +355,16 @@ function showViewCompetitions() {
     ])
     .then(([competitions, eventTypes]) => {
         // Feature 13: Hide past events - filter out competitions where date has passed
+        // BUT keep newly created competitions visible by showing if date >= today OR status is ongoing/upcoming
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const activeCompetitions = competitions.filter(comp => {
             const compDate = new Date(comp.competition_date);
             compDate.setHours(0, 0, 0, 0);
-            // Show if competition is today or in the future, or if status is 'done' (recently completed)
-            return compDate >= today || comp.status === 'done';
+            // Show if competition is today or in the future, OR if status is 'done' (completed) or 'ongoing'/'upcoming'
+            const isTodayOrFuture = compDate >= today;
+            const isActiveStatus = comp.status === 'done' || comp.status === 'ongoing' || comp.status === 'upcoming' || !comp.status;
+            return isTodayOrFuture || isActiveStatus;
         });
         
         window.allCompetitions = activeCompetitions;
@@ -1924,11 +1927,7 @@ function updateJudge(event, judgeId) {
     const judgeData = {
         judge_name: document.getElementById('judge_name').value,
         credentials: document.getElementById('credentials').value || null,
-        competition_id: document.getElementById('competition_id').value || null,
-        email: null,
-        phone: null,
-        expertise: null,
-        experience_years: 0
+        competition_id: document.getElementById('competition_id').value || null
     };
     
     fetch(`${API_URL}/update-judge/${judgeId}`, {
@@ -1939,7 +1938,7 @@ function updateJudge(event, judgeId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message, 'success');
+            showNotification(data.message || 'Judge updated successfully!', 'success');
             showViewJudges();
         } else {
             showNotification('Error: ' + data.error, 'error');
@@ -2085,82 +2084,8 @@ function displayFilteredJudges(judges) {
 
 
 function editJudge(id) {
-    fetch(`${API_URL}/judge/${id}`)
-    .then(response => response.json())
-    .then(j => {
-        document.getElementById("content").innerHTML = `
-            <h2>Edit Judge</h2>
-            <form id="editJudgeForm" style="max-width: 700px;">
-                <label>Judge Name:</label>
-                <input type="text" id="judge_name" value="${j.judge_name}" required>
-                
-                <label>Email:</label>
-                <input type="email" id="email" value="${j.email}" required>
-                
-                <label>Phone:</label>
-                <input type="tel" id="phone" value="${j.phone || ''}">
-                
-                <label>Area of Expertise:</label>
-                <textarea id="expertise" rows="2" required>${j.expertise}</textarea>
-                
-                <label>Years of Experience:</label>
-                <input type="number" id="experience_years" value="${j.experience_years}" min="0" required>
-                
-                <label>Credentials:</label>
-                <textarea id="credentials" rows="4">${j.credentials || ''}</textarea>
-                
-                <label>Assign to Competition:</label>
-                <select id="competition">
-                    <option value="">Select Competition (Optional)</option>
-                </select>
-                
-                <input type="submit" value="Update Judge">
-                <button type="button" onclick="showViewJudges()" class="secondary">Cancel</button>
-            </form>
-        `;
-
-        fetch(`${API_URL}/competitions`)
-        .then(response => response.json())
-        .then(competitions => {
-            const select = document.getElementById("competition");
-            competitions.forEach(comp => {
-                const option = document.createElement("option");
-                option.value = comp.competition_id;
-                option.textContent = `${comp.competition_name}`;
-                if (comp.competition_id === j.competition_id) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
-            });
-        });
-
-        document.getElementById("editJudgeForm").onsubmit = function(e) {
-            e.preventDefault();
-
-            fetch(`${API_URL}/update-judge/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    judge_name: document.getElementById("judge_name").value,
-                    email: document.getElementById("email").value,
-                    phone: document.getElementById("phone").value,
-                    expertise: document.getElementById("expertise").value,
-                    experience_years: document.getElementById("experience_years").value,
-                    credentials: document.getElementById("credentials").value,
-                    competition_id: document.getElementById("competition").value || null
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Judge updated successfully!');
-                    showViewJudges();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            });
-        };
-    });
+    // Use the simplified showEditJudgeForm function
+    showEditJudgeForm(id);
 }
 
 function deleteJudge(id) {
