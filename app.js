@@ -1629,69 +1629,60 @@ function editParticipant(id) {
         document.getElementById("content").innerHTML = `
             <h2>Edit Participant</h2>
             
-            <form id="editParticipantForm" style="max-width: 700px;">
-                <h3>Basic Information</h3>
+            <form id="editParticipantForm" style="max-width: 600px; margin: 0 auto;">
+                <label>Participant Name: *</label>
+                <input type="text" id="participant_name" value="${p.participant_name || ''}" required 
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                 
-                <label>Participant Name:</label>
-                <input type="text" id="participant_name" value="${p.participant_name}" required>
+                <label>Contestant Number:</label>
+                <input type="text" id="contestant_number" value="${p.contestant_number || ''}"
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                 
-                <label>Email:</label>
-                <input type="email" id="email" value="${p.email}" required>
-                
-                <label>Phone:</label>
-                <input type="tel" id="phone" value="${p.phone || ''}">
-                
-                <div class="grid-3">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
-                        <label>Age:</label>
-                        <input type="number" id="age" value="${p.age}" required>
+                        <label>Age: *</label>
+                        <input type="number" id="age" value="${p.age || ''}" required min="1" max="100"
+                               style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                     </div>
                     <div>
-                        <label>Gender:</label>
-                        <select id="gender" required>
+                        <label>Gender: *</label>
+                        <select id="gender" required 
+                                style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="">-- Select --</option>
                             <option value="male" ${p.gender === 'male' ? 'selected' : ''}>Male</option>
                             <option value="female" ${p.gender === 'female' ? 'selected' : ''}>Female</option>
                             <option value="other" ${p.gender === 'other' ? 'selected' : ''}>Other</option>
                         </select>
                     </div>
-                    <div>
-                        <label>Status:</label>
-                        <select id="status" required>
-                            <option value="Active" ${p.status === 'Active' ? 'selected' : ''}>Active</option>
-                            <option value="Disqualified" ${p.status === 'Disqualified' ? 'selected' : ''}>Disqualified</option>
-                            <option value="Done" ${p.status === 'Done' ? 'selected' : ''}>Done</option>
-                        </select>
-                    </div>
                 </div>
                 
-                <label>Year & Course:</label>
-                <input type="text" id="school_organization" value="${p.school_organization || ''}">
-                
-                <h3>Competition Details</h3>
-                
-                <label>Competition:</label>
-                <select id="competition" required>
-                    <option value="">Select Competition</option>
+                <label>Year Level: *</label>
+                <select id="year_level" required 
+                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">-- Select Year Level --</option>
+                    <option value="1st Year" ${p.year_level === '1st Year' ? 'selected' : ''}>1st Year</option>
+                    <option value="2nd Year" ${p.year_level === '2nd Year' ? 'selected' : ''}>2nd Year</option>
+                    <option value="3rd Year" ${p.year_level === '3rd Year' ? 'selected' : ''}>3rd Year</option>
+                    <option value="4th Year" ${p.year_level === '4th Year' ? 'selected' : ''}>4th Year</option>
                 </select>
                 
-                <label>Performance Title:</label>
-                <input type="text" id="performance_title" value="${p.performance_title || ''}">
+                <label>Competition: *</label>
+                <select id="competition" required 
+                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">-- Select Competition --</option>
+                </select>
                 
-                <label>Contestant Number:</label>
-                <input type="text" id="contestant_number" value="${p.contestant_number || ''}" required>
+                <label>Photo URL (optional):</label>
+                <input type="url" id="photo_url" value="${p.photo_url || ''}"
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                 
-                <label>Photo URL:</label>
-                <input type="url" id="photo_url" value="${p.photo_url || ''}" required>
-                
-                <label>Talents:</label>
-                <textarea id="talents" rows="3">${p.talents || ''}</textarea>
-                
-                <label>Awards:</label>
-                <textarea id="special_awards" rows="3">${p.special_awards || ''}</textarea>
-                
-                <div style="margin-top: 30px;">
-                    <input type="submit" value="Update Participant">
-                    <button type="button" onclick="showViewParticipants()" class="secondary">Cancel</button>
+                <div style="margin-top: 20px;">
+                    <button type="submit" style="background: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                        Update Participant
+                    </button>
+                    <button type="button" onclick="showViewParticipants()" style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer;">
+                        Cancel
+                    </button>
                 </div>
             </form>
         `;
@@ -1703,7 +1694,7 @@ function editParticipant(id) {
             competitions.forEach(comp => {
                 const option = document.createElement("option");
                 option.value = comp.competition_id;
-                option.textContent = `${comp.competition_name}`;
+                option.textContent = comp.competition_name;
                 if (comp.competition_id === p.competition_id) {
                     option.selected = true;
                 }
@@ -1719,31 +1710,35 @@ function editParticipant(id) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     participant_name: document.getElementById("participant_name").value,
-                    contestant_number: document.getElementById("contestant_number").value,
-                    photo_url: document.getElementById("photo_url").value,
-                    email: document.getElementById("email").value,
-                    phone: document.getElementById("phone").value,
+                    contestant_number: document.getElementById("contestant_number").value || null,
                     age: document.getElementById("age").value,
                     gender: document.getElementById("gender").value,
-                    school_organization: document.getElementById("school_organization").value,
-                    performance_title: document.getElementById("performance_title").value,
-                    performance_description: '',
+                    year_level: document.getElementById("year_level").value,
                     competition_id: document.getElementById("competition").value,
-                    status: document.getElementById("status").value,
-                    height: null,
-                    measurements: null,
-                    talents: document.getElementById("talents").value || null,
-                    special_awards: document.getElementById("special_awards").value || null
+                    photo_url: document.getElementById("photo_url").value || null,
+                    // Set removed fields to null
+                    email: null,
+                    phone: null,
+                    school_organization: null,
+                    performance_title: null,
+                    performance_description: null,
+                    talents: null,
+                    special_awards: null,
+                    status: 'Active'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Participant updated successfully!');
+                    showNotification(data.message || 'Participant updated successfully!', 'success');
                     showViewParticipants();
                 } else {
-                    alert('Error: ' + data.error);
+                    showNotification('Error: ' + data.error, 'error');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error updating participant', 'error');
             });
         };
     });
