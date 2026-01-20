@@ -596,6 +596,11 @@ function displaySegmentScoringForm(judgeId, participantId, competitionId, segmen
 }
 
 function submitSegmentScores(judgeId, participantId, competitionId, segmentId, criteria, participantName, segmentName) {
+    // Feature 12: Submission confirmation message
+    if (!confirm('Are you sure you want to submit for review?\n\nOnce submitted, you will not be able to edit these scores for a period of time.')) {
+        return;
+    }
+    
     const scores = [];
     let totalWeightedScore = 0;
     let hasError = false;
@@ -789,6 +794,11 @@ function displayRegularScoringForm(judgeId, participantId, competitionId, partic
 }
 
 function submitRegularScores(judgeId, participantId, competitionId, criteria) {
+    // Feature 12: Submission confirmation message
+    if (!confirm('Are you sure you want to submit for review?\n\nOnce submitted, you will not be able to edit these scores for a period of time.')) {
+        return;
+    }
+    
     const scores = [];
     let hasError = false;
 

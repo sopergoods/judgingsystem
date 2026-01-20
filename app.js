@@ -354,8 +354,18 @@ function showViewCompetitions() {
         fetch(`${API_URL}/event-types`).then(r => r.json())
     ])
     .then(([competitions, eventTypes]) => {
-        window.allCompetitions = competitions;
-        displayCompetitionsList(competitions);
+        // Feature 13: Hide past events - filter out competitions where date has passed
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const activeCompetitions = competitions.filter(comp => {
+            const compDate = new Date(comp.competition_date);
+            compDate.setHours(0, 0, 0, 0);
+            // Show if competition is today or in the future, or if status is 'done' (recently completed)
+            return compDate >= today || comp.status === 'done';
+        });
+        
+        window.allCompetitions = activeCompetitions;
+        displayCompetitionsList(activeCompetitions);
     });
 }
 
@@ -644,48 +654,71 @@ function deleteCompetition(id) {
 // ================================================
 
 function manageCriteria(competitionId, competitionName) {
-    document.getElementById("content").innerHTML = `
-        <h2>Manage Judging Criteria</h2>
-        <h3 style="color: #800020;">${competitionName}</h3>
+    Promise.all([
+        fetch(`${API_URL}/competition/${competitionId}`).then(r => r.json()),
+        fetch(`${API_URL}/competition-criteria/${competitionId}`).then(r => r.json())
+    ])
+    .then(([competition, criteria]) => {
+        // Feature 6: Lock criteria for past events
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const compDate = new Date(competition.competition_date);
+        compDate.setHours(0, 0, 0, 0);
+        const isPastEvent = compDate < today || competition.status === 'done';
+        const isLocked = isPastEvent;
         
-        <div style="margin-bottom: 20px;">
-            <button onclick="addCriterion()" class="card-button">Add Criterion</button>
-            <button onclick="showViewCompetitions()" class="secondary">Back</button>
-        </div>
-        
-        <form id="criteriaForm">
-            <input type="hidden" id="competition_id" value="${competitionId}">
+        document.getElementById("content").innerHTML = `
+            <h2>Manage Judging Criteria</h2>
+            <h3 style="color: #800020;">${competitionName}</h3>
+            ${isLocked ? `
+                <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                    <strong style="color: #155724;">🔒 Criteria Locked</strong>
+                    <p style="margin: 5px 0 0 0; color: #155724;">This competition has passed (${competition.competition_date}). Criteria cannot be edited.</p>
+                </div>
+            ` : ''}
             
-            <div id="criteriaContainer"><div class="loading">Loading criteria...</div></div>
-            
-            <div style="margin-top: 30px;">
-                <button type="button" onclick="saveCriteria()" class="card-button">Save All Criteria</button>
+            <div style="margin-bottom: 20px;">
+                ${!isLocked ? `<button onclick="addCriterion()" class="card-button">Add Criterion</button>` : ''}
+                <button onclick="showViewCompetitions()" class="secondary">Back</button>
             </div>
             
-            <div id="percentageTotal" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; text-align: center;">
-                <strong>Total Percentage: <span id="totalPercentage">0</span>%</strong>
-            </div>
-        </form>
-    `;
+            <form id="criteriaForm">
+                <input type="hidden" id="competition_id" value="${competitionId}">
+                <input type="hidden" id="is_locked" value="${isLocked}">
+                
+                <div id="criteriaContainer"><div class="loading">Loading criteria...</div></div>
+                
+                ${!isLocked ? `
+                    <div style="margin-top: 30px;">
+                        <button type="button" onclick="saveCriteria()" class="card-button">Save All Criteria</button>
+                    </div>
+                ` : ''}
+                
+                <div id="percentageTotal" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; text-align: center;">
+                    <strong>Total Percentage: <span id="totalPercentage">0</span>%</strong>
+                </div>
+            </form>
+        `;
 
-    fetch(`${API_URL}/competition-criteria/${competitionId}`)
-    .then(response => response.json())
-    .then(criteria => {
         if (criteria.length === 0) {
             document.getElementById("criteriaContainer").innerHTML = `
                 <div style="text-align: center; padding: 40px;">
                     <h3>No Criteria Set</h3>
-                    <p>Add your first criterion to get started!</p>
+                    <p>${isLocked ? 'This competition has no criteria set and is locked from editing.' : 'Add your first criterion to get started!'}</p>
                 </div>
             `;
         } else {
-            displayCriteria(criteria);
+            displayCriteria(criteria, isLocked);
         }
         updatePercentageTotal();
+    })
+    .catch(error => {
+        console.error('Error loading competition:', error);
+        showNotification('Error loading competition data', 'error');
     });
 }
 
-function displayCriteria(criteria) {
+function displayCriteria(criteria, isLocked = false) {
     let html = '';
     criteria.forEach((c, index) => {
         html += `
@@ -693,16 +726,16 @@ function displayCriteria(criteria) {
                 <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 15px; align-items: center;">
                     <div style="font-weight: bold; color: #800020;">#${c.order_number || index + 1}</div>
                     <div style="display: grid; gap: 10px;">
-                        <input type="text" class="criteria-name" value="${c.criteria_name}" placeholder="Criterion Name" style="font-weight: 600;">
-                        <textarea class="criteria-description" placeholder="Description" rows="2">${c.description || ''}</textarea>
+                        <input type="text" class="criteria-name" value="${c.criteria_name}" placeholder="Criterion Name" style="font-weight: 600;" ${isLocked ? 'readonly' : ''}>
+                        <textarea class="criteria-description" placeholder="Description" rows="2" ${isLocked ? 'readonly' : ''}>${c.description || ''}</textarea>
                     </div>
                     <div>
                         <label style="font-size: 12px;">Percentage:</label>
-                        <input type="number" class="criteria-percentage" value="${c.percentage}" min="0" max="100" step="0.1" style="width: 80px; text-align: center;" onchange="updatePercentageTotal()">
+                        <input type="number" class="criteria-percentage" value="${c.percentage}" min="0" max="100" step="0.1" style="width: 80px; text-align: center;" onchange="updatePercentageTotal()" ${isLocked ? 'readonly' : ''}>
                         <span>%</span>
                     </div>
                     <div>
-                        <button type="button" onclick="removeCriterion(this)" style="background: #800020;">Remove</button>
+                        ${!isLocked ? `<button type="button" onclick="removeCriterion(this)" style="background: #800020;">Remove</button>` : '<span style="color: #666;">🔒 Locked</span>'}
                     </div>
                 </div>
             </div>
@@ -3361,18 +3394,37 @@ function displayJudgeTabulation(participants, competitionId) {
     if (participants.length === 0) {
         html += '<p>No scores submitted yet.</p>';
     } else {
-        html += '<table><thead><tr><th>Contestant #</th><th>Participant</th>';
-        
-        // Get unique judges from first participant
-        const judges = participants[0].judge_scores;
-        judges.forEach(judge => {
-            html += `<th>${judge.judge_name}</th>`;
-        });
-        html += '<th>Average</th></tr></thead><tbody>';
+        // Feature 5: Calculate tabulation status (e.g., 2/5 completed)
+        const judges = participants[0].judge_scores || [];
+        const totalPossibleScores = participants.length * judges.length;
+        let completedScores = 0;
         
         participants.forEach(participant => {
-            html += `<tr><td style="text-align: center; font-weight: bold;">${participant.contestant_number || 'N/A'}</td>`;
-            html += `<td><strong>${participant.participant_name}</strong></td>`;
+            participant.judge_scores.forEach(score => {
+                if (score.total_score !== null) {
+                    completedScores++;
+                }
+            });
+        });
+        
+        // Feature 5: Display tabulation status
+        html += `
+            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                <strong>Tabulation Status: ${completedScores}/${totalPossibleScores}</strong>
+                <p style="margin: 5px 0 0 0; color: #1976d2;">${completedScores} out of ${totalPossibleScores} scores submitted (${Math.round((completedScores / totalPossibleScores) * 100)}%)</p>
+            </div>
+        `;
+        
+        html += '<table style="width: 100%; border-collapse: collapse;"><thead><tr style="background: #800020; color: white;"><th style="padding: 12px; text-align: center;">Contestant #</th><th style="padding: 12px;">Participant</th>';
+        
+        judges.forEach(judge => {
+            html += `<th style="padding: 12px; text-align: center;">${judge.judge_name}</th>`;
+        });
+        html += '<th style="padding: 12px; text-align: center;">Average</th></tr></thead><tbody>';
+        
+        participants.forEach(participant => {
+            html += `<tr><td style="text-align: center; font-weight: bold; padding: 10px;">${participant.contestant_number || 'N/A'}</td>`;
+            html += `<td style="padding: 10px;"><strong>${participant.participant_name}</strong></td>`;
             
             let total = 0;
             let count = 0;
@@ -3380,7 +3432,15 @@ function displayJudgeTabulation(participants, competitionId) {
             participant.judge_scores.forEach(score => {
                 const scoreValue = score.total_score !== null ? parseFloat(score.total_score).toFixed(2) : '-';
                 const lockIcon = score.is_locked ? '🔒' : '';
-                html += `<td style="text-align: center;">${scoreValue} ${lockIcon}</td>`;
+                
+                // Feature 7: Show time and date of submissions
+                let timeDisplay = '';
+                if (score.score_date && score.total_score !== null) {
+                    const date = new Date(score.score_date);
+                    timeDisplay = `<br><small style="color: #666; font-size: 11px;">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</small>`;
+                }
+                
+                html += `<td style="text-align: center; padding: 10px;">${scoreValue} ${lockIcon}${timeDisplay}</td>`;
                 
                 if (score.total_score !== null) {
                     total += parseFloat(score.total_score);
@@ -3389,7 +3449,7 @@ function displayJudgeTabulation(participants, competitionId) {
             });
             
             const average = count > 0 ? (total / count).toFixed(2) : '-';
-            html += `<td style="text-align: center; font-weight: bold; background: #f8f9fa;">${average}</td>`;
+            html += `<td style="text-align: center; font-weight: bold; background: #f8f9fa; padding: 10px;">${average}</td>`;
             html += '</tr>';
         });
         
