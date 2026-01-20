@@ -803,17 +803,28 @@ function showViewParticipants() {
             <button onclick="showAddParticipantForm()" class="card-button">Add New Participant</button>
         </div>
         <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <div style="display: grid; grid-template-columns: auto auto auto 1fr; gap: 15px; align-items: center;">
-                <label for="filterCompetition" style="font-weight: 600; color: #800020;">Filter by Competition:</label>
+            <div style="display: grid; grid-template-columns: auto auto auto auto auto 1fr; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <label for="filterCompetition" style="font-weight: 600; color: #800020;">Competition:</label>
                 <select id="filterCompetition" onchange="filterParticipants()" class="filter-select">
                     <option value="">All Competitions</option>
+                </select>
+                <label for="filterYear" style="font-weight: 600; color: #800020;">Year:</label>
+                <select id="filterYear" onchange="filterParticipants()" class="filter-select">
+                    <option value="">All Years</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                </select>
+                <label for="filterCourse" style="font-weight: 600; color: #800020;">Course/Org:</label>
+                <select id="filterCourse" onchange="filterParticipants()" class="filter-select">
+                    <option value="">All Courses</option>
                 </select>
                 <label for="filterStatus" style="font-weight: 600; color: #800020;">Status:</label>
                 <select id="filterStatus" onchange="filterParticipants()" class="filter-select">
                     <option value="">All Statuses</option>
                     <option value="Active">Active</option>
                     <option value="done">Done</option>
-                    
                 </select>
             </div>
         </div>
@@ -826,6 +837,7 @@ function showViewParticipants() {
     ])
     .then(([competitions, participants]) => {
         populateCompetitionFilter(competitions);
+        populateCourseFilter(participants);
         allParticipants = participants;
         displayParticipants(participants);
     })
@@ -846,6 +858,8 @@ function populateCompetitionFilter(competitions) {
 
 function filterParticipants() {
     const competitionId = document.getElementById('filterCompetition').value;
+    const year = document.getElementById('filterYear').value;
+    const course = document.getElementById('filterCourse').value;
     const status = document.getElementById('filterStatus').value;
     
     let filtered = allParticipants;
@@ -854,11 +868,38 @@ function filterParticipants() {
         filtered = filtered.filter(p => p.competition_id == competitionId);
     }
     
- if (status) {
-   filtered = filtered.filter(p => (p.status || '').toLowerCase() === status.toLowerCase());
- }
+    if (year) {
+        filtered = filtered.filter(p => (p.year_level || '').toLowerCase() === year.toLowerCase());
+    }
+    
+    if (course) {
+        filtered = filtered.filter(p => (p.school_organization || '').toLowerCase().includes(course.toLowerCase()));
+    }
+    
+    if (status) {
+        filtered = filtered.filter(p => (p.status || '').toLowerCase() === status.toLowerCase());
+    }
     
     displayParticipants(filtered);
+}
+
+function populateCourseFilter(participants) {
+    const courseSelect = document.getElementById('filterCourse');
+    if (!courseSelect) return;
+    
+    // Get unique courses/organizations
+    const courses = [...new Set(participants
+        .map(p => p.school_organization)
+        .filter(c => c && c.trim())
+        .sort()
+    )];
+    
+    courses.forEach(course => {
+        const option = document.createElement('option');
+        option.value = course;
+        option.textContent = course;
+        courseSelect.appendChild(option);
+    });
 }
 
 function displayParticipants(participants) {
@@ -890,6 +931,7 @@ function displayParticipants(participants) {
                     <div>
                         <p><strong>Age:</strong> ${participant.age}</p>
                         <p><strong>Gender:</strong> ${participant.gender}</p>
+                        ${participant.year_level ? `<p><strong>Year Level:</strong> ${sanitizeHTML(participant.year_level)}</p>` : ''}
                         <p><strong>Email:</strong> ${sanitizeHTML(participant.email)}</p>
                     </div>
                     <div>
@@ -898,7 +940,7 @@ function displayParticipants(participants) {
                         <p><strong>Performance:</strong> ${sanitizeHTML(participant.performance_title) || 'N/A'}</p>
                     </div>
                     <div>
-                        <p><strong>School/Org:</strong> ${sanitizeHTML(participant.school_organization) || 'N/A'}</p>
+                        <p><strong>School/Course:</strong> ${sanitizeHTML(participant.school_organization) || 'N/A'}</p>
                         ${participant.height ? `<p><strong>Height:</strong> ${sanitizeHTML(participant.height)}</p>` : ''}
                     </div>
                 </div>
@@ -1679,7 +1721,8 @@ function displayScoringOverview(competition, participants, judges, scores) {
         
         <div style="text-align: center; margin-top: 30px;">
             <button onclick="viewCompetitionCriteria(${competition.competition_id})" class="card-button">View Criteria</button>
-            <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
+            <button onclick="showViewParticipants()" class="card-button" style="margin-left: 10px;">View All Participants</button>
+            <button onclick="showDashboard()" class="secondary" style="margin-left: 10px;">Back to Dashboard</button>
         </div>
     `;
     
@@ -1687,30 +1730,79 @@ function displayScoringOverview(competition, participants, judges, scores) {
 }
 
 function generateParticipantStatus(participants, judges, scores) {
+    // Feature 10: Separate remaining participants from completed ones
+    const remainingParticipants = [];
+    const completedParticipants = [];
+    const partialParticipants = [];
+    
+    participants.forEach(participant => {
+        const participantScores = scores.filter(s => s.participant_id === participant.participant_id);
+        const judgeCount = judges.length;
+        const scoredByJudges = participantScores.length;
+        
+        if (scoredByJudges === 0) {
+            remainingParticipants.push({ participant, scoredByJudges, judgeCount });
+        } else if (scoredByJudges === judgeCount) {
+            completedParticipants.push({ participant, scoredByJudges, judgeCount });
+        } else {
+            partialParticipants.push({ participant, scoredByJudges, judgeCount });
+        }
+    });
+    
     let html = `
         <div class="dashboard-card" style="text-align: left;">
-            <h4 style="color: #800020; margin-bottom: 15px;">Participant Status</h4>
+            <h4 style="color: #800020; margin-bottom: 15px;">Participant Scoring Status</h4>
     `;
     
     if (participants.length === 0) {
         html += '<p style="color: #666;">No participants registered.</p>';
     } else {
-        participants.forEach(participant => {
-            const participantScores = scores.filter(s => s.participant_id === participant.participant_id);
-            const judgeCount = judges.length;
-            const scoredByJudges = participantScores.length;
-            const statusColor = scoredByJudges === judgeCount ? '#28a745' : scoredByJudges > 0 ? '#ffc107' : '#dc3545';
-            const statusText = scoredByJudges === judgeCount ? 'Complete' : scoredByJudges > 0 ? 'Partial' : 'Pending';
-            
+        // Feature 10: Show remaining participants first
+        if (remainingParticipants.length > 0) {
             html += `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 5px;">
-                    <span>${sanitizeHTML(participant.participant_name)}</span>
-                    <span style="padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: ${statusColor}; color: white;">
-                        ${statusText} (${scoredByJudges}/${judgeCount})
-                    </span>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin-bottom: 15px; border-radius: 5px;">
+                    <strong style="color: #856404;">⚠️ Remaining for Scoring: ${remainingParticipants.length}</strong>
                 </div>
             `;
-        });
+            remainingParticipants.forEach(({ participant, scoredByJudges, judgeCount }) => {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: #fff3cd; border-radius: 5px;">
+                        <span><strong>${sanitizeHTML(participant.participant_name)}</strong> ${participant.contestant_number ? `(#${participant.contestant_number})` : ''}</span>
+                        <span style="padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #dc3545; color: white;">
+                            Pending (${scoredByJudges}/${judgeCount})
+                        </span>
+                    </div>
+                `;
+            });
+        }
+        
+        if (partialParticipants.length > 0) {
+            html += `<div style="margin-top: 15px; font-weight: 600; color: #856404;">In Progress (${partialParticipants.length}):</div>`;
+            partialParticipants.forEach(({ participant, scoredByJudges, judgeCount }) => {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 5px;">
+                        <span>${sanitizeHTML(participant.participant_name)}</span>
+                        <span style="padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #ffc107; color: #000;">
+                            Partial (${scoredByJudges}/${judgeCount})
+                        </span>
+                    </div>
+                `;
+            });
+        }
+        
+        if (completedParticipants.length > 0) {
+            html += `<div style="margin-top: 15px; font-weight: 600; color: #155724;">Completed (${completedParticipants.length}):</div>`;
+            completedParticipants.forEach(({ participant, scoredByJudges, judgeCount }) => {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 5px;">
+                        <span>${sanitizeHTML(participant.participant_name)}</span>
+                        <span style="padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #28a745; color: white;">
+                            Complete (${scoredByJudges}/${judgeCount})
+                        </span>
+                    </div>
+                `;
+            });
+        }
     }
     
     html += '</div>';
@@ -1718,14 +1810,37 @@ function generateParticipantStatus(participants, judges, scores) {
 }
 
 function generateJudgeStatus(judges, participants, scores) {
+    // Feature 3: Hide judge details, only show summary stats
     let html = `
         <div class="dashboard-card" style="text-align: left;">
-            <h4 style="color: #800020; margin-bottom: 15px;">Judge Assignment</h4>
+            <h4 style="color: #800020; margin-bottom: 15px;">Scoring Progress Summary</h4>
     `;
     
     if (judges.length === 0) {
         html += '<p style="color: #666;">No judges assigned.</p>';
     } else {
+        let totalScored = 0;
+        let completedJudges = 0;
+        
+        judges.forEach(judge => {
+            const judgeScores = scores.filter(s => s.judge_id === judge.judge_id);
+            const participantCount = participants.length;
+            const scoredParticipants = judgeScores.length;
+            totalScored += scoredParticipants;
+            if (scoredParticipants === participantCount) {
+                completedJudges++;
+            }
+        });
+        
+        html += `
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <p><strong>Total Judges:</strong> ${judges.length}</p>
+                <p><strong>Completed Scoring:</strong> ${completedJudges}/${judges.length}</p>
+                <p><strong>Total Scores Submitted:</strong> ${totalScored} out of ${participants.length * judges.length}</p>
+            </div>
+        `;
+        
+        // Feature 3: Hide individual judge details - only show anonymous progress
         judges.forEach(judge => {
             const judgeScores = scores.filter(s => s.judge_id === judge.judge_id);
             const participantCount = participants.length;
@@ -1736,13 +1851,13 @@ function generateJudgeStatus(judges, participants, scores) {
             html += `
                 <div style="margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong>${sanitizeHTML(judge.judge_name)}</strong>
+                        <strong>Judge ${judge.judge_id}</strong>
                         <span style="padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: ${statusColor}; color: white;">
                             ${statusText}
                         </span>
                     </div>
                     <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                        ${sanitizeHTML(judge.expertise)} • ${scoredParticipants}/${participantCount} participants scored
+                        ${scoredParticipants}/${participantCount} participants scored
                     </div>
                 </div>
             `;

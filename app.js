@@ -1476,22 +1476,38 @@ function showViewParticipants() {
             <button onclick="showDashboard()" class="secondary">Back to Dashboard</button>
         </div>
         
-        <!-- FILTER BY COMPETITION -->
+        <!-- FILTER BY COMPETITION, YEAR, COURSE -->
         <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; border: 2px solid #800020;">
-            <label style="font-weight: 600; margin-right: 10px;">Filter by Competition:</label>
-            <select id="participantCompetitionFilter" onchange="filterParticipantsByCompetition()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 300px;">
-                <option value="all">All Competitions</option>
-            </select>
-            <span id="participantCount" style="margin-left: 15px; color: #666; font-weight: 600;"></span>
+            <div style="display: grid; grid-template-columns: auto auto auto auto 1fr; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight: 600; color: #800020;">Competition:</label>
+                <select id="participantCompetitionFilter" onchange="filterParticipantsByCompetition()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 200px;">
+                    <option value="all">All Competitions</option>
+                </select>
+                <label style="font-weight: 600; color: #800020;">Year:</label>
+                <select id="participantYearFilter" onchange="filterParticipantsByCompetition()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">All Years</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                </select>
+                <label style="font-weight: 600; color: #800020;">Course/Org:</label>
+                <select id="participantCourseFilter" onchange="filterParticipantsByCompetition()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 200px;">
+                    <option value="">All Courses</option>
+                </select>
+                <span id="participantCount" style="color: #666; font-weight: 600;"></span>
+            </div>
         </div>
         
         <div id="participantsList"><div class="loading">Loading...</div></div>
     `;
 
-    // Load competitions for filter
-    fetch(`${API_URL}/competitions`)
-    .then(response => response.json())
-    .then(competitions => {
+    // Load competitions and participants for filters
+    Promise.all([
+        fetch(`${API_URL}/competitions`).then(r => r.json()),
+        fetch(`${API_URL}/participants`).then(r => r.json())
+    ])
+    .then(([competitions, participants]) => {
         const select = document.getElementById('participantCompetitionFilter');
         competitions.forEach(comp => {
             const option = document.createElement('option');
@@ -1499,12 +1515,21 @@ function showViewParticipants() {
             option.textContent = comp.competition_name;
             select.appendChild(option);
         });
-    });
-
-    // Load all participants
-    fetch(`${API_URL}/participants`)
-    .then(response => response.json())
-    .then(participants => {
+        
+        // Populate course filter
+        const courseSelect = document.getElementById('participantCourseFilter');
+        const courses = [...new Set(participants
+            .map(p => p.school_organization)
+            .filter(c => c && c.trim())
+            .sort()
+        )];
+        courses.forEach(course => {
+            const option = document.createElement('option');
+            option.value = course;
+            option.textContent = course;
+            courseSelect.appendChild(option);
+        });
+        
         window.allParticipants = participants; // Store globally for filtering
         displayFilteredParticipants(participants);
     });
@@ -1512,13 +1537,24 @@ function showViewParticipants() {
 
 function filterParticipantsByCompetition() {
     const filterValue = document.getElementById('participantCompetitionFilter').value;
+    const yearValue = document.getElementById('participantYearFilter').value;
+    const courseValue = document.getElementById('participantCourseFilter').value;
     
-    if (filterValue === 'all') {
-        displayFilteredParticipants(window.allParticipants);
-    } else {
-        const filtered = window.allParticipants.filter(p => p.competition_id == filterValue);
-        displayFilteredParticipants(filtered);
+    let filtered = window.allParticipants || [];
+    
+    if (filterValue !== 'all') {
+        filtered = filtered.filter(p => p.competition_id == filterValue);
     }
+    
+    if (yearValue) {
+        filtered = filtered.filter(p => (p.year_level || '').toLowerCase() === yearValue.toLowerCase());
+    }
+    
+    if (courseValue) {
+        filtered = filtered.filter(p => (p.school_organization || '').toLowerCase().includes(courseValue.toLowerCase()));
+    }
+    
+    displayFilteredParticipants(filtered);
 }
 
 function displayFilteredParticipants(participants) {
@@ -2466,7 +2502,55 @@ function renderUnlockRequestCard(request, showActions) {
 function reviewUnlockRequest(requestId, action) {
     const actionText = action === 'approve' ? 'approve' : 'reject';
     
-    if (!confirm(`${actionText.charAt(0).toUpperCase() + actionText.slice(1)} this unlock request?`)) {
+    // Feature 8: Check approval limits before approving
+    if (action === 'approve') {
+        // First, get the request to check approval count
+        fetch(`${API_URL}/unlock-requests`)
+            .then(response => response.json())
+            .then(requests => {
+                const currentRequest = requests.find(r => r.request_id == requestId);
+                if (!currentRequest) {
+                    alert('Request not found');
+                    return;
+                }
+                
+                // Count how many times this judge has been approved
+                const judgeApprovals = requests.filter(r => 
+                    r.judge_id === currentRequest.judge_id && 
+                    r.status === 'approved'
+                ).length;
+                
+                const MAX_APPROVALS = 3; // Feature 8: Limit to 3 approvals per judge
+                
+                if (judgeApprovals >= MAX_APPROVALS) {
+                    alert(`Cannot approve: This judge has already reached the maximum of ${MAX_APPROVALS} approvals.`);
+                    return;
+                }
+                
+                proceedWithReview(requestId, action, judgeApprovals, MAX_APPROVALS);
+            })
+            .catch(() => {
+                // If checking fails, proceed anyway but with warning
+                if (!confirm(`${actionText.charAt(0).toUpperCase() + actionText.slice(1)} this unlock request?\n\nNote: Unable to verify approval limits.`)) {
+                    return;
+                }
+                proceedWithReview(requestId, action, 0, 3);
+            });
+    } else {
+        proceedWithReview(requestId, action, 0, 3);
+    }
+}
+
+function proceedWithReview(requestId, action, currentApprovals, maxApprovals) {
+    const actionText = action === 'approve' ? 'approve' : 'reject';
+    const remainingApprovals = maxApprovals - currentApprovals;
+    
+    let confirmMessage = `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} this unlock request?`;
+    if (action === 'approve') {
+        confirmMessage += `\n\nThis judge has ${currentApprovals}/${maxApprovals} approvals. ${remainingApprovals > 0 ? `(${remainingApprovals} remaining)` : '(Max reached)'}`;
+    }
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
     
@@ -2485,11 +2569,15 @@ function reviewUnlockRequest(requestId, action) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
+            showNotification(data.message, 'success');
             loadUnlockRequests();
         } else {
-            alert('Error: ' + data.error);
+            showNotification('Error: ' + data.error, 'error');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error processing request', 'error');
     });
 }
 
