@@ -3024,6 +3024,52 @@ app.get('/judge-tabulation/:competitionId', (req, res) => {
     });
 });
 
+// Get scores for a specific judge in a competition
+app.get('/judge-scores/:judgeId/:competitionId', (req, res) => {
+    const { judgeId, competitionId } = req.params;
+    
+    // Check if competition is pageant or regular
+    db.query('SELECT is_pageant FROM competitions c JOIN event_types et ON c.event_type_id = et.event_type_id WHERE c.competition_id = ?', 
+        [competitionId], (err, compResult) => {
+        
+        if (err || compResult.length === 0) {
+            return res.status(500).json({ error: 'Error fetching competition' });
+        }
+        
+        const isPageant = compResult[0].is_pageant;
+        
+        if (isPageant) {
+            // For pageants, get segment scores
+            const sql = `
+                SELECT DISTINCT participant_id, segment_id
+                FROM overall_scores
+                WHERE judge_id = ? AND competition_id = ? AND segment_id IS NOT NULL
+            `;
+            db.query(sql, [judgeId, competitionId], (err, result) => {
+                if (err) {
+                    console.error('Error fetching judge scores:', err);
+                    return res.status(500).json({ error: 'Error fetching scores' });
+                }
+                res.json(result);
+            });
+        } else {
+            // For regular competitions, get overall scores
+            const sql = `
+                SELECT participant_id
+                FROM overall_scores
+                WHERE judge_id = ? AND competition_id = ? AND segment_id IS NULL
+            `;
+            db.query(sql, [judgeId, competitionId], (err, result) => {
+                if (err) {
+                    console.error('Error fetching judge scores:', err);
+                    return res.status(500).json({ error: 'Error fetching scores' });
+                }
+                res.json(result);
+            });
+        }
+    });
+});
+
 // ================================================
 // COMPETITION STATUS ENDPOINTS
 // ================================================

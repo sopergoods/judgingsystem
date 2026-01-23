@@ -8,6 +8,47 @@ let lockCountdown = 1;
 let currentScoreData = null;
 let draftSaveTimeout = null;
 
+// =====================================================
+// AUTO-REFRESH SYSTEM
+// =====================================================
+let currentView = null;
+let currentViewParams = null;
+let autoRefreshInterval = null;
+
+function setCurrentView(viewFunction, params = null) {
+    currentView = viewFunction;
+    currentViewParams = params;
+    
+    // Clear existing interval
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    
+    // Set up auto-refresh for certain views (every 5 seconds)
+    const viewsToAutoRefresh = ['viewCompetitionParticipants', 'showMyCompetitions'];
+    if (viewsToAutoRefresh.includes(viewFunction.name)) {
+        autoRefreshInterval = setInterval(() => {
+            if (currentView) {
+                if (currentViewParams) {
+                    currentView(...currentViewParams);
+                } else {
+                    currentView();
+                }
+            }
+        }, 5000); // Refresh every 5 seconds
+    }
+}
+
+function refreshCurrentView() {
+    if (currentView) {
+        if (currentViewParams) {
+            currentView(...currentViewParams);
+        } else {
+            currentView();
+        }
+    }
+}
+
 // AUTHENTICATION & INITIALIZATION
 document.addEventListener('DOMContentLoaded', function() {
     checkAuthentication();
@@ -20,6 +61,7 @@ function checkAuthentication() {
         return;
     }
     updateHeader(user);
+    showDashboard(); // Show dashboard only after authentication passes
 }
 
 function updateHeader(user) {
@@ -78,6 +120,7 @@ function showDashboard() {
 
 // MY COMPETITIONS
 function showMyCompetitions() {
+    setCurrentView(showMyCompetitions);
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!user) return;
 
@@ -158,18 +201,52 @@ function displayCompetitions(competitions) {
 
 // VIEW PARTICIPANTS
 function viewCompetitionParticipants(competitionId) {
-    fetch(`${API_URL}/participants/${competitionId}`)
+    setCurrentView(viewCompetitionParticipants, [competitionId]);
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (!user) return;
+    
+    // Show loading state
+    document.getElementById("content").innerHTML = `
+        <h2>Competition Participants</h2>
+        <div style="margin-bottom: 20px;">
+            <button onclick="showMyCompetitions()" class="secondary">Back to My Competitions</button>
+        </div>
+        <div class="loading" style="text-align: center; padding: 20px;">Loading participants...</div>
+    `;
+    
+    // Fetch judge info first
+    fetch(`${API_URL}/judges`)
         .then(response => response.json())
-        .then(participants => {
-            displayParticipants(participants, competitionId);
+        .then(judges => {
+            const currentJudge = judges.find(j => j.user_id === user.user_id);
+            if (!currentJudge) {
+                showNotification('Judge profile not found', 'error');
+                return;
+            }
+            
+            // Fetch participants, competition info, and their scores
+            Promise.all([
+                fetch(`${API_URL}/participants/${competitionId}`).then(r => r.json()),
+                fetch(`${API_URL}/competition/${competitionId}`).then(r => r.json()).catch(() => ({})),
+                fetch(`${API_URL}/judge-scores/${currentJudge.judge_id}/${competitionId}`).then(r => r.json()).catch(() => [])
+            ])
+            .then(([participants, competition, scores]) => {
+                // Map scores to participants
+                const scoredParticipantIds = new Set(scores.map(s => s.participant_id));
+                displayParticipants(participants, competitionId, currentJudge.judge_id, scoredParticipantIds, competition);
+            })
+            .catch(error => {
+                console.error('Error fetching participants:', error);
+                showNotification('Error loading participants', 'error');
+            });
         })
         .catch(error => {
-            console.error('Error fetching participants:', error);
-            showNotification('Error loading participants', 'error');
+            console.error('Error fetching judge info:', error);
+            showNotification('Error loading judge information', 'error');
         });
 }
 
-function displayParticipants(participants, competitionId) {
+function displayParticipants(participants, competitionId, judgeId, scoredParticipantIds = new Set(), competition = {}) {
     let html = `
         <h2>Competition Participants</h2>
         <div style="margin-bottom: 20px;">
@@ -180,7 +257,11 @@ function displayParticipants(participants, competitionId) {
     if (participants.length === 0) {
         html += '<p class="alert alert-warning">No participants registered for this competition yet.</p>';
     } else {
+        const scoredCount = participants.filter(p => scoredParticipantIds.has(p.participant_id)).length;
         html += `
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                <strong>Progress:</strong> ${scoredCount} of ${participants.length} participants scored
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -189,6 +270,7 @@ function displayParticipants(participants, competitionId) {
                         <th>Age</th>
                         <th>Performance Title</th>
                         <th>School/Organization</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -196,16 +278,23 @@ function displayParticipants(participants, competitionId) {
         `;
         
         participants.forEach(participant => {
+            const isScored = scoredParticipantIds.has(participant.participant_id);
+            const statusBadge = isScored 
+                ? '<span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 15px; font-size: 12px;">✓ Scored</span>'
+                : '<span style="background: #ffc107; color: #000; padding: 5px 10px; border-radius: 15px; font-size: 12px;">Pending</span>';
+            
             html += `
-                <tr>
+                <tr style="${isScored ? 'opacity: 0.7;' : ''}">
                     <td style="text-align: center; font-weight: bold;">${participant.contestant_number || 'N/A'}</td>
                     <td>${participant.participant_name}</td>
                     <td style="text-align: center;">${participant.age}</td>
                     <td>${participant.performance_title || 'N/A'}</td>
                     <td>${participant.school_organization || 'Not specified'}</td>
+                    <td style="text-align: center;">${statusBadge}</td>
                     <td style="text-align: center;">
-                        <button onclick="scoreParticipant(${participant.participant_id}, ${competitionId}, '${escapeString(participant.participant_name)}')">
-                            Score Performance
+                        <button onclick="scoreParticipant(${participant.participant_id}, ${competitionId}, '${escapeString(participant.participant_name)}')" 
+                                ${isScored ? 'style="background: #6c757d;"' : ''}>
+                            ${isScored ? 'View/Edit Score' : 'Score Performance'}
                         </button>
                     </td>
                 </tr>
@@ -658,9 +747,10 @@ function submitSegmentScores(judgeId, participantId, competitionId, segmentId, c
             
             clearDraft(judgeId, participantId, segmentId);
             
+            // Refresh the participants list to show updated status
             setTimeout(() => {
-                showSegmentSelection(judgeId, participantId, competitionId, participantName);
-            }, 2000);
+                viewCompetitionParticipants(competitionId);
+            }, 1500);
         } else {
             showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
         }
@@ -850,9 +940,10 @@ function submitRegularScores(judgeId, participantId, competitionId, criteria) {
             
             clearRegularDraft(judgeId, participantId, competitionId);
             
+            // Refresh immediately to show updated status
             setTimeout(() => {
                 viewCompetitionParticipants(competitionId);
-            }, 2000);
+            }, 1500);
         }
     })
     .catch(error => {

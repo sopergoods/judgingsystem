@@ -3,6 +3,47 @@
 const API_URL = 'https://mseufci-judgingsystem.up.railway.app';
 
 // ================================================
+// AUTO-REFRESH SYSTEM
+// ================================================
+let currentView = null;
+let currentViewParams = null;
+let autoRefreshInterval = null;
+
+function setCurrentView(viewFunction, params = null) {
+    currentView = viewFunction;
+    currentViewParams = params;
+    
+    // Clear existing interval
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    
+    // Set up auto-refresh for certain views (every 5 seconds)
+    const viewsToAutoRefresh = ['showViewParticipants', 'showViewCompetitions', 'showViewJudges', 'viewJudgeTabulation'];
+    if (viewsToAutoRefresh.includes(viewFunction.name)) {
+        autoRefreshInterval = setInterval(() => {
+            if (currentView) {
+                if (currentViewParams) {
+                    currentView(...currentViewParams);
+                } else {
+                    currentView();
+                }
+            }
+        }, 5000); // Refresh every 5 seconds
+    }
+}
+
+function refreshCurrentView() {
+    if (currentView) {
+        if (currentViewParams) {
+            currentView(...currentViewParams);
+        } else {
+            currentView();
+        }
+    }
+}
+
+// ================================================
 // AUTHENTICATION
 // ================================================
 
@@ -323,6 +364,7 @@ function showCreateCompetitionForm() {
 }
 
 function showViewCompetitions() {
+    setCurrentView(showViewCompetitions);
     document.getElementById("content").innerHTML = `
         <h2>Manage Competitions</h2>
         <div style="margin-bottom: 20px;">
@@ -622,7 +664,10 @@ function submitParticipant(event) {
     .then(data => {
         if (data.success) {
             showNotification(data.message, 'success');
-            showViewParticipants();
+            setTimeout(() => {
+                showViewParticipants();
+                setCurrentView(showViewParticipants);
+            }, 500);
         } else {
             showNotification('Error: ' + data.error, 'error');
         }
@@ -1471,6 +1516,7 @@ function showAddParticipantForm() {
 }
 
 function showViewParticipants() {
+    setCurrentView(showViewParticipants);
     document.getElementById("content").innerHTML = `
         <h2>Manage Participants</h2>
         
@@ -1731,7 +1777,10 @@ function editParticipant(id) {
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Participant updated successfully!', 'success');
-                    showViewParticipants();
+                    setTimeout(() => {
+                        showViewParticipants();
+                        setCurrentView(showViewParticipants);
+                    }, 500);
                 } else {
                     showNotification('Error: ' + data.error, 'error');
                 }
@@ -1750,10 +1799,13 @@ function deleteParticipant(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Participant deleted successfully!');
-                showViewParticipants();
+                showNotification('Participant deleted successfully!', 'success');
+                setTimeout(() => {
+                    showViewParticipants();
+                    setCurrentView(showViewParticipants);
+                }, 500);
             } else {
-                alert('Error: ' + data.error);
+                showNotification('Error: ' + data.error, 'error');
             }
         });
     }
@@ -1854,7 +1906,10 @@ function submitJudge(event) {
             
             alert(credentialsInfo);
             showNotification('Judge added successfully!', 'success');
-            showViewJudges();
+            setTimeout(() => {
+                showViewJudges();
+                setCurrentView(showViewJudges);
+            }, 500);
         } else {
             showNotification('Error: ' + (data.error || 'Unknown error'), 'error');
         }
@@ -1934,7 +1989,10 @@ function updateJudge(event, judgeId) {
     .then(data => {
         if (data.success) {
             showNotification(data.message || 'Judge updated successfully!', 'success');
-            showViewJudges();
+            setTimeout(() => {
+                showViewJudges();
+                setCurrentView(showViewJudges);
+            }, 500);
         } else {
             showNotification('Error: ' + data.error, 'error');
         }
@@ -1946,6 +2004,7 @@ function updateJudge(event, judgeId) {
 }
 
 function showViewJudges() {
+    setCurrentView(showViewJudges);
     document.getElementById("content").innerHTML = `
         <h2>Manage Judges</h2>
         <div style="margin-bottom: 30px;">
@@ -2089,10 +2148,13 @@ function deleteJudge(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Judge deleted successfully!');
-                showViewJudges();
+                showNotification('Judge deleted successfully!', 'success');
+                setTimeout(() => {
+                    showViewJudges();
+                    setCurrentView(showViewJudges);
+                }, 500);
             } else {
-                alert('Error: ' + data.error);
+                showNotification('Error: ' + data.error, 'error');
             }
         });
     }

@@ -10,6 +10,47 @@ let allParticipants = [];
 let statusUpdateInterval = null;
 
 // =====================================================
+// AUTO-REFRESH SYSTEM
+// =====================================================
+let currentView = null;
+let currentViewParams = null;
+let autoRefreshInterval = null;
+
+function setCurrentView(viewFunction, params = null) {
+    currentView = viewFunction;
+    currentViewParams = params;
+    
+    // Clear existing interval
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    
+    // Set up auto-refresh for certain views (every 5 seconds)
+    const viewsToAutoRefresh = ['showViewParticipants', 'showViewCompetitions', 'showViewJudges'];
+    if (viewsToAutoRefresh.includes(viewFunction.name)) {
+        autoRefreshInterval = setInterval(() => {
+            if (currentView) {
+                if (currentViewParams) {
+                    currentView(...currentViewParams);
+                } else {
+                    currentView();
+                }
+            }
+        }, 5000); // Refresh every 5 seconds
+    }
+}
+
+function refreshCurrentView() {
+    if (currentView) {
+        if (currentViewParams) {
+            currentView(...currentViewParams);
+        } else {
+            currentView();
+        }
+    }
+}
+
+// =====================================================
 // INITIALIZATION & AUTHENTICATION
 // =====================================================
 
@@ -165,6 +206,7 @@ function getRequirementsList(isPageant) {
 // =====================================================
 
 function showViewCompetitions() {
+    setCurrentView(showViewCompetitions);
     clearAllIntervals();
     
     setContent(`
@@ -558,7 +600,10 @@ function submitParticipant(event) {
     .then(data => {
         if (data.success) {
             showNotification(data.message || 'Participant added successfully!', 'success');
-            showViewParticipants();
+            setTimeout(() => {
+                showViewParticipants();
+                setCurrentView(showViewParticipants);
+            }, 500);
         } else {
             showNotification('Error: ' + data.error, 'error');
         }
@@ -795,6 +840,7 @@ function registerParticipantForCompetition(competitionId) {
 // =====================================================
 
 function showViewParticipants() {
+    setCurrentView(showViewParticipants);
     clearAllIntervals();
     
     setContent(`
@@ -1171,7 +1217,10 @@ function updateParticipant(event, participantId) {
     .then(data => {
         if (data.success) {
             showNotification(data.message || 'Participant updated successfully!', 'success');
-            showViewParticipants();
+            setTimeout(() => {
+                showViewParticipants();
+                setCurrentView(showViewParticipants);
+            }, 500);
         } else {
             showNotification('Error: ' + data.error, 'error');
         }
@@ -1357,6 +1406,7 @@ function setupEditFormSubmit(participantId) {
 // =====================================================
 
 function showViewJudges() {
+    setCurrentView(showViewJudges);
     clearAllIntervals();
     
     setContent(`
