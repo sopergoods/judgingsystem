@@ -24,26 +24,13 @@ function setCurrentView(viewFunction, params = null) {
     currentView = viewFunction;
     currentViewParams = params;
     
-    // Clear existing interval
+    // Clear existing interval (auto-refresh disabled)
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
     }
     
-    // Set up auto-refresh for certain views (every 5 seconds)
-    const viewsToAutoRefresh = ['viewCompetitionParticipants', 'showMyCompetitions'];
-    if (viewsToAutoRefresh.includes(viewFunction.name)) {
-        autoRefreshInterval = setInterval(() => {
-            // Only refresh if we're still on the same view and page is visible
-            if (currentView && document.visibilityState === 'visible') {
-                if (currentViewParams) {
-                    currentView(...currentViewParams);
-                } else {
-                    currentView();
-                }
-            }
-        }, 5000); // Refresh every 5 seconds
-    }
+    // Auto-refresh removed - too irritating for users
 }
 
 function refreshCurrentView() {
