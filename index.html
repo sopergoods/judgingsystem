@@ -4,8 +4,8 @@
      <script>
         // Check auth BEFORE anything loads
         (function() {
-            const token = localStorage.getItem('token');
-            if (!token) {
+            const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+            if (!user || user.role !== 'admin') {
                 window.location.replace('login.html');
                 // Stop page from continuing to load
                 document.open();
@@ -58,8 +58,9 @@
     </ul>
 </nav>
         <section id="content">
-            <div style="text-align: center; padding: 40px;">
-                <h2>Enverga's Judging System Dashboard</h2>
+            <div class="loading" style="text-align: center; padding: 40px;">
+                <p>Loading...</p>
+            </div>
                 
             
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">

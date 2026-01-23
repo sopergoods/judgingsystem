@@ -29,7 +29,8 @@ function setCurrentView(viewFunction, params = null) {
     const viewsToAutoRefresh = ['showViewParticipants', 'showViewCompetitions', 'showViewJudges'];
     if (viewsToAutoRefresh.includes(viewFunction.name)) {
         autoRefreshInterval = setInterval(() => {
-            if (currentView) {
+            // Only refresh if we're still on the same view and page is visible
+            if (currentView && document.visibilityState === 'visible') {
                 if (currentViewParams) {
                     currentView(...currentViewParams);
                 } else {
@@ -74,6 +75,7 @@ function checkAuthentication() {
     
     currentUser = user;
     updateUserInterface(user);
+    showDashboard(); // Only show dashboard after authentication passes
 }
 
 function updateUserInterface(user) {
@@ -2353,5 +2355,4 @@ function editParticipantById(participantId) {
     });
 }
 
-// Initialize dashboard on load
-showDashboard();
+// Dashboard will be shown after authentication check in initializeStaffDashboard
