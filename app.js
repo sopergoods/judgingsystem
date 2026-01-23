@@ -3451,9 +3451,20 @@ function viewJudgeTabulation(competitionId) {
 }
 
 function displayJudgeTabulation(participants, competitionId) {
+    // Store data for export
+    window.tabulationData = { participants, competitionId };
+    
     let html = `
         <h2>Judge Tabulation - Score Breakdown</h2>
-        <button onclick="showViewCompetitions()" style="margin-bottom: 20px;">Back to Competitions</button>
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="showViewCompetitions()">Back to Competitions</button>
+            <button onclick="exportTabulationToCSV()" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                📥 Export to CSV
+            </button>
+            <button onclick="printTabulation()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                🖨️ Print
+            </button>
+        </div>
         
         <p>View how each judge scored each participant</p>
     `;
@@ -3523,8 +3534,99 @@ function displayJudgeTabulation(participants, competitionId) {
         html += '</tbody></table>';
     }
     
+    // Add print styles
+    html += `
+        <style id="printStyles" media="print">
+            @media print {
+                body * {
+                    visibility: hidden;
+                }
+                #tabulationPrintArea, #tabulationPrintArea * {
+                    visibility: visible;
+                }
+                #tabulationPrintArea {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                }
+                button {
+                    display: none !important;
+                }
+            }
+        </style>
+    `;
+    
+    html = `<div id="tabulationPrintArea">${html}</div>`;
+    
     document.getElementById("content").innerHTML = html;
 }
+
+// Export tabulation to CSV
+function exportTabulationToCSV() {
+    if (!window.tabulationData || !window.tabulationData.participants) {
+        showNotification('No data to export', 'error');
+        return;
+    }
+    
+    const { participants } = window.tabulationData;
+    
+    if (participants.length === 0) {
+        showNotification('No data to export', 'error');
+        return;
+    }
+    
+    // Get judge names from first participant
+    const judges = participants[0].judge_scores || [];
+    const judgeNames = judges.map(j => j.judge_name);
+    
+    // Build CSV content
+    let csv = 'Contestant Number,Participant Name';
+    judgeNames.forEach(judgeName => {
+        csv += `,"${judgeName}"`;
+    });
+    csv += ',Average\n';
+    
+    participants.forEach(participant => {
+        let row = `"${participant.contestant_number || 'N/A'}","${participant.participant_name}"`;
+        
+        let total = 0;
+        let count = 0;
+        
+        participant.judge_scores.forEach(score => {
+            const scoreValue = score.total_score !== null ? parseFloat(score.total_score).toFixed(2) : '-';
+            row += `,"${scoreValue}"`;
+            if (score.total_score !== null) {
+                total += parseFloat(score.total_score);
+                count++;
+            }
+        });
+        
+        const average = count > 0 ? (total / count).toFixed(2) : '-';
+        row += `,"${average}"\n`;
+        
+        csv += row;
+    });
+    
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tabulation_${window.tabulationData.competitionId}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('Tabulation exported to CSV successfully!', 'success');
+}
+
+// Print tabulation
+function printTabulation() {
+    window.print();
+}
+
 function markCompetitionDone(competitionId) {
     if (!confirm('Mark this competition as DONE?\n\nThis will:\n- Lock the competition (judges cannot score)\n- Move it to event history\n- Prevent new participants/judges from being added\n\nThis action cannot be easily undone.')) {
         return;

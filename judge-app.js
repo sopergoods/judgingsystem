@@ -182,6 +182,9 @@ function displayCompetitions(competitions) {
                         <button onclick="startScoring(${competition.competition_id})" class="card-button">
                             Start Scoring
                         </button>
+                        <button onclick="viewJudgeTabulation(${competition.competition_id})" class="card-button" style="background: #6c757d;">
+                            View Tabulation
+                        </button>
                     </div>
                 </div>
             `;
@@ -1944,6 +1947,203 @@ function showProfile() {
 }
 
 // NOTIFICATION SYSTEM
+// View Tabulation (Judge Dashboard)
+function viewJudgeTabulation(competitionId) {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (!user) return;
+    
+    fetch(`${API_URL}/judges`)
+        .then(response => response.json())
+        .then(judges => {
+            const currentJudge = judges.find(j => j.user_id === user.user_id);
+            if (!currentJudge) {
+                showNotification('Judge profile not found', 'error');
+                return;
+            }
+            
+            fetch(`${API_URL}/judge-tabulation/${competitionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayJudgeTabulationJudge(data, competitionId);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error loading tabulation', 'error');
+                });
+        });
+}
+
+function displayJudgeTabulationJudge(participants, competitionId) {
+    // Store data for export
+    window.tabulationData = { participants, competitionId };
+    
+    let html = `
+        <h2>Judge Tabulation - Score Breakdown</h2>
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="showMyCompetitions()" class="secondary">Back to Competitions</button>
+            <button onclick="exportTabulationToCSV()" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                📥 Export to CSV
+            </button>
+            <button onclick="printTabulation()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                🖨️ Print
+            </button>
+        </div>
+        
+        <p>View how each judge scored each participant</p>
+    `;
+    
+    if (participants.length === 0) {
+        html += '<p>No scores submitted yet.</p>';
+    } else {
+        const judges = participants[0].judge_scores || [];
+        const totalPossibleScores = participants.length * judges.length;
+        let completedScores = 0;
+        
+        participants.forEach(participant => {
+            participant.judge_scores.forEach(score => {
+                if (score.total_score !== null) {
+                    completedScores++;
+                }
+            });
+        });
+        
+        html += `
+            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                <strong>Tabulation Status: ${completedScores}/${totalPossibleScores}</strong>
+                <p style="margin: 5px 0 0 0; color: #1976d2;">${completedScores} out of ${totalPossibleScores} scores submitted (${Math.round((completedScores / totalPossibleScores) * 100)}%)</p>
+            </div>
+        `;
+        
+        html += '<table style="width: 100%; border-collapse: collapse;"><thead><tr style="background: #800020; color: white;"><th style="padding: 12px; text-align: center;">Contestant #</th><th style="padding: 12px;">Participant</th>';
+        
+        judges.forEach(judge => {
+            html += `<th style="padding: 12px; text-align: center;">${judge.judge_name}</th>`;
+        });
+        html += '<th style="padding: 12px; text-align: center;">Average</th></tr></thead><tbody>';
+        
+        participants.forEach(participant => {
+            html += `<tr><td style="text-align: center; font-weight: bold; padding: 10px;">${participant.contestant_number || 'N/A'}</td>`;
+            html += `<td style="padding: 10px;"><strong>${participant.participant_name}</strong></td>`;
+            
+            let total = 0;
+            let count = 0;
+            
+            participant.judge_scores.forEach(score => {
+                const scoreValue = score.total_score !== null ? parseFloat(score.total_score).toFixed(2) : '-';
+                const lockIcon = score.is_locked ? '🔒' : '';
+                
+                let timeDisplay = '';
+                if (score.score_date && score.total_score !== null) {
+                    const date = new Date(score.score_date);
+                    timeDisplay = `<br><small style="color: #666; font-size: 11px;">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</small>`;
+                }
+                
+                html += `<td style="text-align: center; padding: 10px;">${scoreValue} ${lockIcon}${timeDisplay}</td>`;
+                
+                if (score.total_score !== null) {
+                    total += parseFloat(score.total_score);
+                    count++;
+                }
+            });
+            
+            const average = count > 0 ? (total / count).toFixed(2) : '-';
+            html += `<td style="text-align: center; font-weight: bold; background: #f8f9fa; padding: 10px;">${average}</td>`;
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+    }
+    
+    // Add print styles
+    html += `
+        <style id="printStyles" media="print">
+            @media print {
+                body * {
+                    visibility: hidden;
+                }
+                #tabulationPrintArea, #tabulationPrintArea * {
+                    visibility: visible;
+                }
+                #tabulationPrintArea {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                }
+                button {
+                    display: none !important;
+                }
+            }
+        </style>
+    `;
+    
+    html = `<div id="tabulationPrintArea">${html}</div>`;
+    
+    document.getElementById("content").innerHTML = html;
+}
+
+// Export tabulation to CSV (Judge)
+function exportTabulationToCSV() {
+    if (!window.tabulationData || !window.tabulationData.participants) {
+        showNotification('No data to export', 'error');
+        return;
+    }
+    
+    const { participants } = window.tabulationData;
+    
+    if (participants.length === 0) {
+        showNotification('No data to export', 'error');
+        return;
+    }
+    
+    const judges = participants[0].judge_scores || [];
+    const judgeNames = judges.map(j => j.judge_name);
+    
+    let csv = 'Contestant Number,Participant Name';
+    judgeNames.forEach(judgeName => {
+        csv += `,"${judgeName}"`;
+    });
+    csv += ',Average\n';
+    
+    participants.forEach(participant => {
+        let row = `"${participant.contestant_number || 'N/A'}","${participant.participant_name}"`;
+        
+        let total = 0;
+        let count = 0;
+        
+        participant.judge_scores.forEach(score => {
+            const scoreValue = score.total_score !== null ? parseFloat(score.total_score).toFixed(2) : '-';
+            row += `,"${scoreValue}"`;
+            if (score.total_score !== null) {
+                total += parseFloat(score.total_score);
+                count++;
+            }
+        });
+        
+        const average = count > 0 ? (total / count).toFixed(2) : '-';
+        row += `,"${average}"\n`;
+        
+        csv += row;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tabulation_${window.tabulationData.competitionId}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('Tabulation exported to CSV successfully!', 'success');
+}
+
+// Print tabulation (Judge)
+function printTabulation() {
+    window.print();
+}
+
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
